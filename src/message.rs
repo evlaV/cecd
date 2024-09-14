@@ -1,6 +1,85 @@
 use crate::constants;
 
-type Opcode = u8;
+#[repr(u8)]
+enum Opcode {
+    ActivateSource = constants::CEC_MSG_ACTIVE_SOURCE,
+    ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,
+    TextViewOn = constants::CEC_MSG_TEXT_VIEW_ON,
+    InactiveSource = constants::CEC_MSG_INACTIVE_SOURCE,
+    RequestActiveSource = constants::CEC_MSG_REQUEST_ACTIVE_SOURCE,
+    RoutingChange = constants::CEC_MSG_ROUTING_CHANGE,
+    RoutingInformation = constants::CEC_MSG_ROUTING_INFORMATION,
+    SetStreamPath = constants::CEC_MSG_SET_STREAM_PATH,
+    Standby = constants::CEC_MSG_STANDBY,
+    RecordOff = constants::CEC_MSG_RECORD_OFF,
+    RecordOn = constants::CEC_MSG_RECORD_ON,
+    RecordStatus = constants::CEC_MSG_RECORD_STATUS,
+    RecordTvScreen = constants::CEC_MSG_RECORD_TV_SCREEN,
+    ClearAnalogueTimer = constants::CEC_MSG_CLEAR_ANALOGUE_TIMER,
+    ClearDigitalTimer = constants::CEC_MSG_CLEAR_DIGITAL_TIMER,
+    ClearExtTimer = constants::CEC_MSG_CLEAR_EXT_TIMER,
+    SetAnalogueTimer = constants::CEC_MSG_SET_ANALOGUE_TIMER,
+    SetDigitalTimer = constants::CEC_MSG_SET_DIGITAL_TIMER,
+    SetExtTimer = constants::CEC_MSG_SET_EXT_TIMER,
+    SetTimerProgramTitle = constants::CEC_MSG_SET_TIMER_PROGRAM_TITLE,
+    TimerClearedStatus = constants::CEC_MSG_TIMER_CLEARED_STATUS,
+    TimerStatus = constants::CEC_MSG_TIMER_STATUS,
+    CecVersion = constants::CEC_MSG_CEC_VERSION,
+    GetCecVersion = constants::CEC_MSG_GET_CEC_VERSION,
+    GivePhysicalAddr = constants::CEC_MSG_GIVE_PHYSICAL_ADDR,
+    GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
+    ReportPhysicalAddr = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
+    SetMenuLanguage = constants::CEC_MSG_SET_MENU_LANGUAGE,
+    ReportFeatures = constants::CEC_MSG_REPORT_FEATURES, /* HDMI 2.0 */
+    GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,     /* HDMI 2.0 */
+    DeckControl = constants::CEC_MSG_DECK_CONTROL,
+    DeckStatus = constants::CEC_MSG_DECK_STATUS,
+    GiveDeckStatus = constants::CEC_MSG_GIVE_DECK_STATUS,
+    Play = constants::CEC_MSG_PLAY,
+    GiveTunerDeviceStatus = constants::CEC_MSG_GIVE_TUNER_DEVICE_STATUS,
+    SelectAnalogueService = constants::CEC_MSG_SELECT_ANALOGUE_SERVICE,
+    SelectDigitalService = constants::CEC_MSG_SELECT_DIGITAL_SERVICE,
+    TunerDeviceStatus = constants::CEC_MSG_TUNER_DEVICE_STATUS,
+    TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
+    TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
+    DeviceVendorId = constants::CEC_MSG_DEVICE_VENDOR_ID,
+    GiveDeviceVendorId = constants::CEC_MSG_GIVE_DEVICE_VENDOR_ID,
+    VendorCommand = constants::CEC_MSG_VENDOR_COMMAND,
+    VendorCommandWithId = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
+    VendorRemoteButtonDown = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_DOWN,
+    VendorRemoteButtonUp = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_UP,
+    SetOsdString = constants::CEC_MSG_SET_OSD_STRING,
+    GiveOsdName = constants::CEC_MSG_GIVE_OSD_NAME,
+    SetOsdName = constants::CEC_MSG_SET_OSD_NAME,
+    MenuRequest = constants::CEC_MSG_MENU_REQUEST,
+    MenuStatus = constants::CEC_MSG_MENU_STATUS,
+    UserControlPressed = constants::CEC_MSG_USER_CONTROL_PRESSED,
+    UserControlReleased = constants::CEC_MSG_USER_CONTROL_RELEASED,
+    GiveDevicePowerStatus = constants::CEC_MSG_GIVE_DEVICE_POWER_STATUS,
+    ReportPowerStatus = constants::CEC_MSG_REPORT_POWER_STATUS,
+    FeatureAbort = constants::CEC_MSG_FEATURE_ABORT,
+    Abort = constants::CEC_MSG_ABORT,
+    GiveAudioStatus = constants::CEC_MSG_GIVE_AUDIO_STATUS,
+    GiveSystemAudioModeStatus = constants::CEC_MSG_GIVE_SYSTEM_AUDIO_MODE_STATUS,
+    ReportAudioStatus = constants::CEC_MSG_REPORT_AUDIO_STATUS,
+    ReportShortAudioDescriptor = constants::CEC_MSG_REPORT_SHORT_AUDIO_DESCRIPTOR,
+    RequestShortAudioDescriptor = constants::CEC_MSG_REQUEST_SHORT_AUDIO_DESCRIPTOR,
+    SetSystemAudioMode = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
+    SystemAudioModeRequest = constants::CEC_MSG_SYSTEM_AUDIO_MODE_REQUEST,
+    SystemAudioModeStatus = constants::CEC_MSG_SYSTEM_AUDIO_MODE_STATUS,
+    SetAudioVolumeLevel = constants::CEC_MSG_SET_AUDIO_VOLUME_LEVEL,
+    SetAudioRate = constants::CEC_MSG_SET_AUDIO_RATE,
+    InitiateArc = constants::CEC_MSG_INITIATE_ARC,
+    ReportArcInitiated = constants::CEC_MSG_REPORT_ARC_INITIATED,
+    ReportArcTerminated = constants::CEC_MSG_REPORT_ARC_TERMINATED,
+    RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
+    RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
+    TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
+    RequestCurrentLatency = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
+    ReportCurrentLatency = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
+    CdcMessage = constants::CEC_MSG_CDC_MESSAGE,
+}
+
 type Timestamp = u64;
 type RxStatusFlags = u8;
 type TxStatusFlags = u8;
@@ -56,7 +135,7 @@ pub struct CecMessage {
     sequence: u32,
     flags: u32,
     msg: [u8; constants::CEC_MAX_MSG_SIZE],
-    reply: Opcode,
+    reply: u8,
     rx_status: u8,
     tx_status: u8,
     tx_arb_lost_cnt: u8,
@@ -83,7 +162,7 @@ impl CecMessage {
     /**
      * cec_msg_opcode - return the opcode of the message, None for poll
      */
-    pub fn opcode(&self) -> Option<Opcode> {
+    pub fn opcode(&self) -> Option<u8> {
         if self.len > 1 {
             Some(self.msg[1])
         } else {
