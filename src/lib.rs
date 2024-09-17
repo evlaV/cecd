@@ -6,8 +6,9 @@ pub(crate) mod message;
 
 pub mod constants;
 
-type Timestamp = u64;
 type LogicalAddress = u8;
+type PhysicalAddress = u16;
+type Timestamp = u64;
 
 bitflags! {
     #[derive(Debug, Copy, Clone)]

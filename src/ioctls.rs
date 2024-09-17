@@ -3,7 +3,7 @@ use std::ffi::c_char;
 
 use crate::log_addrs::CecLogicalAddresses;
 use crate::message::CecMessage;
-use crate::{Capabilities, EventFlags, LogicalAddressMask, Timestamp};
+use crate::{Capabilities, EventFlags, LogicalAddressMask, PhysicalAddress, Timestamp};
 
 /// CEC capabilities structure.
 #[repr(C)]
@@ -54,7 +54,7 @@ pub(crate) struct CecConnectorInfo {
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CecEventStateChange {
     /// The current physical address
-    phys_addr: u16,
+    phys_addr: PhysicalAddress,
     /// The current logical address mask
     log_addr_mask: LogicalAddressMask,
     /** If non-zero, then HDMI connector information is available.
@@ -114,8 +114,8 @@ ioctl_readwrite!(adapter_get_capabilities, b'a', 0, CecCapabilities);
  * The CEC_ADAP_S_PHYS_ADDR ioctl may not be available if that is handled
  * internally.
  */
-ioctl_read!(adapter_get_physical_address, b'a', 1, u16);
-ioctl_write_ptr!(adapter_set_physical_address, b'a', 2, u16);
+ioctl_read!(adapter_get_physical_address, b'a', 1, PhysicalAddress);
+ioctl_write_ptr!(adapter_set_physical_address, b'a', 2, PhysicalAddress);
 
 /*
  * Configure the CEC adapter. It sets the device type and which
