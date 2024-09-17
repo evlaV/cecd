@@ -30,23 +30,23 @@ pub const CEC_PHYS_ADDR_INVALID: u16 = 0xffff;
 pub const CEC_MAX_LOG_ADDRS: usize = 4;
 
 /* The logical addresses defined by CEC 2.0 */
-pub const CEC_LOG_ADDR_TV: u16 = 0;
-pub const CEC_LOG_ADDR_RECORD_1: u16 = 1;
-pub const CEC_LOG_ADDR_RECORD_2: u16 = 2;
-pub const CEC_LOG_ADDR_TUNER_1: u16 = 3;
-pub const CEC_LOG_ADDR_PLAYBACK_1: u16 = 4;
-pub const CEC_LOG_ADDR_AUDIOSYSTEM: u16 = 5;
-pub const CEC_LOG_ADDR_TUNER_2: u16 = 6;
-pub const CEC_LOG_ADDR_TUNER_3: u16 = 7;
-pub const CEC_LOG_ADDR_PLAYBACK_2: u16 = 8;
-pub const CEC_LOG_ADDR_RECORD_3: u16 = 9;
-pub const CEC_LOG_ADDR_TUNER_4: u16 = 10;
-pub const CEC_LOG_ADDR_PLAYBACK_3: u16 = 11;
-pub const CEC_LOG_ADDR_BACKUP_1: u16 = 12;
-pub const CEC_LOG_ADDR_BACKUP_2: u16 = 13;
-pub const CEC_LOG_ADDR_SPECIFIC: u16 = 14;
-pub const CEC_LOG_ADDR_UNREGISTERED: u16 = 15; /* as initiator address */
-pub const CEC_LOG_ADDR_BROADCAST: u16 = 15; /* as destination address */
+pub const CEC_LOG_ADDR_TV: u8 = 0;
+pub const CEC_LOG_ADDR_RECORD_1: u8 = 1;
+pub const CEC_LOG_ADDR_RECORD_2: u8 = 2;
+pub const CEC_LOG_ADDR_TUNER_1: u8 = 3;
+pub const CEC_LOG_ADDR_PLAYBACK_1: u8 = 4;
+pub const CEC_LOG_ADDR_AUDIOSYSTEM: u8 = 5;
+pub const CEC_LOG_ADDR_TUNER_2: u8 = 6;
+pub const CEC_LOG_ADDR_TUNER_3: u8 = 7;
+pub const CEC_LOG_ADDR_PLAYBACK_2: u8 = 8;
+pub const CEC_LOG_ADDR_RECORD_3: u8 = 9;
+pub const CEC_LOG_ADDR_TUNER_4: u8 = 10;
+pub const CEC_LOG_ADDR_PLAYBACK_3: u8 = 11;
+pub const CEC_LOG_ADDR_BACKUP_1: u8 = 12;
+pub const CEC_LOG_ADDR_BACKUP_2: u8 = 13;
+pub const CEC_LOG_ADDR_SPECIFIC: u8 = 14;
+pub const CEC_LOG_ADDR_UNREGISTERED: u8 = 15; /* as initiator address */
+pub const CEC_LOG_ADDR_BROADCAST: u8 = 15; /* as destination address */
 
 /* The logical address types that the CEC device wants to claim */
 pub const CEC_LOG_ADDR_TYPE_TV: u16 = 0;
