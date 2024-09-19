@@ -167,8 +167,8 @@ impl CecMessage {
 
     /**
      * Initialize the message structure.
-     * @initiator:	the logical address of the initiator
-     * @destination:the logical address of the destination (0xf for broadcast)
+     * @initiator: the logical address of the initiator
+     * @destination: the logical address of the destination (0xf for broadcast)
      *
      * The whole structure is zeroed, the len field is set to 1 (i.e. a poll
      * message) and the initiator and destination are filled in.
@@ -197,7 +197,7 @@ impl CecMessage {
 
     /**
      * Fill in destination/initiator in a reply message.
-     * @orig:	the original message structure
+     * @orig: the original message structure
      *
      * Set the msg destination to the orig initiator and the msg initiator to the
      * orig destination. Note that msg and orig may be the same pointer, in which

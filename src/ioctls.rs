@@ -58,11 +58,11 @@ pub(crate) struct CecEventStateChange {
     /// The current logical address mask
     log_addr_mask: LogicalAddressMask,
     /** If non-zero, then HDMI connector information is available.
-     *	This field is only valid if CEC_CAP_CONNECTOR_INFO is set. If that
-     *	capability is set and @have_conn_info is zero, then that indicates
-     *	that the HDMI connector device is not instantiated, either because
-     *	the HDMI driver is still configuring the device or because the HDMI
-     *	device was unbound.
+     *  This field is only valid if CEC_CAP_CONNECTOR_INFO is set. If that
+     *  capability is set and @have_conn_info is zero, then that indicates
+     *  that the HDMI connector device is not instantiated, either because
+     *  the HDMI driver is still configuring the device or because the HDMI
+     *  device was unbound.
      */
     have_conn_info: u16,
 }
