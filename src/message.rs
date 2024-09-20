@@ -702,7 +702,7 @@ impl CecMessage {
     }
 
     /// Return the opcode of the message, None for poll
-    pub fn opcode(&self) -> Option<u8> {
+    pub fn raw_opcode(&self) -> Option<u8> {
         if self.len > 1 {
             Some(self.msg[1])
         } else {
@@ -780,16 +780,16 @@ impl CecMessage {
     }
 
     /// Return true if this message contains the result of an earlier non-blocking transmit
-    fn recv_is_tx_result(&self) -> bool {
+    pub fn recv_is_tx_result(&self) -> bool {
         self.sequence != 0 && !self.tx_status.is_empty() && self.rx_status.is_empty()
     }
 
     /// Return true if this message contains the reply of an earlier non-blocking transmit
-    fn recv_is_rx_result(&self) -> bool {
+    pub fn recv_is_rx_result(&self) -> bool {
         self.sequence != 0 && self.tx_status.is_empty() && !self.rx_status.is_empty()
     }
 
-    fn status_is_ok(&self) -> bool {
+    pub fn status_is_ok(&self) -> bool {
         if !self.tx_status.is_empty() && !self.tx_status.contains(TxStatus::OK) {
             return false;
         }
@@ -800,5 +800,10 @@ impl CecMessage {
             return false;
         }
         !self.rx_status.contains(RxStatus::FEATURE_ABORT)
+    }
+
+    pub fn opcode(&self) -> Option<Opcode> {
+        let raw = self.raw_opcode()?;
+        Opcode::try_from(raw).ok()
     }
 }
