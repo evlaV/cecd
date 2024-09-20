@@ -5,6 +5,7 @@ pub(crate) mod log_addrs;
 pub(crate) mod message;
 
 pub mod constants;
+pub mod device;
 
 type LogicalAddress = u8;
 type PhysicalAddress = u16;

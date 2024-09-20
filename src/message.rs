@@ -744,6 +744,25 @@ impl CecMessage {
         msg
     }
 
+    pub(crate) fn with_timeout(timeout_ms: u32) -> CecMessage {
+        CecMessage {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 0,
+            timeout: timeout_ms,
+            sequence: 0,
+            flags: MsgFlags::empty(),
+            msg: [0; 16],
+            reply: 0,
+            rx_status: RxStatus::empty(),
+            tx_status: TxStatus::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        }
+    }
+
     /**
      * Fill in destination/initiator in a reply message.
      * @orig: the original message structure
