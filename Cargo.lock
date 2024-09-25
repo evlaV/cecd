@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "bitfield"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f798d2d157e547aa99aab0967df39edd0b70307312b6f8bd2848e6abe40896e0"
+
+[[package]]
 name = "bitflags"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -52,9 +58,19 @@ checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 name = "linux-cec"
 version = "0.1.0"
 dependencies = [
+ "bitfield",
  "bitflags",
+ "linux-cec-macros",
  "nix",
  "num_enum",
+]
+
+[[package]]
+name = "linux-cec-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

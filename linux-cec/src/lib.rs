@@ -3,6 +3,7 @@ use bitflags::bitflags;
 pub(crate) mod ioctls;
 pub(crate) mod log_addrs;
 pub(crate) mod message;
+pub(crate) mod operand;
 
 pub mod constants;
 pub mod device;
