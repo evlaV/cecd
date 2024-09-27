@@ -1,6 +1,7 @@
-use bitfield::bitfield;
-use bitflags::bitflags;
+use modular_bitfield::prelude::*;
+use bitflags::{bitflags, Flags};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::convert::TryFrom;
 
 use crate::constants;
 
@@ -655,31 +656,25 @@ pub enum MonthOfYear {
     December = 12,
 }
 
+#[bitfield]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AudioStatus {
+    mute: B1,
+    volume: B7,
+}
+
 // TODO: Limit range
-bitfield! {
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct BcdByte(u8);
-    impl Debug;
-
-    ones, _: 3, 0;
-    tens, _: 7, 4;
+#[bitfield]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
+pub struct BcdByte {
+    ones: B4,
+    tens: B4,
 }
 
-bitfield! {
-    #[derive(Copy, Clone, PartialEq, Eq)]
-    pub struct ChannelId(u16);
-    impl Debug;
-
-    channel_number_format, _: 5, 0; // TODO: How do I specify the type?
-    major_channel_number, _: 15, 6;
-    minor_channel_number, _: 31, 16;
-}
-
-bitfield! {
-    #[derive(Copy, Clone, PartialEq, Eq)]
-    pub struct AudioStatus(u8);
-    impl Debug;
-
-    audio_mute_status, _: 1, 0;
-    audio_volume_satus, _: 7, 2;
+#[bitfield]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ChannelId {
+    number_format: B6,
+    major_channel: B10,
+    minor_channel: u16,
 }
