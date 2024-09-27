@@ -1,7 +1,6 @@
 use linux_cec_macros::Message;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ffi::c_char;
-use std::mem::size_of;
 
 use crate::operand::*;
 use crate::{constants, LogicalAddress, MsgFlags, PhysicalAddress, RxStatus, Timestamp, TxStatus};
@@ -14,12 +13,12 @@ pub trait MessageEncodable {
         raw[0] = Self::OPCODE.into();
 
         let parameters = self.parameters();
-        raw[1..=parameters.len() + 1].copy_from_slice(self.parameters());
+        raw[1..=parameters.len() + 1].copy_from_slice(&self.parameters());
         raw
     }
 
-    fn parameters(&self) -> &[u8] {
-        &[]
+    fn parameters(&self) -> Vec<u8> {
+        Vec::new()
     }
 
     fn len(&self) -> usize;
@@ -32,8 +31,8 @@ struct MessageBuffer {
 }
 
 impl MessageBuffer {
-    fn parameters(&self) -> &[u8] {
-        &self.buffer[..self.len]
+    fn parameters(&self) -> Vec<u8> {
+        self.buffer[..self.len].to_vec()
     }
 
     fn len(&self) -> usize {
@@ -215,7 +214,7 @@ pub struct SetTimerProgramTitle {
 impl MessageEncodable for SetTimerProgramTitle {
     const OPCODE: Opcode = Opcode::SetTimerProgramTitle;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
@@ -348,7 +347,7 @@ pub struct VendorCommand {
 impl MessageEncodable for VendorCommand {
     const OPCODE: Opcode = Opcode::VendorCommand;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
@@ -365,7 +364,7 @@ pub struct VendorCommandWithId {
 impl MessageEncodable for VendorCommandWithId {
     const OPCODE: Opcode = Opcode::VendorCommandWithId;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
@@ -382,7 +381,7 @@ pub struct VendorRemoteButtonDown {
 impl MessageEncodable for VendorRemoteButtonDown {
     const OPCODE: Opcode = Opcode::VendorRemoteButtonDown;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
@@ -402,7 +401,7 @@ pub struct SetOsdString {
 impl MessageEncodable for SetOsdString {
     const OPCODE: Opcode = Opcode::SetOsdString;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
@@ -422,7 +421,7 @@ pub struct SetOsdName {
 impl MessageEncodable for SetOsdName {
     const OPCODE: Opcode = Opcode::SetOsdName;
 
-    fn parameters(&self) -> &[u8] {
+    fn parameters(&self) -> Vec<u8> {
         self.buffer.parameters()
     }
 
