@@ -1,6 +1,5 @@
-use linux_cec_macros::Message;
+use linux_cec_macros::{Message, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::ffi::c_char;
 
 use crate::operand::*;
 use crate::{constants, LogicalAddress, MsgFlags, PhysicalAddress, RxStatus, Timestamp, TxStatus};
@@ -22,22 +21,6 @@ pub trait MessageEncodable {
     }
 
     fn len(&self) -> usize;
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-struct MessageBuffer {
-    buffer: [u8; 14],
-    len: usize,
-}
-
-impl MessageBuffer {
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer[..self.len].to_vec()
-    }
-
-    fn len(&self) -> usize {
-        usize::min(self.len, 14)
-    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -89,8 +72,10 @@ pub struct RecordOff;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordOn {
-    //#[parameter]
-    //pub source: RecordSource,
+    #[parameter]
+    pub record_source_type: RecordSourceType,
+    #[parameter]
+    pub source: RecordSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -115,11 +100,7 @@ pub struct ClearAnalogueTimer {
     #[parameter]
     pub recording_sequence: RecordingSequence,
     #[parameter]
-    pub analogue_broadcast_type: AnalogueBroadcastType,
-    #[parameter]
-    pub analogue_frequency: AnalogueFrequency,
-    #[parameter]
-    pub broadcast_system: BroadcastSystem,
+    pub service_id: AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -135,7 +116,7 @@ pub struct ClearDigitalTimer {
     #[parameter]
     pub recording_sequence: RecordingSequence,
     #[parameter]
-    pub digital_service_identification: DigitalServiceId,
+    pub service_id: DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -150,8 +131,8 @@ pub struct ClearExtTimer {
     pub duration: Duration,
     #[parameter]
     pub recording_sequence: RecordingSequence,
-    //#[parameter]
-    //pub external_source: ExternalSource,
+    #[parameter]
+    pub external_source: ExternalSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -167,11 +148,7 @@ pub struct SetAnalogueTimer {
     #[parameter]
     pub recording_sequence: RecordingSequence,
     #[parameter]
-    pub analogue_broadcast_type: AnalogueBroadcastType,
-    #[parameter]
-    pub analogue_frequency: AnalogueFrequency,
-    #[parameter]
-    pub broadcast_system: BroadcastSystem,
+    pub service_id: AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -187,7 +164,7 @@ pub struct SetDigitalTimer {
     #[parameter]
     pub recording_sequence: RecordingSequence,
     #[parameter]
-    pub digital_service_identification: DigitalServiceId,
+    pub service_id: DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -202,25 +179,14 @@ pub struct SetExtTimer {
     pub duration: Duration,
     #[parameter]
     pub recording_sequence: RecordingSequence,
-    //#[parameter]
-    //pub external_source: ExternalSource,
+    #[parameter]
+    pub external_source: ExternalSource,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetTimerProgramTitle {
-    buffer: MessageBuffer,
-}
-
-impl MessageEncodable for SetTimerProgramTitle {
-    const OPCODE: Opcode = Opcode::SetTimerProgramTitle;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
+    #[parameter]
+    pub title: BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -238,7 +204,13 @@ pub struct TimerStatus {
 impl MessageEncodable for TimerStatus {
     const OPCODE: Opcode = Opcode::TimerStatus;
 
-    // TODO
+    fn parameters(&self) -> Vec<u8> {
+        let mut params = vec![self.data];
+        if let Some(duration) = self.duration_available {
+            duration.to_bytes(&mut params);
+        }
+        params
+    }
 
     fn len(&self) -> usize {
         if self.duration_available.is_some() {
@@ -275,7 +247,7 @@ pub struct ReportPhysicalAddr {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetMenuLanguage {
     #[parameter]
-    pub language: [c_char; 3],
+    pub language: [u8; 3],
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -311,17 +283,19 @@ pub struct GiveTunerDeviceStatus {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectAnalogueService {
     #[parameter]
-    pub analogue_broadcast_type: AnalogueBroadcastType,
+    pub service_id: AnalogueServiceId,
+}
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SelectDigitalService {
     #[parameter]
-    pub analogue_frequency: AnalogueFrequency,
-    #[parameter]
-    pub broadcast_system: BroadcastSystem,
+    pub service_id: DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TunerDeviceStatus {
-    //#[parameter]
-    //pub info: TunerDeviceInfo,
+    #[parameter]
+    pub info: TunerDeviceInfo,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -333,101 +307,49 @@ pub struct TunerStepIncrement;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeviceVendorId {
     #[parameter]
-    pub vendor_id: [u8; 3],
+    pub vendor_id: VendorId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDeviceVendorId;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommand {
-    buffer: MessageBuffer,
+    #[parameter]
+    pub command: BufferOperand,
 }
 
-impl MessageEncodable for VendorCommand {
-    const OPCODE: Opcode = Opcode::VendorCommand;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommandWithId {
-    buffer: MessageBuffer,
+    #[parameter]
+    pub vendor_id: VendorId,
+    #[parameter]
+    pub vendor_specific_data: BoundedBufferOperand<11>,
 }
 
-impl MessageEncodable for VendorCommandWithId {
-    const OPCODE: Opcode = Opcode::VendorCommandWithId;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonDown {
-    buffer: MessageBuffer,
-}
-
-impl MessageEncodable for VendorRemoteButtonDown {
-    const OPCODE: Opcode = Opcode::VendorRemoteButtonDown;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
+    rc_code: BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonUp;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdString {
-    buffer: MessageBuffer,
-}
-
-impl MessageEncodable for SetOsdString {
-    const OPCODE: Opcode = Opcode::SetOsdString;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
+    #[parameter]
+    display_control: DisplayControl,
+    #[parameter]
+    osd_string: BoundedBufferOperand<13>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveOsdName;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdName {
-    buffer: MessageBuffer,
-}
-
-impl MessageEncodable for SetOsdName {
-    const OPCODE: Opcode = Opcode::SetOsdName;
-
-    fn parameters(&self) -> Vec<u8> {
-        self.buffer.parameters()
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len() + 1
-    }
+    #[parameter]
+    name: BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -483,6 +405,18 @@ pub struct ReportAudioStatus {
     status: AudioStatus,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportShortAudioDescriptor {
+    short_audio_descriptor: [ShortAudioDescriptor; 4],
+    count: usize,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RequestShortAudioDescriptor {
+    audio_format_id_and_code: [AudioFormatIdAndCode; 4],
+    count: usize,
+}
+
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetSystemAudioMode {
     #[parameter]
@@ -507,8 +441,29 @@ pub struct SetAudioRate {
     audio_rate: AudioRate,
 }
 
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct InitiateArc;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportArcInitiated;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportArcTerminated;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RequestArcInitiation;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RequestArcTermination;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TerminateArc;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct CdcMessage;
+
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum Opcode {
     ActivateSource = constants::CEC_MSG_ACTIVE_SOURCE,
     ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,

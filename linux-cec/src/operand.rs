@@ -1,17 +1,133 @@
+#![allow(clippy::enum_variant_names)]
+#![allow(clippy::len_without_is_empty)]
+
+use bitflags::bitflags;
+use linux_cec_macros::Operand;
 use modular_bitfield::prelude::*;
-use bitflags::{bitflags, Flags};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 
-use crate::constants;
+use crate::{constants, PhysicalAddress};
 
 pub type AnalogueFrequency = u16; // TODO: Limit range
 pub type DurationHours = BcdByte;
 pub type Hour = BcdByte; // TODO: Limit range
 pub type Minute = BcdByte; // TODO: Limit range
+pub type ShortAudioDescriptor = [u8; 3];
+pub type VendorId = [u8; 3];
+
+pub trait OperandEncodable: Sized {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>);
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()>;
+    fn len(&self) -> usize;
+}
+
+impl OperandEncodable for u8 {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([*self]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 1 {
+            Err(())
+        } else {
+            Ok(bytes[offset])
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+impl OperandEncodable for [u8; 3] {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend(*self);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 3 {
+            Err(())
+        } else {
+            Ok(bytes[offset..=offset + 2].try_into().map_err(|_| ())?)
+        }
+    }
+
+    fn len(&self) -> usize {
+        3
+    }
+}
+
+impl OperandEncodable for u16 {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([
+            u8::try_from(*self >> 8).unwrap(),
+            u8::try_from(*self & 0xFF).unwrap(),
+        ]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 2 {
+            Err(())
+        } else {
+            Ok((u16::from(bytes[offset]) << 8) | u16::from(bytes[offset + 1]))
+        }
+    }
+
+    fn len(&self) -> usize {
+        2
+    }
+}
+
+impl OperandEncodable for bool {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([if *self { 1 } else { 0 }]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 1 {
+            Err(())
+        } else {
+            Ok(bytes[offset] != 0)
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct BoundedBufferOperand<const S: usize> {
+    buffer: [u8; S],
+    len: usize,
+}
+
+impl<const S: usize> OperandEncodable for BoundedBufferOperand<S> {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        for byte in &self.buffer[..self.len] {
+            buf.extend([*byte]);
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        let mut buffer = bytes[offset..].to_vec();
+        buffer.resize(S, 0);
+        Ok(Self {
+            buffer: *buffer.first_chunk().ok_or(())?,
+            len: bytes.len(),
+        })
+    }
+
+    fn len(&self) -> usize {
+        usize::min(self.len, S)
+    }
+}
+
+pub type BufferOperand = BoundedBufferOperand<14>;
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AbortReason {
     UnrecognizedOp = constants::CEC_OP_ABORT_UNRECOGNIZED_OP,
     IncorrectMode = constants::CEC_OP_ABORT_INCORRECT_MODE,
@@ -22,7 +138,7 @@ pub enum AbortReason {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AnalogueBroadcastType {
     Cable = constants::CEC_OP_ANA_BCAST_TYPE_CABLE,
     Satellite = constants::CEC_OP_ANA_BCAST_TYPE_SATELLITE,
@@ -30,7 +146,7 @@ pub enum AnalogueBroadcastType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioRate {
     Off = constants::CEC_OP_AUD_RATE_OFF,
     WideStandard = constants::CEC_OP_AUD_RATE_WIDE_STD,
@@ -42,7 +158,14 @@ pub enum AudioRate {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+pub enum AudioFormatId {
+    CEA861 = constants::CEC_OP_AUD_FMT_ID_CEA861,
+    CEA861Cxt = constants::CEC_OP_AUD_FMT_ID_CEA861_CXT,
+}
+
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioOutputCompensated {
     NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
     Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
@@ -51,7 +174,7 @@ pub enum AudioOutputCompensated {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum BroadcastSystem {
     PalBg = constants::CEC_OP_BCAST_SYSTEM_PAL_BG,
     SecamLq = constants::CEC_OP_BCAST_SYSTEM_SECAM_LQ, /* SECAM L' */
@@ -66,7 +189,7 @@ pub enum BroadcastSystem {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum CdcErrorCode {
     None = constants::CEC_OP_CDC_ERROR_CODE_NONE,
     CapUnsupported = constants::CEC_OP_CDC_ERROR_CODE_CAP_UNSUPPORTED,
@@ -75,14 +198,14 @@ pub enum CdcErrorCode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum ChannelNumberFormat {
     Fmt1Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_1_PART,
     Fmt2Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_2_PART,
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum DeckControlMode {
     SkipForward = constants::CEC_OP_DECK_CTL_MODE_SKIP_FWD,
     SkipReverse = constants::CEC_OP_DECK_CTL_MODE_SKIP_REV,
@@ -91,7 +214,7 @@ pub enum DeckControlMode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum DeckInfo {
     Play = constants::CEC_OP_DECK_INFO_PLAY,
     Record = constants::CEC_OP_DECK_INFO_RECORD,
@@ -111,7 +234,7 @@ pub enum DeckInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum DigitalServiceBroadcastSystem {
     AribGeneric = constants::CEC_OP_DIG_SERVICE_BCAST_SYSTEM_ARIB_GEN,
     AtscGeneric = constants::CEC_OP_DIG_SERVICE_BCAST_SYSTEM_ATSC_GEN,
@@ -129,7 +252,7 @@ pub enum DigitalServiceBroadcastSystem {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum DisplayControl {
     Default = constants::CEC_OP_DISP_CTL_DEFAULT,
     UntilCleared = constants::CEC_OP_DISP_CTL_UNTIL_CLEARED,
@@ -137,7 +260,7 @@ pub enum DisplayControl {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum EncFunctionalityState {
     ExtConNotSupported = constants::CEC_OP_ENC_FUNC_STATE_EXT_CON_NOT_SUPPORTED,
     ExtConInactive = constants::CEC_OP_ENC_FUNC_STATE_EXT_CON_INACTIVE,
@@ -145,14 +268,14 @@ pub enum EncFunctionalityState {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum ExternalSourceSpecifier {
     ExternalPlug = constants::CEC_OP_EXT_SRC_PLUG,
     ExternalPhysicalAddress = constants::CEC_OP_EXT_SRC_PHYS_ADDR,
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum HecFunctionalityState {
     NotSupported = constants::CEC_OP_HEC_FUNC_STATE_NOT_SUPPORTED,
     Inactive = constants::CEC_OP_HEC_FUNC_STATE_INACTIVE,
@@ -161,7 +284,7 @@ pub enum HecFunctionalityState {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum HostFunctionalityState {
     NotSupported = constants::CEC_OP_HOST_FUNC_STATE_NOT_SUPPORTED,
     Inactive = constants::CEC_OP_HOST_FUNC_STATE_INACTIVE,
@@ -169,7 +292,7 @@ pub enum HostFunctionalityState {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum HpdErrorCode {
     None = constants::CEC_OP_HPD_ERROR_NONE,
     InitiatorNotCapable = constants::CEC_OP_HPD_ERROR_INITIATOR_NOT_CAPABLE,
@@ -179,7 +302,7 @@ pub enum HpdErrorCode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum HpdStateState {
     CpEdidDisable = constants::CEC_OP_HPD_STATE_CP_EDID_DISABLE,
     CpEdidEnable = constants::CEC_OP_HPD_STATE_CP_EDID_ENABLE,
@@ -190,7 +313,7 @@ pub enum HpdStateState {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum MediaInfo {
     UnprotectedMedia = constants::CEC_OP_MEDIA_INFO_UNPROT_MEDIA,
     ProtectedMedia = constants::CEC_OP_MEDIA_INFO_PROT_MEDIA,
@@ -198,7 +321,7 @@ pub enum MediaInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum MenuRequestType {
     Activate = constants::CEC_OP_MENU_REQUEST_ACTIVATE,
     Deactivate = constants::CEC_OP_MENU_REQUEST_DEACTIVATE,
@@ -206,14 +329,14 @@ pub enum MenuRequestType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum MenuState {
     Activated = constants::CEC_OP_MENU_STATE_ACTIVATED,
     Deactivated = constants::CEC_OP_MENU_STATE_DEACTIVATED,
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum NotProgrammedErrorInfo {
     NoFreeTimer = constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER,
     DateOutOfRange = constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE,
@@ -229,7 +352,7 @@ pub enum NotProgrammedErrorInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum PlayMode {
     Forward = constants::CEC_OP_PLAY_MODE_PLAY_FWD,
     Reverse = constants::CEC_OP_PLAY_MODE_PLAY_REV,
@@ -249,7 +372,7 @@ pub enum PlayMode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum PowerStatus {
     On = constants::CEC_OP_POWER_STATUS_ON,
     Standby = constants::CEC_OP_POWER_STATUS_STANDBY,
@@ -258,7 +381,7 @@ pub enum PowerStatus {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum PrimaryDeviceType {
     Tv = constants::CEC_OP_PRIM_DEVTYPE_TV,
     Recording = constants::CEC_OP_PRIM_DEVTYPE_RECORD,
@@ -270,7 +393,7 @@ pub enum PrimaryDeviceType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum ProgrammedInfo {
     EnoughSpace = constants::CEC_OP_PROG_INFO_ENOUGH_SPACE,
     NotEnoughSpace = constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE,
@@ -279,7 +402,7 @@ pub enum ProgrammedInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum RecordSourceType {
     Own = constants::CEC_OP_RECORD_SRC_OWN,
     Digital = constants::CEC_OP_RECORD_SRC_DIGITAL,
@@ -289,7 +412,7 @@ pub enum RecordSourceType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum RecordStatusInfo {
     CurrentSource = constants::CEC_OP_RECORD_STATUS_CUR_SRC,
     DigitalService = constants::CEC_OP_RECORD_STATUS_DIG_SERVICE,
@@ -318,7 +441,7 @@ pub enum RecordStatusInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum RcProfileId {
     ProfileNone = constants::CEC_OP_FEAT_RC_TV_PROFILE_NONE,
     Profile1 = constants::CEC_OP_FEAT_RC_TV_PROFILE_1,
@@ -328,14 +451,14 @@ pub enum RcProfileId {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum ServiceIdMethod {
     ByDigitalId = constants::CEC_OP_SERVICE_ID_METHOD_BY_DIG_ID,
     ByChannel = constants::CEC_OP_SERVICE_ID_METHOD_BY_CHANNEL,
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum StatusRequest {
     On = constants::CEC_OP_STATUS_REQ_ON,
     Off = constants::CEC_OP_STATUS_REQ_OFF,
@@ -343,7 +466,7 @@ pub enum StatusRequest {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum TimerClearedStatusData {
     Recording = constants::CEC_OP_TIMER_CLR_STAT_RECORDING,
     NoMatching = constants::CEC_OP_TIMER_CLR_STAT_NO_MATCHING,
@@ -352,7 +475,7 @@ pub enum TimerClearedStatusData {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum TunerDisplayInfo {
     Digital = constants::CEC_OP_TUNER_DISPLAY_INFO_DIGITAL,
     None = constants::CEC_OP_TUNER_DISPLAY_INFO_NONE,
@@ -360,7 +483,7 @@ pub enum TunerDisplayInfo {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum UiBroadcastType {
     ToggleAll = constants::CEC_OP_UI_BCAST_TYPE_TOGGLE_ALL,
     ToggleDigitalAnalogue = constants::CEC_OP_UI_BCAST_TYPE_TOGGLE_DIG_ANA,
@@ -378,7 +501,7 @@ pub enum UiBroadcastType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum UiCommand {
     Select = constants::CEC_OP_UI_CMD_SELECT,
     Up = constants::CEC_OP_UI_CMD_UP,
@@ -471,10 +594,10 @@ pub enum UiCommand {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum Version {
-    // These first few versions predate CEC specification
-    // but are theoretically valid otherwise
+    // These first few versions predate CEC specification and are
+    // theoretically invalid, but we should probably recognize anyway
     V1_1 = 0,
     V1_2 = 1,
     V1_2a = 2,
@@ -485,7 +608,7 @@ pub enum Version {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum UiSoundPresentationControl {
     DualMono = constants::CEC_OP_UI_SND_PRES_CTL_DUAL_MONO,
     Karaoke = constants::CEC_OP_UI_SND_PRES_CTL_KARAOKE,
@@ -501,7 +624,7 @@ pub enum UiSoundPresentationControl {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
     pub struct AllDeviceType: u8 {
         const TV = constants::CEC_OP_ALL_DEVTYPE_TV;
         const RECORDING = constants::CEC_OP_ALL_DEVTYPE_RECORD;
@@ -513,7 +636,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
     pub struct DeviceFeatures1: u8 {
         const HAS_RECORD_TV_SCREEN = constants::CEC_OP_FEAT_DEV_HAS_RECORD_TV_SCREEN;
         const HAS_SET_OSD_STRING = constants::CEC_OP_FEAT_DEV_HAS_SET_OSD_STRING;
@@ -526,7 +649,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
     pub struct RcProfileSource: u8 {
         const HAS_DEV_ROOT_MENU = constants::CEC_OP_FEAT_RC_SRC_HAS_DEV_ROOT_MENU;
         const HAS_DEV_SETUP_MENU = constants::CEC_OP_FEAT_RC_SRC_HAS_DEV_SETUP_MENU;
@@ -537,7 +660,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
     pub struct RecordingSequence: u8 {
         const SUNDAY = constants::CEC_OP_REC_SEQ_SUNDAY;
         const MONDAY = constants::CEC_OP_REC_SEQ_MONDAY;
@@ -557,7 +680,6 @@ impl RecordingSequence {
     }
 }
 
-#[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ServiceId {
     AribData {
@@ -581,7 +703,36 @@ pub enum ServiceId {
     },
 }
 
-#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AnalogueServiceId {
+    pub broadcast_type: AnalogueBroadcastType,
+    pub frequency: AnalogueFrequency,
+    pub broadcast_system: BroadcastSystem,
+}
+
+impl OperandEncodable for AnalogueServiceId {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        self.broadcast_type.to_bytes(buf);
+        self.frequency.to_bytes(buf);
+        self.broadcast_system.to_bytes(buf);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<AnalogueServiceId, ()> {
+        let broadcast_type = AnalogueBroadcastType::from_bytes(bytes, offset)?;
+        let frequency = <AnalogueFrequency as OperandEncodable>::from_bytes(bytes, offset + 1)?;
+        let broadcast_system = BroadcastSystem::from_bytes(bytes, offset + 3)?;
+        Ok(AnalogueServiceId {
+            broadcast_type,
+            frequency,
+            broadcast_system,
+        })
+    }
+
+    fn len(&self) -> usize {
+        4
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DigitalServiceId {
     pub service_id_method: ServiceIdMethod,
@@ -589,22 +740,134 @@ pub struct DigitalServiceId {
     pub service_id: ServiceId,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+impl OperandEncodable for DigitalServiceId {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([(self.service_id_method as u8) | ((self.digital_broadcast_system as u8) << 1)]);
+        match self.service_id {
+            ServiceId::AribData {
+                ref transport_stream_id,
+                ref service_id,
+                ref original_network_id,
+            } => {
+                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
+                <u16 as OperandEncodable>::to_bytes(service_id, buf);
+                <u16 as OperandEncodable>::to_bytes(original_network_id, buf);
+            }
+            ServiceId::AtscData {
+                ref transport_stream_id,
+                ref program_number,
+                ref reserved,
+            } => {
+                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
+                <u16 as OperandEncodable>::to_bytes(program_number, buf);
+                <u16 as OperandEncodable>::to_bytes(reserved, buf);
+            }
+            ServiceId::DvbData {
+                ref transport_stream_id,
+                ref service_id,
+                ref original_network_id,
+            } => {
+                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
+                <u16 as OperandEncodable>::to_bytes(service_id, buf);
+                <u16 as OperandEncodable>::to_bytes(original_network_id, buf);
+            }
+            ServiceId::ChannelData {
+                ref channel_id,
+                ref reserved,
+            } => {
+                <ChannelId as OperandEncodable>::to_bytes(channel_id, buf);
+                <u16 as OperandEncodable>::to_bytes(reserved, buf);
+            }
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 7 {
+            return Err(());
+        }
+        let head = bytes[offset];
+        let service_id_method = ServiceIdMethod::try_from_primitive(head & 1).map_err(|_| ())?;
+        let digital_broadcast_system =
+            DigitalServiceBroadcastSystem::try_from_primitive(head >> 1).map_err(|_| ())?;
+        let service_id = if service_id_method == ServiceIdMethod::ByChannel {
+            let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)?;
+            let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
+            ServiceId::ChannelData {
+                channel_id,
+                reserved,
+            }
+        } else {
+            let transport_stream_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 1)?;
+            match digital_broadcast_system {
+                DigitalServiceBroadcastSystem::AribGeneric
+                | DigitalServiceBroadcastSystem::AribBs
+                | DigitalServiceBroadcastSystem::AribCs
+                | DigitalServiceBroadcastSystem::AribT => {
+                    let service_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
+                    let original_network_id =
+                        <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
+                    ServiceId::AribData {
+                        transport_stream_id,
+                        service_id,
+                        original_network_id,
+                    }
+                }
+                DigitalServiceBroadcastSystem::AtscGeneric
+                | DigitalServiceBroadcastSystem::AtscCable
+                | DigitalServiceBroadcastSystem::AtscSatellite
+                | DigitalServiceBroadcastSystem::AtscTerrestrial => {
+                    let program_number = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
+                    let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
+                    ServiceId::AtscData {
+                        transport_stream_id,
+                        program_number,
+                        reserved,
+                    }
+                }
+                DigitalServiceBroadcastSystem::DvbGeneric
+                | DigitalServiceBroadcastSystem::DvbC
+                | DigitalServiceBroadcastSystem::DvbS
+                | DigitalServiceBroadcastSystem::DvbS2
+                | DigitalServiceBroadcastSystem::DvbT => {
+                    let service_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
+                    let original_network_id =
+                        <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
+                    ServiceId::DvbData {
+                        transport_stream_id,
+                        service_id,
+                        original_network_id,
+                    }
+                }
+            }
+        };
+        Ok(DigitalServiceId {
+            service_id_method,
+            digital_broadcast_system,
+            service_id,
+        })
+    }
+
+    fn len(&self) -> usize {
+        7
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct Duration {
     pub hours: DurationHours,
     pub minutes: Minute,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct Time {
     pub hour: Hour,
     pub minute: Minute,
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
+)]
 pub enum DayOfMonth {
     Day1 = 1,
     Day2 = 2,
@@ -640,7 +903,9 @@ pub enum DayOfMonth {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
+)]
 pub enum MonthOfYear {
     January = 1,
     February = 2,
@@ -656,25 +921,254 @@ pub enum MonthOfYear {
     December = 12,
 }
 
-#[bitfield]
+#[bitfield(bytes = 1)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub struct AudioFormatIdAndCode {
+    pub code: B6,
+    pub id: B2,
+}
+
+#[bitfield(bytes = 1)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
 pub struct AudioStatus {
-    mute: B1,
-    volume: B7,
+    pub mute: B1,
+    pub volume: B7,
+}
+
+impl OperandEncodable for AudioStatus {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([u8::from(*self)]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < 1 + offset {
+            return Err(());
+        }
+        Ok(Self::from(bytes[offset]))
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
 }
 
 // TODO: Limit range
-#[bitfield]
+#[bitfield(bytes = 1)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
+#[repr(u8)]
 pub struct BcdByte {
-    ones: B4,
-    tens: B4,
+    pub ones: B4,
+    pub tens: B4,
 }
 
-#[bitfield]
+impl OperandEncodable for BcdByte {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([u8::from(*self)]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte, ()> {
+        if bytes.len() < 1 + offset {
+            return Err(());
+        }
+        let byte = bytes[offset];
+        if (byte & 0xF) > 9 {
+            return Err(());
+        }
+        if byte > 0x99 {
+            return Err(());
+        }
+        Ok(BcdByte::from(byte))
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ChannelId {
-    number_format: B6,
-    major_channel: B10,
-    minor_channel: u16,
+    pub number_format: ChannelNumberFormat,
+    pub major_channel: u16,
+    pub minor_channel: u16,
+}
+
+impl OperandEncodable for ChannelId {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        let number_format = u8::from(self.number_format);
+        let major: u16 = u16::from(number_format) | (self.major_channel << 6);
+        major.to_bytes(buf);
+        self.minor_channel.to_bytes(buf);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 4 {
+            return Err(());
+        }
+        let major = <u16 as OperandEncodable>::from_bytes(bytes, offset)?;
+        let minor_channel = <u16 as OperandEncodable>::from_bytes(bytes, offset + 2)?;
+        let number_format = u8::try_from(major & 0x3F).unwrap();
+        let number_format =
+            ChannelNumberFormat::try_from_primitive(number_format).map_err(|_| ())?;
+        let major_channel = major >> 6;
+        Ok(ChannelId {
+            number_format,
+            major_channel,
+            minor_channel,
+        })
+    }
+
+    fn len(&self) -> usize {
+        4
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TunerDeviceInfo {
+    Analogue {
+        recording: bool,
+        tuner_display_info: TunerDisplayInfo,
+        service_id: AnalogueServiceId,
+    },
+    Digital {
+        recording: bool,
+        tuner_display_info: TunerDisplayInfo,
+        service_id: DigitalServiceId,
+    },
+}
+
+impl OperandEncodable for TunerDeviceInfo {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        match self {
+            TunerDeviceInfo::Analogue {
+                recording,
+                tuner_display_info,
+                service_id,
+            } => {
+                let recording = if *recording { 1u8 } else { 0u8 };
+                let display_info = u8::from(*tuner_display_info);
+                <u8 as OperandEncodable>::to_bytes(&(recording | (display_info << 1)), buf);
+                service_id.to_bytes(buf);
+            }
+            TunerDeviceInfo::Digital {
+                recording,
+                tuner_display_info,
+                service_id,
+            } => {
+                let recording = if *recording { 1u8 } else { 0u8 };
+                let display_info = u8::from(*tuner_display_info);
+                <u8 as OperandEncodable>::to_bytes(&(recording | (display_info << 1)), buf);
+                service_id.to_bytes(buf);
+            }
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() - offset < 5 {
+            return Err(());
+        }
+        let head = bytes[offset];
+        let recording = (head & 1) == 1;
+        let tuner_display_info = TunerDisplayInfo::try_from_primitive(head >> 1).map_err(|_| ())?;
+        match bytes.len() - offset {
+            5 => Ok(TunerDeviceInfo::Analogue {
+                recording,
+                tuner_display_info,
+                service_id: AnalogueServiceId::from_bytes(bytes, offset)?,
+            }),
+            8 => Ok(TunerDeviceInfo::Digital {
+                recording,
+                tuner_display_info,
+                service_id: DigitalServiceId::from_bytes(bytes, offset)?,
+            }),
+            _ => Err(()),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            TunerDeviceInfo::Analogue { .. } => 5,
+            TunerDeviceInfo::Digital { .. } => 8,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ExternalSource {
+    Plug(u8),
+    PhysicalAddress(PhysicalAddress),
+}
+
+impl OperandEncodable for ExternalSource {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        match self {
+            ExternalSource::Plug(plug) => buf.extend([*plug]),
+            ExternalSource::PhysicalAddress(phys_addr) => phys_addr.to_bytes(buf),
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        match bytes.len() - offset {
+            1 => Ok(ExternalSource::Plug(bytes[offset])),
+            2 => Ok(ExternalSource::PhysicalAddress(
+                <PhysicalAddress as OperandEncodable>::from_bytes(bytes, offset)?,
+            )),
+            _ => Err(()),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            ExternalSource::Plug(_) => 1,
+            ExternalSource::PhysicalAddress(_) => 2,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RecordSource {
+    Own,
+    DigitalService(DigitalServiceId),
+    AnalogueService(AnalogueServiceId),
+    External(ExternalSource),
+}
+
+impl OperandEncodable for RecordSource {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        match self {
+            RecordSource::Own => (),
+            RecordSource::DigitalService(ref service_id) => service_id.to_bytes(buf),
+            RecordSource::AnalogueService(ref service_id) => service_id.to_bytes(buf),
+            RecordSource::External(ref source) => source.to_bytes(buf),
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if offset < 1 {
+            return Err(());
+        }
+        let record_source_type = RecordSourceType::from_bytes(bytes, offset - 1)?;
+        match record_source_type {
+            RecordSourceType::Own => Ok(RecordSource::Own),
+            RecordSourceType::Digital => Ok(RecordSource::DigitalService(
+                DigitalServiceId::from_bytes(bytes, offset)?,
+            )),
+            RecordSourceType::Analogue => Ok(RecordSource::AnalogueService(
+                AnalogueServiceId::from_bytes(bytes, offset)?,
+            )),
+            RecordSourceType::ExternalPlug | RecordSourceType::ExternalPhysicalAddress => Ok(
+                RecordSource::External(ExternalSource::from_bytes(bytes, offset)?),
+            ),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            RecordSource::Own => 0,
+            RecordSource::DigitalService(ref service_id) => service_id.len(),
+            RecordSource::AnalogueService(ref service_id) => service_id.len(),
+            RecordSource::External(ref source) => source.len(),
+        }
+    }
 }
