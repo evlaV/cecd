@@ -1,8 +1,8 @@
 use linux_cec_macros::{Message, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::operand::*;
-use crate::{constants, LogicalAddress, MsgFlags, PhysicalAddress, RxStatus, Timestamp, TxStatus};
+use crate::operand::OperandEncodable;
+use crate::{constants, operand, PhysicalAddress};
 
 pub trait MessageEncodable {
     const OPCODE: Opcode;
@@ -73,15 +73,15 @@ pub struct RecordOff;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordOn {
     #[parameter]
-    pub record_source_type: RecordSourceType,
+    pub record_source_type: operand::RecordSourceType,
     #[parameter]
-    pub source: RecordSource,
+    pub source: operand::RecordSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordStatus {
     #[parameter]
-    pub status: RecordStatusInfo,
+    pub status: operand::RecordStatusInfo,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -90,115 +90,115 @@ pub struct RecordTvScreen;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearAnalogueTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub service_id: AnalogueServiceId,
+    pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearDigitalTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub service_id: DigitalServiceId,
+    pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearExtTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub external_source: ExternalSource,
+    pub external_source: operand::ExternalSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAnalogueTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub service_id: AnalogueServiceId,
+    pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetDigitalTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub service_id: DigitalServiceId,
+    pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetExtTimer {
     #[parameter]
-    pub day_of_month: DayOfMonth,
+    pub day_of_month: operand::DayOfMonth,
     #[parameter]
-    pub month_of_year: MonthOfYear,
+    pub month_of_year: operand::MonthOfYear,
     #[parameter]
-    pub start_time: Time,
+    pub start_time: operand::Time,
     #[parameter]
-    pub duration: Duration,
+    pub duration: operand::Duration,
     #[parameter]
-    pub recording_sequence: RecordingSequence,
+    pub recording_sequence: operand::RecordingSequence,
     #[parameter]
-    pub external_source: ExternalSource,
+    pub external_source: operand::ExternalSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetTimerProgramTitle {
     #[parameter]
-    pub title: BufferOperand,
+    pub title: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerClearedStatus {
     #[parameter]
-    pub timer_cleared_status: TimerClearedStatusData,
+    pub timer_cleared_status: operand::TimerClearedStatusData,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerStatus {
     data: u8,
-    duration_available: Option<Duration>,
+    duration_available: Option<operand::Duration>,
 }
 
 impl MessageEncodable for TimerStatus {
@@ -224,7 +224,7 @@ impl MessageEncodable for TimerStatus {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CecVersion {
     #[parameter]
-    pub version: Version,
+    pub version: operand::Version,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -241,7 +241,7 @@ pub struct ReportPhysicalAddr {
     #[parameter]
     pub physical_address: PhysicalAddress,
     #[parameter]
-    pub device_type: PrimaryDeviceType,
+    pub device_type: operand::PrimaryDeviceType,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -253,49 +253,49 @@ pub struct SetMenuLanguage {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckControl {
     #[parameter]
-    pub mode: DeckControlMode,
+    pub mode: operand::DeckControlMode,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckStatus {
     #[parameter]
-    pub info: DeckInfo,
+    pub info: operand::DeckInfo,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDeckStatus {
     #[parameter]
-    pub request: StatusRequest,
+    pub request: operand::StatusRequest,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Play {
     #[parameter]
-    pub mode: PlayMode,
+    pub mode: operand::PlayMode,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveTunerDeviceStatus {
     #[parameter]
-    pub request: StatusRequest,
+    pub request: operand::StatusRequest,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectAnalogueService {
     #[parameter]
-    pub service_id: AnalogueServiceId,
+    pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectDigitalService {
     #[parameter]
-    pub service_id: DigitalServiceId,
+    pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TunerDeviceStatus {
     #[parameter]
-    pub info: TunerDeviceInfo,
+    pub info: operand::TunerDeviceInfo,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -307,7 +307,7 @@ pub struct TunerStepIncrement;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeviceVendorId {
     #[parameter]
-    pub vendor_id: VendorId,
+    pub vendor_id: operand::VendorId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -316,20 +316,20 @@ pub struct GiveDeviceVendorId;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommand {
     #[parameter]
-    pub command: BufferOperand,
+    pub command: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommandWithId {
     #[parameter]
-    pub vendor_id: VendorId,
+    pub vendor_id: operand::VendorId,
     #[parameter]
-    pub vendor_specific_data: BoundedBufferOperand<11>,
+    pub vendor_specific_data: operand::BoundedBufferOperand<11>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonDown {
-    rc_code: BufferOperand,
+    rc_code: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -338,9 +338,9 @@ pub struct VendorRemoteButtonUp;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdString {
     #[parameter]
-    display_control: DisplayControl,
+    display_control: operand::DisplayControl,
     #[parameter]
-    osd_string: BoundedBufferOperand<13>,
+    osd_string: operand::BoundedBufferOperand<13>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -349,25 +349,25 @@ pub struct GiveOsdName;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdName {
     #[parameter]
-    name: BufferOperand,
+    name: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuRequest {
     #[parameter]
-    request_type: MenuRequestType,
+    request_type: operand::MenuRequestType,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuStatus {
     #[parameter]
-    state: MenuState,
+    state: operand::MenuState,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct UserControlPressed {
     #[parameter]
-    ui_command: UiCommand,
+    ui_command: operand::UiCommand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -379,7 +379,7 @@ pub struct GiveDevicePowerStatus;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportPowerStatus {
     #[parameter]
-    status: PowerStatus,
+    status: operand::PowerStatus,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -387,7 +387,7 @@ pub struct FeatureAbort {
     #[parameter]
     opcode: Opcode,
     #[parameter]
-    abort_reason: AbortReason,
+    abort_reason: operand::AbortReason,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -402,18 +402,18 @@ pub struct GiveSystemAudioModeStatus;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportAudioStatus {
     #[parameter]
-    status: AudioStatus,
+    status: operand::AudioStatus,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportShortAudioDescriptor {
-    short_audio_descriptor: [ShortAudioDescriptor; 4],
+    short_audio_descriptor: [operand::ShortAudioDescriptor; 4],
     count: usize,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestShortAudioDescriptor {
-    audio_format_id_and_code: [AudioFormatIdAndCode; 4],
+    audio_format_id_and_code: [operand::AudioFormatIdAndCode; 4],
     count: usize,
 }
 
@@ -438,7 +438,7 @@ pub struct SystemAudioModeStatus {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAudioRate {
     #[parameter]
-    audio_rate: AudioRate,
+    audio_rate: operand::AudioRate,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -541,181 +541,4 @@ pub enum Opcode {
     RequestCurrentLatency = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
     ReportCurrentLatency = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
     CdcMessage = constants::CEC_MSG_CDC_MESSAGE,
-}
-
-/// CEC message structure.
-#[repr(C)]
-pub struct CecMessage {
-    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
-    /// driver when the message transmission has finished.
-    tx_ts: Timestamp,
-    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
-    /// driver when the message was received.
-    rx_ts: Timestamp,
-    /// Length in bytes of the message.
-    len: u32,
-    /**
-     * The timeout (in ms) that is used to timeout CEC_RECEIVE.
-     * Set to 0 if you want to wait forever. This timeout can also be
-     * used with CEC_TRANSMIT as the timeout for waiting for a reply.
-     * If 0, then it will use a 1 second timeout instead of waiting
-     * forever as is done with CEC_RECEIVE.
-     */
-    timeout: u32,
-    /// The framework assigns a sequence number to messages that are
-    /// sent. This can be used to track replies to previously sent messages.
-    sequence: u32,
-    /// Set to 0.
-    flags: MsgFlags,
-    /// The message payload.
-    msg: [u8; constants::CEC_MAX_MSG_SIZE],
-    /**
-     * This field is ignored with CEC_RECEIVE and is only used by
-     * CEC_TRANSMIT. If non-zero, then wait for a reply with this
-     * opcode. Set to CEC_MSG_FEATURE_ABORT if you want to wait for
-     * a possible ABORT reply. If there was an error when sending the
-     * msg or FeatureAbort was returned, then reply is set to 0.
-     * If reply is non-zero upon return, then len/msg are set to
-     * the received message.
-     * If reply is zero upon return and status has the
-     * CEC_TX_STATUS_FEATURE_ABORT bit set, then len/msg are set to
-     * the received feature abort message.
-     * If reply is zero upon return and status has the
-     * CEC_TX_STATUS_MAX_RETRIES bit set, then no reply was seen at
-     * all. If reply is non-zero for CEC_TRANSMIT and the message is a
-     * broadcast, then -EINVAL is returned.
-     * if reply is non-zero, then timeout is set to 1000 (the required
-     * maximum response time).
-     */
-    reply: u8,
-    /// The message receive status bits. Set by the driver.
-    rx_status: RxStatus,
-    /// The message transmit status bits. Set by the driver.
-    tx_status: TxStatus,
-    /// The number of 'Arbitration Lost' events. Set by the driver.
-    tx_arb_lost_cnt: u8,
-    /// The number of 'Not Acknowledged' events. Set by the driver.
-    tx_nack_cnt: u8,
-    /// The number of 'Low Drive Detected' events. Set by the driver.
-    tx_low_drive_cnt: u8,
-    /// The number of 'Error' events. Set by the driver.
-    tx_error_cnt: u8,
-}
-
-impl CecMessage {
-    /// Return the initiator's logical address.
-    pub fn initiator(&self) -> u8 {
-        self.msg[0] >> 4
-    }
-
-    /// Return the destination's logical address.
-    pub fn destination(&self) -> u8 {
-        self.msg[0] & 0xf
-    }
-
-    /// Return the opcode of the message, None for poll
-    pub fn raw_opcode(&self) -> Option<u8> {
-        if self.len > 1 {
-            Some(self.msg[1])
-        } else {
-            None
-        }
-    }
-
-    /// Return true if this is a broadcast message.
-    pub fn is_broadcast(&self) -> bool {
-        (self.msg[0] & 0xf) == 0xf
-    }
-
-    /**
-     * Initialize the message structure.
-     * @initiator: the logical address of the initiator
-     * @destination: the logical address of the destination (0xf for broadcast)
-     *
-     * The whole structure is zeroed, the len field is set to 1 (i.e. a poll
-     * message) and the initiator and destination are filled in.
-     */
-    pub fn new(initiator: LogicalAddress, destination: LogicalAddress) -> CecMessage {
-        let mut msg = CecMessage {
-            tx_ts: 0,
-            rx_ts: 0,
-            len: 1,
-            timeout: 0,
-            sequence: 0,
-            flags: MsgFlags::empty(),
-            msg: [0; 16],
-            reply: 0,
-            rx_status: RxStatus::empty(),
-            tx_status: TxStatus::empty(),
-            tx_arb_lost_cnt: 0,
-            tx_nack_cnt: 0,
-            tx_low_drive_cnt: 0,
-            tx_error_cnt: 0,
-        };
-        msg.msg[0] = (initiator << 4) | destination;
-
-        msg
-    }
-
-    pub(crate) fn with_timeout(timeout_ms: u32) -> CecMessage {
-        CecMessage {
-            tx_ts: 0,
-            rx_ts: 0,
-            len: 0,
-            timeout: timeout_ms,
-            sequence: 0,
-            flags: MsgFlags::empty(),
-            msg: [0; 16],
-            reply: 0,
-            rx_status: RxStatus::empty(),
-            tx_status: TxStatus::empty(),
-            tx_arb_lost_cnt: 0,
-            tx_nack_cnt: 0,
-            tx_low_drive_cnt: 0,
-            tx_error_cnt: 0,
-        }
-    }
-
-    /**
-     * Fill in destination/initiator in a reply message.
-     * @orig: the original message structure
-     *
-     * Set the msg destination to the orig initiator and the msg initiator to the
-     * orig destination. Note that msg and orig may be the same pointer, in which
-     * case the change is done in place.
-     */
-    fn set_reply_to(&mut self, orig: &CecMessage) {
-        /* The destination becomes the initiator and vice versa */
-        self.msg[0] = (orig.destination() << 4) | orig.initiator();
-        self.reply = 0;
-        self.timeout = 0;
-    }
-
-    /// Return true if this message contains the result of an earlier non-blocking transmit
-    pub fn recv_is_tx_result(&self) -> bool {
-        self.sequence != 0 && !self.tx_status.is_empty() && self.rx_status.is_empty()
-    }
-
-    /// Return true if this message contains the reply of an earlier non-blocking transmit
-    pub fn recv_is_rx_result(&self) -> bool {
-        self.sequence != 0 && self.tx_status.is_empty() && !self.rx_status.is_empty()
-    }
-
-    pub fn status_is_ok(&self) -> bool {
-        if !self.tx_status.is_empty() && !self.tx_status.contains(TxStatus::OK) {
-            return false;
-        }
-        if !self.rx_status.is_empty() && !self.rx_status.contains(RxStatus::OK) {
-            return false;
-        }
-        if self.tx_status.is_empty() && self.rx_status.is_empty() {
-            return false;
-        }
-        !self.rx_status.contains(RxStatus::FEATURE_ABORT)
-    }
-
-    pub fn opcode(&self) -> Option<Opcode> {
-        let raw = self.raw_opcode()?;
-        Opcode::try_from(raw).ok()
-    }
 }

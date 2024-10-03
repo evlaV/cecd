@@ -2,8 +2,7 @@ use nix::errno::Errno;
 use std::fs::File;
 use std::os::fd::AsRawFd;
 
-use crate::ioctls::{receive_message, transmit_message};
-use crate::message::CecMessage;
+use crate::ioctls::{receive_message, transmit_message, CecMessage};
 
 pub struct Device {
     file: File,

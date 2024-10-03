@@ -1,9 +1,18 @@
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 use std::ffi::c_char;
 
-use crate::log_addrs::CecLogicalAddresses;
-use crate::message::CecMessage;
-use crate::{Capabilities, EventFlags, LogicalAddressMask, PhysicalAddress, Timestamp};
+use crate::constants::{
+    CEC_LOG_ADDR_BACKUP_1, CEC_LOG_ADDR_SPECIFIC, CEC_LOG_ADDR_UNREGISTERED, CEC_MAX_LOG_ADDRS,
+    CEC_MAX_MSG_SIZE, CEC_OP_PRIM_DEVTYPE_PROCESSOR, CEC_OP_PRIM_DEVTYPE_SWITCH,
+    CEC_OP_PRIM_DEVTYPE_TV,
+};
+use crate::message::Opcode;
+use crate::{
+    Capabilities, EventFlags, LogicalAddress, LogicalAddressMask, LogicalAddressesFlags, MsgFlags,
+    PhysicalAddress, RxStatus, TxStatus,
+};
+
+pub type Timestamp = u64;
 
 /// CEC capabilities structure.
 #[repr(C)]
@@ -97,6 +106,259 @@ pub(crate) struct CecEvent {
     /// Event flags.
     flags: EventFlags,
     data: CecEventUnion,
+}
+
+/// CEC message structure.
+#[repr(C)]
+pub struct CecMessage {
+    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
+    /// driver when the message transmission has finished.
+    tx_ts: Timestamp,
+    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
+    /// driver when the message was received.
+    rx_ts: Timestamp,
+    /// Length in bytes of the message.
+    len: u32,
+    /**
+     * The timeout (in ms) that is used to timeout CEC_RECEIVE.
+     * Set to 0 if you want to wait forever. This timeout can also be
+     * used with CEC_TRANSMIT as the timeout for waiting for a reply.
+     * If 0, then it will use a 1 second timeout instead of waiting
+     * forever as is done with CEC_RECEIVE.
+     */
+    timeout: u32,
+    /// The framework assigns a sequence number to messages that are
+    /// sent. This can be used to track replies to previously sent messages.
+    sequence: u32,
+    /// Set to 0.
+    flags: MsgFlags,
+    /// The message payload.
+    msg: [u8; CEC_MAX_MSG_SIZE],
+    /**
+     * This field is ignored with CEC_RECEIVE and is only used by
+     * CEC_TRANSMIT. If non-zero, then wait for a reply with this
+     * opcode. Set to CEC_MSG_FEATURE_ABORT if you want to wait for
+     * a possible ABORT reply. If there was an error when sending the
+     * msg or FeatureAbort was returned, then reply is set to 0.
+     * If reply is non-zero upon return, then len/msg are set to
+     * the received message.
+     * If reply is zero upon return and status has the
+     * CEC_TX_STATUS_FEATURE_ABORT bit set, then len/msg are set to
+     * the received feature abort message.
+     * If reply is zero upon return and status has the
+     * CEC_TX_STATUS_MAX_RETRIES bit set, then no reply was seen at
+     * all. If reply is non-zero for CEC_TRANSMIT and the message is a
+     * broadcast, then -EINVAL is returned.
+     * if reply is non-zero, then timeout is set to 1000 (the required
+     * maximum response time).
+     */
+    reply: u8,
+    /// The message receive status bits. Set by the driver.
+    rx_status: RxStatus,
+    /// The message transmit status bits. Set by the driver.
+    tx_status: TxStatus,
+    /// The number of 'Arbitration Lost' events. Set by the driver.
+    tx_arb_lost_cnt: u8,
+    /// The number of 'Not Acknowledged' events. Set by the driver.
+    tx_nack_cnt: u8,
+    /// The number of 'Low Drive Detected' events. Set by the driver.
+    tx_low_drive_cnt: u8,
+    /// The number of 'Error' events. Set by the driver.
+    tx_error_cnt: u8,
+}
+
+/// CEC logical addresses structure
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct CecLogicalAddresses {
+    /// The claimed logical addresses. Set by the driver.
+    log_addr: [LogicalAddress; CEC_MAX_LOG_ADDRS],
+    /// Current logical address mask. Set by the driver.
+    log_addr_mask: LogicalAddressMask,
+    /// The CEC version that the adapter should implement. Set by the caller.
+    cec_version: u8,
+    /// How many logical addresses should be claimed. Set by the caller.
+    num_log_addrs: u8,
+    /// The vendor ID of the device. Set by the caller.
+    vendor_id: u32,
+    /// Flags.
+    flags: LogicalAddressesFlags,
+    /// The OSD name of the device. Set by the caller.
+    osd_name: [c_char; 15],
+    /// The primary device type for each logical address. Set by the caller.
+    primary_device_type: [u8; CEC_MAX_LOG_ADDRS],
+    /// The logical address types. Set by the caller.
+    log_addr_type: [u8; CEC_MAX_LOG_ADDRS],
+
+    /* CEC 2.0 */
+    /// CEC 2.0: all device types represented by the logical address. Set by the caller.
+    all_device_types: [u8; CEC_MAX_LOG_ADDRS],
+    /// CEC 2.0: The logical address features. Set by the caller.
+    features: [[u8; 12]; CEC_MAX_LOG_ADDRS],
+}
+
+impl CecLogicalAddresses {
+    /* Helper functions to identify the 'special' CEC devices */
+
+    fn is_2nd_tv(&self) -> bool {
+        /*
+         * It is a second TV if the logical address is 14 or 15 and the
+         * primary device type is a TV.
+         */
+        self.num_log_addrs != 0
+            && self.log_addr[0] >= CEC_LOG_ADDR_SPECIFIC
+            && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_TV
+    }
+
+    fn is_processor(&self) -> bool {
+        /*
+         * It is a processor if the logical address is 12-15 and the
+         * primary device type is a Processor.
+         */
+        self.num_log_addrs != 0
+            && self.log_addr[0] >= CEC_LOG_ADDR_BACKUP_1
+            && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_PROCESSOR
+    }
+
+    fn is_switch(&self) -> bool {
+        /*
+         * It is a switch if the logical address is 15 and the
+         * primary device type is a Switch and the CDC-Only flag is not set.
+         */
+        self.num_log_addrs == 1
+            && self.log_addr[0] == CEC_LOG_ADDR_UNREGISTERED
+            && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_SWITCH
+            && !self.flags.contains(LogicalAddressesFlags::CDC_ONLY)
+    }
+
+    fn is_cdc_only(&self) -> bool {
+        /*
+         * It is a CDC-only device if the logical address is 15 and the
+         * primary device type is a Switch and the CDC-Only flag is set.
+         */
+        self.num_log_addrs == 1
+            && self.log_addr[0] == CEC_LOG_ADDR_UNREGISTERED
+            && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_SWITCH
+            && self.flags.contains(LogicalAddressesFlags::CDC_ONLY)
+    }
+}
+
+impl CecMessage {
+    /// Return the initiator's logical address.
+    pub fn initiator(&self) -> u8 {
+        self.msg[0] >> 4
+    }
+
+    /// Return the destination's logical address.
+    pub fn destination(&self) -> u8 {
+        self.msg[0] & 0xf
+    }
+
+    /// Return the opcode of the message, None for poll
+    pub fn raw_opcode(&self) -> Option<u8> {
+        if self.len > 1 {
+            Some(self.msg[1])
+        } else {
+            None
+        }
+    }
+
+    /// Return true if this is a broadcast message.
+    pub fn is_broadcast(&self) -> bool {
+        (self.msg[0] & 0xf) == 0xf
+    }
+
+    /**
+     * Initialize the message structure.
+     * @initiator: the logical address of the initiator
+     * @destination: the logical address of the destination (0xf for broadcast)
+     *
+     * The whole structure is zeroed, the len field is set to 1 (i.e. a poll
+     * message) and the initiator and destination are filled in.
+     */
+    pub fn new(initiator: LogicalAddress, destination: LogicalAddress) -> CecMessage {
+        let mut msg = CecMessage {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 1,
+            timeout: 0,
+            sequence: 0,
+            flags: MsgFlags::empty(),
+            msg: [0; 16],
+            reply: 0,
+            rx_status: RxStatus::empty(),
+            tx_status: TxStatus::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+        msg.msg[0] = (initiator << 4) | destination;
+
+        msg
+    }
+
+    pub(crate) fn with_timeout(timeout_ms: u32) -> CecMessage {
+        CecMessage {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 0,
+            timeout: timeout_ms,
+            sequence: 0,
+            flags: MsgFlags::empty(),
+            msg: [0; 16],
+            reply: 0,
+            rx_status: RxStatus::empty(),
+            tx_status: TxStatus::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        }
+    }
+
+    /**
+     * Fill in destination/initiator in a reply message.
+     * @orig: the original message structure
+     *
+     * Set the msg destination to the orig initiator and the msg initiator to the
+     * orig destination. Note that msg and orig may be the same pointer, in which
+     * case the change is done in place.
+     */
+    fn set_reply_to(&mut self, orig: &CecMessage) {
+        /* The destination becomes the initiator and vice versa */
+        self.msg[0] = (orig.destination() << 4) | orig.initiator();
+        self.reply = 0;
+        self.timeout = 0;
+    }
+
+    /// Return true if this message contains the result of an earlier non-blocking transmit
+    pub fn recv_is_tx_result(&self) -> bool {
+        self.sequence != 0 && !self.tx_status.is_empty() && self.rx_status.is_empty()
+    }
+
+    /// Return true if this message contains the reply of an earlier non-blocking transmit
+    pub fn recv_is_rx_result(&self) -> bool {
+        self.sequence != 0 && self.tx_status.is_empty() && !self.rx_status.is_empty()
+    }
+
+    pub fn status_is_ok(&self) -> bool {
+        if !self.tx_status.is_empty() && !self.tx_status.contains(TxStatus::OK) {
+            return false;
+        }
+        if !self.rx_status.is_empty() && !self.rx_status.contains(RxStatus::OK) {
+            return false;
+        }
+        if self.tx_status.is_empty() && self.rx_status.is_empty() {
+            return false;
+        }
+        !self.rx_status.contains(RxStatus::FEATURE_ABORT)
+    }
+
+    pub fn opcode(&self) -> Option<Opcode> {
+        let raw = self.raw_opcode()?;
+        Opcode::try_from(raw).ok()
+    }
 }
 
 /* Adapter capabilities */

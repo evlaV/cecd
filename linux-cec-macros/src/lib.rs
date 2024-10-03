@@ -80,10 +80,10 @@ pub fn message(input: TokenStream) -> TokenStream {
 
 fn bits_u8_encodable(ident: Ident) -> TokenStream {
     quote! {
-        impl OperandEncodable for #ident {
+        impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
                 let prim: u8 = self.bits();
-                <u8 as OperandEncodable>::to_bytes(&prim, buf);
+                <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
             fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
@@ -104,10 +104,10 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
 
 fn into_u8_encodable(ident: Ident) -> TokenStream {
     quote! {
-        impl OperandEncodable for #ident {
+        impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
                 let prim = <Self as Into<u8>>::into(*self);
-                <u8 as OperandEncodable>::to_bytes(&prim, buf);
+                <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
             fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {

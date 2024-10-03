@@ -1,16 +1,14 @@
 use bitflags::bitflags;
 
 pub(crate) mod ioctls;
-pub(crate) mod log_addrs;
 pub(crate) mod message;
 pub(crate) mod operand;
 
 pub mod constants;
 pub mod device;
 
-type LogicalAddress = u8;
-type PhysicalAddress = u16;
-type Timestamp = u64;
+pub type LogicalAddress = u8;
+pub type PhysicalAddress = u16;
 
 bitflags! {
     #[derive(Debug, Copy, Clone)]
