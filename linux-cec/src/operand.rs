@@ -10,6 +10,7 @@ use std::convert::TryFrom;
 use crate::{constants, PhysicalAddress};
 
 pub type AnalogueFrequency = u16; // TODO: Limit range
+pub type Delay = u8; // TODO: Limit range
 pub type DurationHours = BcdByte;
 pub type Hour = BcdByte; // TODO: Limit range
 pub type Minute = BcdByte; // TODO: Limit range
@@ -37,6 +38,30 @@ impl OperandEncodable for u8 {
 
     fn len(&self) -> usize {
         1
+    }
+}
+
+impl<T: OperandEncodable> OperandEncodable for Option<T> {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        if let Some(data) = self {
+            data.to_bytes(buf);
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < offset + 1 {
+            Ok(None)
+        } else {
+            Ok(Some(T::from_bytes(bytes, offset)?))
+        }
+    }
+
+    fn len(&self) -> usize {
+        if let Some(ref data) = self {
+            data.len()
+        } else {
+            0
+        }
     }
 }
 
@@ -97,34 +122,99 @@ impl OperandEncodable for bool {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BoundedBufferOperand<const S: usize> {
-    buffer: [u8; S],
-    len: usize,
+pub trait TaggedLengthBuffer: Sized {
+    type FixedParam: Into<u8> + TryFrom<u8> + Copy;
+
+    fn try_new(first: Self::FixedParam, extra: &[u8]) -> Result<Self, ()>;
+
+    fn fixed_param(&self) -> Self::FixedParam;
+
+    fn extra_params(&self) -> &[u8] {
+        &[] as &[u8; 0]
+    }
 }
 
-impl<const S: usize> OperandEncodable for BoundedBufferOperand<S> {
+impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> OperandEncodable
+    for U
+{
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        for byte in &self.buffer[..self.len] {
-            buf.extend([*byte]);
+        let head: u8 = self.fixed_param().into();
+        let extra_params = self.extra_params();
+        if !extra_params.is_empty() {
+            buf.extend([head | 0x80]);
+            buf.extend(
+                extra_params
+                    .iter()
+                    .take(extra_params.len() - 1)
+                    .map(|b| b | 0x80),
+            );
+            buf.extend([extra_params.last().unwrap() & 0x7F]);
+        } else {
+            buf.extend([head & 0x7F]);
         }
     }
 
     fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
-        let mut buffer = bytes[offset..].to_vec();
-        buffer.resize(S, 0);
+        let first = T::try_from(bytes[offset]).map_err(|_| ())?;
+        let mut extra = Vec::new();
+        let mut offset = offset;
+        while offset < bytes.len() {
+            let byte = bytes[offset];
+            extra.push(byte & 0x7F);
+            if (byte & 0x80) == 0 {
+                break;
+            }
+            offset += 1;
+        }
+        Self::try_new(first, &extra)
+    }
+
+    fn len(&self) -> usize {
+        size_of::<T>() + self.extra_params().len()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable> {
+    buffer: [T; S],
+    len: usize,
+}
+
+impl<const S: usize, T: OperandEncodable + Copy> OperandEncodable for BoundedBufferOperand<S, T> {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        for elem in &self.buffer[..self.len] {
+            elem.to_bytes(buf);
+        }
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        let mut buf = Vec::new();
+        let mut offset = 0;
+        while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
+            buf.push(T::from_bytes(bytes, offset)?);
+            offset += size_of::<T>();
+        }
         Ok(Self {
-            buffer: *buffer.first_chunk().ok_or(())?,
-            len: bytes.len(),
+            buffer: *buf.first_chunk().ok_or(())?,
+            len: buf.len(),
         })
     }
 
     fn len(&self) -> usize {
-        usize::min(self.len, S)
+        usize::min(self.len, S) * size_of::<T>()
     }
 }
 
-pub type BufferOperand = BoundedBufferOperand<14>;
+impl<const S: usize, T: OperandEncodable + Copy + Default> Default for BoundedBufferOperand<S, T> {
+    fn default() -> BoundedBufferOperand<S, T> {
+        BoundedBufferOperand {
+            buffer: [T::default(); S],
+            len: 0,
+        }
+    }
+}
+
+pub type BufferOperand = BoundedBufferOperand<14, u8>;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
@@ -143,6 +233,15 @@ pub enum AnalogueBroadcastType {
     Cable = constants::CEC_OP_ANA_BCAST_TYPE_CABLE,
     Satellite = constants::CEC_OP_ANA_BCAST_TYPE_SATELLITE,
     Terrestrial = constants::CEC_OP_ANA_BCAST_TYPE_TERRESTRIAL,
+}
+
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+pub enum AudioOutCompensated {
+    NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
+    Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
+    NoDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_NO_DELAY,
+    PartialDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_PARTIAL_DELAY,
 }
 
 #[repr(u8)]
@@ -625,7 +724,7 @@ pub enum UiSoundPresentationControl {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
-    pub struct AllDeviceType: u8 {
+    pub struct AllDeviceTypes: u8 {
         const TV = constants::CEC_OP_ALL_DEVTYPE_TV;
         const RECORDING = constants::CEC_OP_ALL_DEVTYPE_RECORD;
         const TUNER = constants::CEC_OP_ALL_DEVTYPE_TUNER;
@@ -645,6 +744,20 @@ bitflags! {
         const SINK_HAS_ARC_TX = constants::CEC_OP_FEAT_DEV_SINK_HAS_ARC_TX;
         const SOURCE_HAS_ARC_RX = constants::CEC_OP_FEAT_DEV_SOURCE_HAS_ARC_RX;
         const HAS_SET_AUDIO_VOLUME_LEVEL = constants::CEC_OP_FEAT_DEV_HAS_SET_AUDIO_VOLUME_LEVEL;
+    }
+}
+
+impl From<DeviceFeatures1> for u8 {
+    fn from(flags: DeviceFeatures1) -> u8 {
+        flags.bits()
+    }
+}
+
+impl TryFrom<u8> for DeviceFeatures1 {
+    type Error = ();
+
+    fn try_from(flags: u8) -> Result<DeviceFeatures1, Self::Error> {
+        Ok(DeviceFeatures1::from_bits_retain(flags))
     }
 }
 
@@ -929,6 +1042,23 @@ pub struct AudioFormatIdAndCode {
     pub id: B2,
 }
 
+impl OperandEncodable for AudioFormatIdAndCode {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([u8::from(*self)]);
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+        if bytes.len() < 1 + offset {
+            return Err(());
+        }
+        Ok(Self::from(bytes[offset]))
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
 #[bitfield(bytes = 1)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
@@ -1021,6 +1151,107 @@ impl OperandEncodable for ChannelId {
 
     fn len(&self) -> usize {
         4
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct DeviceFeatures {
+    pub device_features_1: DeviceFeatures1,
+    pub device_features_n: BoundedBufferOperand<14, u8>,
+}
+
+impl TaggedLengthBuffer for DeviceFeatures {
+    type FixedParam = DeviceFeatures1;
+
+    fn try_new(first: DeviceFeatures1, extra_params: &[u8]) -> Result<DeviceFeatures, ()> {
+        Ok(DeviceFeatures {
+            device_features_1: first,
+            device_features_n: BoundedBufferOperand::<14, u8>::default(),
+        })
+    }
+
+    fn fixed_param(&self) -> DeviceFeatures1 {
+        self.device_features_1
+    }
+
+    fn extra_params(&self) -> &[u8] {
+        &self.device_features_n.buffer[..self.device_features_n.len]
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct LatencyFlags {
+    pub audio_out_compensated: AudioOutCompensated,
+    pub low_latency_mode: bool,
+}
+
+impl OperandEncodable for LatencyFlags {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        todo!();
+    }
+
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<LatencyFlags, ()> {
+        todo!();
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RcProfile {
+    pub rc_profile_1: RcProfile1,
+    pub rc_profile_n: BoundedBufferOperand<14, u8>,
+}
+
+impl TaggedLengthBuffer for RcProfile {
+    type FixedParam = RcProfile1;
+
+    fn try_new(first: RcProfile1, extra_params: &[u8]) -> Result<RcProfile, ()> {
+        Ok(RcProfile {
+            rc_profile_1: first,
+            rc_profile_n: BoundedBufferOperand::<14, u8>::default(),
+        })
+    }
+
+    fn fixed_param(&self) -> RcProfile1 {
+        self.rc_profile_1
+    }
+
+    fn extra_params(&self) -> &[u8] {
+        &self.rc_profile_n.buffer[..self.rc_profile_n.len]
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RcProfile1 {
+    RcProfileSource(RcProfileSource),
+    RcProfileId(RcProfileId),
+}
+
+impl From<RcProfile1> for u8 {
+    fn from(profile: RcProfile1) -> u8 {
+        match profile {
+            RcProfile1::RcProfileSource(profile_source) => profile_source.bits(),
+            RcProfile1::RcProfileId(profile_id) => profile_id.into(),
+        }
+    }
+}
+
+impl TryFrom<u8> for RcProfile1 {
+    type Error = ();
+
+    fn try_from(flags: u8) -> Result<RcProfile1, Self::Error> {
+        if (flags & 0x40) == 0x40 {
+            Ok(RcProfile1::RcProfileSource(
+                RcProfileSource::from_bits_retain(flags),
+            ))
+        } else {
+            Ok(RcProfile1::RcProfileId(
+                RcProfileId::try_from_primitive(flags).map_err(|_| ())?,
+            ))
+        }
     }
 }
 

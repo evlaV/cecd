@@ -4,6 +4,8 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use crate::operand::OperandEncodable;
 use crate::{constants, operand, PhysicalAddress};
 
+pub type CdcOpcode = u8; // TODO
+
 pub trait MessageEncodable {
     const OPCODE: Opcode;
 
@@ -324,7 +326,7 @@ pub struct VendorCommandWithId {
     #[parameter]
     pub vendor_id: operand::VendorId,
     #[parameter]
-    pub vendor_specific_data: operand::BoundedBufferOperand<11>,
+    pub vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -340,7 +342,7 @@ pub struct SetOsdString {
     #[parameter]
     display_control: operand::DisplayControl,
     #[parameter]
-    osd_string: operand::BoundedBufferOperand<13>,
+    osd_string: operand::BoundedBufferOperand<13, u8>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -405,16 +407,16 @@ pub struct ReportAudioStatus {
     status: operand::AudioStatus,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportShortAudioDescriptor {
-    short_audio_descriptor: [operand::ShortAudioDescriptor; 4],
-    count: usize,
+    #[parameter]
+    descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestShortAudioDescriptor {
-    audio_format_id_and_code: [operand::AudioFormatIdAndCode; 4],
-    count: usize,
+    #[parameter]
+    descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -441,6 +443,8 @@ pub struct SetAudioRate {
     audio_rate: operand::AudioRate,
 }
 
+/* HDMI 1.4b */
+
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct InitiateArc;
 
@@ -459,8 +463,50 @@ pub struct RequestArcTermination;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TerminateArc;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CdcMessage;
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct CdcMessage {
+    #[parameter]
+    initiator: PhysicalAddress,
+    #[parameter]
+    opcode: CdcOpcode,
+    #[parameter]
+    params: operand::BoundedBufferOperand<11, u8>, // TODO
+}
+
+/* HDMI 2.0 */
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportFeatures {
+    #[parameter]
+    pub version: operand::Version,
+    #[parameter]
+    pub device_types: operand::AllDeviceTypes,
+    #[parameter]
+    pub rc_profile: operand::RcProfile,
+    #[parameter]
+    pub dev_features: operand::DeviceFeatures,
+}
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct GiveFeatures;
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RequestCurrentLatency {
+    #[parameter]
+    pub physical_address: PhysicalAddress,
+}
+
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportCurrentLatency {
+    #[parameter]
+    pub physical_address: PhysicalAddress,
+    #[parameter]
+    pub video_latency: operand::Delay,
+    #[parameter]
+    pub flags: operand::LatencyFlags,
+    #[parameter]
+    pub audio_output_delay: Option<operand::Delay>,
+}
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
@@ -493,8 +539,6 @@ pub enum Opcode {
     GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
     ReportPhysicalAddr = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
     SetMenuLanguage = constants::CEC_MSG_SET_MENU_LANGUAGE,
-    ReportFeatures = constants::CEC_MSG_REPORT_FEATURES, /* HDMI 2.0 */
-    GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,     /* HDMI 2.0 */
     DeckControl = constants::CEC_MSG_DECK_CONTROL,
     DeckStatus = constants::CEC_MSG_DECK_STATUS,
     GiveDeckStatus = constants::CEC_MSG_GIVE_DECK_STATUS,
@@ -530,15 +574,20 @@ pub enum Opcode {
     SetSystemAudioMode = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
     SystemAudioModeRequest = constants::CEC_MSG_SYSTEM_AUDIO_MODE_REQUEST,
     SystemAudioModeStatus = constants::CEC_MSG_SYSTEM_AUDIO_MODE_STATUS,
-    SetAudioVolumeLevel = constants::CEC_MSG_SET_AUDIO_VOLUME_LEVEL,
     SetAudioRate = constants::CEC_MSG_SET_AUDIO_RATE,
+
+    /* HDMI 1.4b */
     InitiateArc = constants::CEC_MSG_INITIATE_ARC,
     ReportArcInitiated = constants::CEC_MSG_REPORT_ARC_INITIATED,
     ReportArcTerminated = constants::CEC_MSG_REPORT_ARC_TERMINATED,
     RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
     RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
     TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
+    CdcMessage = constants::CEC_MSG_CDC_MESSAGE,
+
+    /* HDMI 2.0 */
+    ReportFeatures = constants::CEC_MSG_REPORT_FEATURES,
+    GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
     RequestCurrentLatency = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
     ReportCurrentLatency = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
-    CdcMessage = constants::CEC_MSG_CDC_MESSAGE,
 }
