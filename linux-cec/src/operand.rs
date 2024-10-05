@@ -7,7 +7,7 @@ use modular_bitfield::prelude::*;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 
-use crate::{constants, PhysicalAddress};
+use crate::{check_range, constants, Error, PhysicalAddress, Result};
 
 pub type AnalogueFrequency = u16; // TODO: Limit range
 pub type Delay = u8; // TODO: Limit range
@@ -19,7 +19,7 @@ pub type VendorId = [u8; 3];
 
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()>;
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self>;
     fn len(&self) -> usize;
 }
 
@@ -28,9 +28,12 @@ impl OperandEncodable for u8 {
         buf.extend([*self]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
-            Err(())
+            Err(Error::InsufficientLength {
+                required: 1,
+                got: bytes.len() - offset,
+            })
         } else {
             Ok(bytes[offset])
         }
@@ -48,7 +51,7 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
             Ok(None)
         } else {
@@ -70,11 +73,13 @@ impl OperandEncodable for [u8; 3] {
         buf.extend(*self);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
-        if bytes.len() < offset + 3 {
-            Err(())
-        } else {
-            Ok(bytes[offset..=offset + 2].try_into().map_err(|_| ())?)
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+        match bytes[offset..=offset + 2].try_into() {
+            Ok(array) => Ok(array),
+            Err(_) => Err(Error::InsufficientLength {
+                required: 3,
+                got: bytes.len() - offset,
+            }),
         }
     }
 
@@ -91,9 +96,12 @@ impl OperandEncodable for u16 {
         ]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 2 {
-            Err(())
+            Err(Error::InsufficientLength {
+                required: 2,
+                got: bytes.len() - offset,
+            })
         } else {
             Ok((u16::from(bytes[offset]) << 8) | u16::from(bytes[offset + 1]))
         }
@@ -109,9 +117,12 @@ impl OperandEncodable for bool {
         buf.extend([if *self { 1 } else { 0 }]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
-            Err(())
+            Err(Error::InsufficientLength {
+                required: 1,
+                got: bytes.len() - offset,
+            })
         } else {
             Ok(bytes[offset] != 0)
         }
@@ -125,7 +136,7 @@ impl OperandEncodable for bool {
 pub trait TaggedLengthBuffer: Sized {
     type FixedParam: Into<u8> + TryFrom<u8> + Copy;
 
-    fn try_new(first: Self::FixedParam, extra: &[u8]) -> Result<Self, ()>;
+    fn try_new(first: Self::FixedParam, extra: &[u8]) -> Result<Self>;
 
     fn fixed_param(&self) -> Self::FixedParam;
 
@@ -134,8 +145,9 @@ pub trait TaggedLengthBuffer: Sized {
     }
 }
 
-impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> OperandEncodable
-    for U
+impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> OperandEncodable for U
+where
+    Error: From<<T as TryFrom<u8>>::Error>,
 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         let head: u8 = self.fixed_param().into();
@@ -154,8 +166,8 @@ impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> Op
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
-        let first = T::try_from(bytes[offset]).map_err(|_| ())?;
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+        let first = T::try_from(bytes[offset])?;
         let mut extra = Vec::new();
         let mut offset = offset;
         while offset < bytes.len() {
@@ -175,27 +187,28 @@ impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> Op
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable> {
+pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable + Default + Copy> {
     buffer: [T; S],
     len: usize,
 }
 
-impl<const S: usize, T: OperandEncodable + Copy> OperandEncodable for BoundedBufferOperand<S, T> {
+impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable for BoundedBufferOperand<S, T> {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         for elem in &self.buffer[..self.len] {
             elem.to_bytes(buf);
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         let mut buf = Vec::new();
         let mut offset = 0;
         while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
             buf.push(T::from_bytes(bytes, offset)?);
             offset += size_of::<T>();
         }
+        buf.resize(S, T::default());
         Ok(Self {
-            buffer: *buf.first_chunk().ok_or(())?,
+            buffer: *buf.first_chunk().unwrap(),
             len: buf.len(),
         })
     }
@@ -754,9 +767,9 @@ impl From<DeviceFeatures1> for u8 {
 }
 
 impl TryFrom<u8> for DeviceFeatures1 {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(flags: u8) -> Result<DeviceFeatures1, Self::Error> {
+    fn try_from(flags: u8) -> Result<DeviceFeatures1> {
         Ok(DeviceFeatures1::from_bits_retain(flags))
     }
 }
@@ -830,7 +843,7 @@ impl OperandEncodable for AnalogueServiceId {
         self.broadcast_system.to_bytes(buf);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<AnalogueServiceId, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<AnalogueServiceId> {
         let broadcast_type = AnalogueBroadcastType::from_bytes(bytes, offset)?;
         let frequency = <AnalogueFrequency as OperandEncodable>::from_bytes(bytes, offset + 1)?;
         let broadcast_system = BroadcastSystem::from_bytes(bytes, offset + 3)?;
@@ -894,14 +907,17 @@ impl OperandEncodable for DigitalServiceId {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 7 {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 7,
+                got: bytes.len() - offset,
+            });
         }
         let head = bytes[offset];
-        let service_id_method = ServiceIdMethod::try_from_primitive(head & 1).map_err(|_| ())?;
+        let service_id_method = ServiceIdMethod::try_from_primitive(head & 1)?;
         let digital_broadcast_system =
-            DigitalServiceBroadcastSystem::try_from_primitive(head >> 1).map_err(|_| ())?;
+            DigitalServiceBroadcastSystem::try_from_primitive(head >> 1)?;
         let service_id = if service_id_method == ServiceIdMethod::ByChannel {
             let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)?;
             let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
@@ -1035,7 +1051,7 @@ pub enum MonthOfYear {
 }
 
 #[bitfield(bytes = 1)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub struct AudioFormatIdAndCode {
     pub code: B6,
@@ -1047,9 +1063,12 @@ impl OperandEncodable for AudioFormatIdAndCode {
         buf.extend([u8::from(*self)]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < 1 + offset {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 1,
+                got: bytes.len() - offset,
+            });
         }
         Ok(Self::from(bytes[offset]))
     }
@@ -1072,9 +1091,12 @@ impl OperandEncodable for AudioStatus {
         buf.extend([u8::from(*self)]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < 1 + offset {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 1,
+                got: bytes.len() - offset,
+            });
         }
         Ok(Self::from(bytes[offset]))
     }
@@ -1098,17 +1120,16 @@ impl OperandEncodable for BcdByte {
         buf.extend([u8::from(*self)]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte> {
         if bytes.len() < 1 + offset {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 1,
+                got: bytes.len() - offset,
+            });
         }
         let byte = bytes[offset];
-        if (byte & 0xF) > 9 {
-            return Err(());
-        }
-        if byte > 0x99 {
-            return Err(());
-        }
+        check_range(byte & 0xF, 0, 10)?;
+        check_range(byte, 0, 100)?;
         Ok(BcdByte::from(byte))
     }
 
@@ -1132,15 +1153,17 @@ impl OperandEncodable for ChannelId {
         self.minor_channel.to_bytes(buf);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 4 {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 4,
+                got: bytes.len() - offset,
+            });
         }
         let major = <u16 as OperandEncodable>::from_bytes(bytes, offset)?;
         let minor_channel = <u16 as OperandEncodable>::from_bytes(bytes, offset + 2)?;
         let number_format = u8::try_from(major & 0x3F).unwrap();
-        let number_format =
-            ChannelNumberFormat::try_from_primitive(number_format).map_err(|_| ())?;
+        let number_format = ChannelNumberFormat::try_from_primitive(number_format)?;
         let major_channel = major >> 6;
         Ok(ChannelId {
             number_format,
@@ -1163,7 +1186,7 @@ pub struct DeviceFeatures {
 impl TaggedLengthBuffer for DeviceFeatures {
     type FixedParam = DeviceFeatures1;
 
-    fn try_new(first: DeviceFeatures1, extra_params: &[u8]) -> Result<DeviceFeatures, ()> {
+    fn try_new(first: DeviceFeatures1, extra_params: &[u8]) -> Result<DeviceFeatures> {
         Ok(DeviceFeatures {
             device_features_1: first,
             device_features_n: BoundedBufferOperand::<14, u8>::default(),
@@ -1190,7 +1213,7 @@ impl OperandEncodable for LatencyFlags {
         todo!();
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<LatencyFlags, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<LatencyFlags> {
         todo!();
     }
 
@@ -1208,7 +1231,7 @@ pub struct RcProfile {
 impl TaggedLengthBuffer for RcProfile {
     type FixedParam = RcProfile1;
 
-    fn try_new(first: RcProfile1, extra_params: &[u8]) -> Result<RcProfile, ()> {
+    fn try_new(first: RcProfile1, extra_params: &[u8]) -> Result<RcProfile> {
         Ok(RcProfile {
             rc_profile_1: first,
             rc_profile_n: BoundedBufferOperand::<14, u8>::default(),
@@ -1240,17 +1263,17 @@ impl From<RcProfile1> for u8 {
 }
 
 impl TryFrom<u8> for RcProfile1 {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(flags: u8) -> Result<RcProfile1, Self::Error> {
+    fn try_from(flags: u8) -> Result<RcProfile1> {
         if (flags & 0x40) == 0x40 {
             Ok(RcProfile1::RcProfileSource(
                 RcProfileSource::from_bits_retain(flags),
             ))
         } else {
-            Ok(RcProfile1::RcProfileId(
-                RcProfileId::try_from_primitive(flags).map_err(|_| ())?,
-            ))
+            Ok(RcProfile1::RcProfileId(RcProfileId::try_from_primitive(
+                flags,
+            )?))
         }
     }
 }
@@ -1295,13 +1318,16 @@ impl OperandEncodable for TunerDeviceInfo {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() - offset < 5 {
-            return Err(());
+            return Err(Error::InsufficientLength {
+                required: 5,
+                got: bytes.len() - offset,
+            });
         }
         let head = bytes[offset];
         let recording = (head & 1) == 1;
-        let tuner_display_info = TunerDisplayInfo::try_from_primitive(head >> 1).map_err(|_| ())?;
+        let tuner_display_info = TunerDisplayInfo::try_from_primitive(head >> 1)?;
         match bytes.len() - offset {
             5 => Ok(TunerDeviceInfo::Analogue {
                 recording,
@@ -1313,7 +1339,10 @@ impl OperandEncodable for TunerDeviceInfo {
                 tuner_display_info,
                 service_id: DigitalServiceId::from_bytes(bytes, offset)?,
             }),
-            _ => Err(()),
+            l => Err(Error::InvalidLength {
+                got: l,
+                expected: String::from("5 or 8"),
+            }),
         }
     }
 
@@ -1339,13 +1368,16 @@ impl OperandEncodable for ExternalSource {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         match bytes.len() - offset {
             1 => Ok(ExternalSource::Plug(bytes[offset])),
             2 => Ok(ExternalSource::PhysicalAddress(
                 <PhysicalAddress as OperandEncodable>::from_bytes(bytes, offset)?,
             )),
-            _ => Err(()),
+            l => Err(Error::InvalidLength {
+                got: l,
+                expected: String::from("1 or 2"),
+            }),
         }
     }
 
@@ -1375,9 +1407,9 @@ impl OperandEncodable for RecordSource {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if offset < 1 {
-            return Err(());
+            return Err(Error::InvalidData);
         }
         let record_source_type = RecordSourceType::from_bytes(bytes, offset - 1)?;
         match record_source_type {

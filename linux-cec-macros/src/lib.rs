@@ -86,9 +86,12 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
                 <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
-            fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.len() < offset + 1 {
-                    Err(())
+                    Err(crate::Error::InsufficientLength {
+                        required: 1,
+                        got: bytes.len() - offset,
+                    })
                 } else {
                     Ok(#ident::from_bits_retain(bytes[0]))
                 }
@@ -110,11 +113,14 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
                 <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
-            fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.is_empty() {
-                    Err(())
+                    Err(crate::Error::InsufficientLength {
+                        required: 1,
+                        got: bytes.len() - offset,
+                    })
                 } else {
-                    Ok(#ident::try_from(bytes[offset]).map_err(|_| ())?)
+                    Ok(#ident::try_from(bytes[offset])?)
                 }
             }
 
@@ -163,7 +169,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                             #(#to)*
                         }
 
-                        fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self, ()> {
+                        fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                             let mut offset = offset;
                             #(#from)*
                             Ok(Self {
