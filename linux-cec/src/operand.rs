@@ -192,7 +192,9 @@ pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable + Default + 
     len: usize,
 }
 
-impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable for BoundedBufferOperand<S, T> {
+impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
+    for BoundedBufferOperand<S, T>
+{
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         for elem in &self.buffer[..self.len] {
             elem.to_bytes(buf);

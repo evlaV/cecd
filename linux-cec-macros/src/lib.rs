@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, parse_str, Data, DeriveInput, Fields, Ident, Type};
 
-#[proc_macro_derive(Message, attributes(parameter))]
+#[proc_macro_derive(Message)]
 pub fn message(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident,
@@ -19,17 +19,11 @@ pub fn message(input: TokenStream) -> TokenStream {
     let mut sizes = vec![quote!(1)];
     let mut declarations = Vec::new();
     let mut params = Vec::new();
+    let mut from_params = Vec::new();
+    let mut names = Vec::new();
 
     if let Fields::Named(_) = data.fields {
         for field in data.fields {
-            if !field.attrs.iter().any(|attr| {
-                let Some(ident) = attr.path().get_ident() else {
-                    return false;
-                };
-                *ident == "parameter"
-            }) {
-                continue;
-            }
             let Some(name) = field.ident else {
                 todo!("No name");
             };
@@ -51,6 +45,12 @@ pub fn message(input: TokenStream) -> TokenStream {
             params.push(quote! {
                 crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
             });
+            from_params.push(quote! {
+                let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)?;
+                let offset = offset + #name.len();
+            });
+
+            names.push(name);
         }
     }
 
@@ -72,6 +72,16 @@ pub fn message(input: TokenStream) -> TokenStream {
                 #(#params)*
 
                 params
+            }
+
+            fn from_parameters(bytes: &[u8]) -> Result<#ident> {
+                let offset = 0;
+
+                #(#from_params)*
+
+                Ok(#ident {
+                    #(#names),*
+                })
             }
         }
     }

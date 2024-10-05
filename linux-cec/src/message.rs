@@ -2,11 +2,11 @@ use linux_cec_macros::{Message, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress};
+use crate::{constants, operand, Error, PhysicalAddress, Result};
 
 pub type CdcOpcode = u8; // TODO
 
-pub trait MessageEncodable {
+pub trait MessageEncodable: Sized {
     const OPCODE: Opcode;
 
     fn to_bytes(&self) -> [u8; 15] {
@@ -18,16 +18,13 @@ pub trait MessageEncodable {
         raw
     }
 
-    fn parameters(&self) -> Vec<u8> {
-        Vec::new()
-    }
-
+    fn parameters(&self) -> Vec<u8>;
+    fn from_parameters(params: &[u8]) -> Result<Self>;
     fn len(&self) -> usize;
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ActivateSource {
-    #[parameter]
     pub address: PhysicalAddress,
 }
 
@@ -39,7 +36,6 @@ pub struct TextViewOn;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct InactiveSource {
-    #[parameter]
     pub address: PhysicalAddress,
 }
 
@@ -48,21 +44,17 @@ pub struct RequestActiveSource;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RoutingChange {
-    #[parameter]
     pub original_address: PhysicalAddress,
-    #[parameter]
     pub new_address: PhysicalAddress,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RoutingInformation {
-    #[parameter]
     pub address: PhysicalAddress,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetStreamPath {
-    #[parameter]
     pub address: PhysicalAddress,
 }
 
@@ -74,15 +66,12 @@ pub struct RecordOff;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordOn {
-    #[parameter]
     pub record_source_type: operand::RecordSourceType,
-    #[parameter]
     pub source: operand::RecordSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordStatus {
-    #[parameter]
     pub status: operand::RecordStatusInfo,
 }
 
@@ -91,141 +80,82 @@ pub struct RecordTvScreen;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearAnalogueTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearDigitalTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearExtTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub external_source: operand::ExternalSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAnalogueTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetDigitalTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetExtTimer {
-    #[parameter]
     pub day_of_month: operand::DayOfMonth,
-    #[parameter]
     pub month_of_year: operand::MonthOfYear,
-    #[parameter]
     pub start_time: operand::Time,
-    #[parameter]
     pub duration: operand::Duration,
-    #[parameter]
     pub recording_sequence: operand::RecordingSequence,
-    #[parameter]
     pub external_source: operand::ExternalSource,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetTimerProgramTitle {
-    #[parameter]
     pub title: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerClearedStatus {
-    #[parameter]
     pub timer_cleared_status: operand::TimerClearedStatusData,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerStatus {
     data: u8,
     duration_available: Option<operand::Duration>,
 }
 
-impl MessageEncodable for TimerStatus {
-    const OPCODE: Opcode = Opcode::TimerStatus;
-
-    fn parameters(&self) -> Vec<u8> {
-        let mut params = vec![self.data];
-        if let Some(duration) = self.duration_available {
-            duration.to_bytes(&mut params);
-        }
-        params
-    }
-
-    fn len(&self) -> usize {
-        if self.duration_available.is_some() {
-            3
-        } else {
-            1
-        }
-    }
-}
-
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CecVersion {
-    #[parameter]
     pub version: operand::Version,
 }
 
@@ -240,63 +170,52 @@ pub struct GetMenuLanguage;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportPhysicalAddr {
-    #[parameter]
     pub physical_address: PhysicalAddress,
-    #[parameter]
     pub device_type: operand::PrimaryDeviceType,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetMenuLanguage {
-    #[parameter]
     pub language: [u8; 3],
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckControl {
-    #[parameter]
     pub mode: operand::DeckControlMode,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckStatus {
-    #[parameter]
     pub info: operand::DeckInfo,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDeckStatus {
-    #[parameter]
     pub request: operand::StatusRequest,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Play {
-    #[parameter]
     pub mode: operand::PlayMode,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveTunerDeviceStatus {
-    #[parameter]
     pub request: operand::StatusRequest,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectAnalogueService {
-    #[parameter]
     pub service_id: operand::AnalogueServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectDigitalService {
-    #[parameter]
     pub service_id: operand::DigitalServiceId,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TunerDeviceStatus {
-    #[parameter]
     pub info: operand::TunerDeviceInfo,
 }
 
@@ -308,7 +227,6 @@ pub struct TunerStepIncrement;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeviceVendorId {
-    #[parameter]
     pub vendor_id: operand::VendorId,
 }
 
@@ -317,21 +235,18 @@ pub struct GiveDeviceVendorId;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommand {
-    #[parameter]
     pub command: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommandWithId {
-    #[parameter]
     pub vendor_id: operand::VendorId,
-    #[parameter]
     pub vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonDown {
-    rc_code: operand::BufferOperand,
+    pub rc_code: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -339,10 +254,8 @@ pub struct VendorRemoteButtonUp;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdString {
-    #[parameter]
-    display_control: operand::DisplayControl,
-    #[parameter]
-    osd_string: operand::BoundedBufferOperand<13, u8>,
+    pub display_control: operand::DisplayControl,
+    pub osd_string: operand::BoundedBufferOperand<13, u8>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -350,26 +263,22 @@ pub struct GiveOsdName;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdName {
-    #[parameter]
-    name: operand::BufferOperand,
+    pub name: operand::BufferOperand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuRequest {
-    #[parameter]
-    request_type: operand::MenuRequestType,
+    pub request_type: operand::MenuRequestType,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuStatus {
-    #[parameter]
-    state: operand::MenuState,
+    pub state: operand::MenuState,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct UserControlPressed {
-    #[parameter]
-    ui_command: operand::UiCommand,
+    pub ui_command: operand::UiCommand,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -380,16 +289,13 @@ pub struct GiveDevicePowerStatus;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportPowerStatus {
-    #[parameter]
-    status: operand::PowerStatus,
+    pub status: operand::PowerStatus,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FeatureAbort {
-    #[parameter]
-    opcode: Opcode,
-    #[parameter]
-    abort_reason: operand::AbortReason,
+    pub opcode: Opcode,
+    pub abort_reason: operand::AbortReason,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -403,44 +309,37 @@ pub struct GiveSystemAudioModeStatus;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportAudioStatus {
-    #[parameter]
-    status: operand::AudioStatus,
+    pub status: operand::AudioStatus,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportShortAudioDescriptor {
-    #[parameter]
-    descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
+    pub descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestShortAudioDescriptor {
-    #[parameter]
-    descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
+    pub descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetSystemAudioMode {
-    #[parameter]
-    status: bool,
+    pub status: bool,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SystemAudioModeRequest {
-    #[parameter]
-    physical_address: PhysicalAddress,
+    pub physical_address: PhysicalAddress,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SystemAudioModeStatus {
-    #[parameter]
-    system_audio_status: bool,
+    pub system_audio_status: bool,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAudioRate {
-    #[parameter]
-    audio_rate: operand::AudioRate,
+    pub audio_rate: operand::AudioRate,
 }
 
 /* HDMI 1.4b */
@@ -465,25 +364,18 @@ pub struct TerminateArc;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CdcMessage {
-    #[parameter]
-    initiator: PhysicalAddress,
-    #[parameter]
-    opcode: CdcOpcode,
-    #[parameter]
-    params: operand::BoundedBufferOperand<11, u8>, // TODO
+    pub initiator: PhysicalAddress,
+    pub opcode: CdcOpcode,
+    pub params: operand::BoundedBufferOperand<11, u8>, // TODO
 }
 
 /* HDMI 2.0 */
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportFeatures {
-    #[parameter]
     pub version: operand::Version,
-    #[parameter]
     pub device_types: operand::AllDeviceTypes,
-    #[parameter]
     pub rc_profile: operand::RcProfile,
-    #[parameter]
     pub dev_features: operand::DeviceFeatures,
 }
 
@@ -492,19 +384,14 @@ pub struct GiveFeatures;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestCurrentLatency {
-    #[parameter]
     pub physical_address: PhysicalAddress,
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportCurrentLatency {
-    #[parameter]
     pub physical_address: PhysicalAddress,
-    #[parameter]
     pub video_latency: operand::Delay,
-    #[parameter]
     pub flags: operand::LatencyFlags,
-    #[parameter]
     pub audio_output_delay: Option<operand::Delay>,
 }
 
