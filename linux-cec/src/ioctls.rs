@@ -20,7 +20,7 @@ pub type Timestamp = u64;
 pub(crate) struct CecCapabilities {
     /// Name of the CEC device driver.
     driver: [c_char; 32],
-    /// Name of the CEC device. @driver + @name must be unique.
+    /// Name of the CEC device. `driver` + `name` must be unique.
     name: [c_char; 32],
     /// Number of available logical addresses.
     available_log_addrs: u32,
@@ -30,7 +30,7 @@ pub(crate) struct CecCapabilities {
     version: u32,
 }
 
-/// Tells which drm connector is
+/// Tells which drm connector is associated with the CEC adapter.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CecDrmConnectorInfo {
@@ -110,21 +110,21 @@ pub(crate) struct CecEvent {
 
 /// CEC message structure.
 #[repr(C)]
-pub struct CecMessage {
-    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
+pub(crate) struct CecMessage {
+    /// Timestamp in nanoseconds using `CLOCK_MONOTONIC`. Set by the
     /// driver when the message transmission has finished.
     tx_ts: Timestamp,
-    /// Timestamp in nanoseconds using CLOCK_MONOTONIC. Set by the
+    /// Timestamp in nanoseconds using `CLOCK_MONOTONIC`. Set by the
     /// driver when the message was received.
     rx_ts: Timestamp,
     /// Length in bytes of the message.
     len: u32,
     /**
-     * The timeout (in ms) that is used to timeout CEC_RECEIVE.
+     * The timeout (in ms) that is used to timeout `CEC_RECEIVE`.
      * Set to 0 if you want to wait forever. This timeout can also be
-     * used with CEC_TRANSMIT as the timeout for waiting for a reply.
+     * used with `CEC_TRANSMIT` as the timeout for waiting for a reply.
      * If 0, then it will use a 1 second timeout instead of waiting
-     * forever as is done with CEC_RECEIVE.
+     * forever as is done with `CEC_RECEIVE`.
      */
     timeout: u32,
     /// The framework assigns a sequence number to messages that are
@@ -135,20 +135,20 @@ pub struct CecMessage {
     /// The message payload.
     msg: [u8; CEC_MAX_MSG_SIZE],
     /**
-     * This field is ignored with CEC_RECEIVE and is only used by
-     * CEC_TRANSMIT. If non-zero, then wait for a reply with this
-     * opcode. Set to CEC_MSG_FEATURE_ABORT if you want to wait for
-     * a possible ABORT reply. If there was an error when sending the
-     * msg or FeatureAbort was returned, then reply is set to 0.
+     * This field is ignored with `CEC_RECEIVE` and is only used by
+     * `CEC_TRANSMIT`. If non-zero, then wait for a reply with this
+     * opcode. Set to `CEC_MSG_FEATURE_ABORT` if you want to wait for
+     * a possible `ABORT` reply. If there was an error when sending the
+     * msg or `FeatureAbort` was returned, then reply is set to 0.
      * If reply is non-zero upon return, then len/msg are set to
      * the received message.
      * If reply is zero upon return and status has the
-     * CEC_TX_STATUS_FEATURE_ABORT bit set, then len/msg are set to
+     * `CEC_TX_STATUS_FEATURE_ABORT` bit set, then len/msg are set to
      * the received feature abort message.
      * If reply is zero upon return and status has the
-     * CEC_TX_STATUS_MAX_RETRIES bit set, then no reply was seen at
-     * all. If reply is non-zero for CEC_TRANSMIT and the message is a
-     * broadcast, then -EINVAL is returned.
+     * `CEC_TX_STATUS_MAX_RETRIES` bit set, then no reply was seen at
+     * all. If reply is non-zero for `CEC_TRANSMIT` and the message is a
+     * broadcast, then `-EINVAL` is returned.
      * if reply is non-zero, then timeout is set to 1000 (the required
      * maximum response time).
      */
@@ -270,8 +270,8 @@ impl CecMessage {
 
     /**
      * Initialize the message structure.
-     * @initiator: the logical address of the initiator
-     * @destination: the logical address of the destination (0xf for broadcast)
+     * `initiator` is the logical address of the initiator and
+     * `destination` the logical address of the destination (`0xf` for broadcast).
      *
      * The whole structure is zeroed, the len field is set to 1 (i.e. a poll
      * message) and the initiator and destination are filled in.
@@ -298,7 +298,7 @@ impl CecMessage {
         msg
     }
 
-    pub(crate) fn with_timeout(timeout_ms: u32) -> CecMessage {
+    pub fn with_timeout(timeout_ms: u32) -> CecMessage {
         CecMessage {
             tx_ts: 0,
             rx_ts: 0,
@@ -319,13 +319,12 @@ impl CecMessage {
 
     /**
      * Fill in destination/initiator in a reply message.
-     * @orig: the original message structure
      *
      * Set the msg destination to the orig initiator and the msg initiator to the
      * orig destination. Note that msg and orig may be the same pointer, in which
      * case the change is done in place.
      */
-    fn set_reply_to(&mut self, orig: &CecMessage) {
+    pub fn set_reply_to(&mut self, orig: &CecMessage) {
         /* The destination becomes the initiator and vice versa */
         self.msg[0] = (orig.destination() << 4) | orig.initiator();
         self.reply = 0;
