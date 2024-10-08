@@ -24,7 +24,7 @@ pub trait MessageEncodable: Sized {
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ActivateSource {
+pub struct ActiveSource {
     pub address: PhysicalAddress,
 }
 
@@ -398,7 +398,7 @@ pub struct ReportCurrentLatency {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum Opcode {
-    ActivateSource = constants::CEC_MSG_ACTIVE_SOURCE,
+    ActiveSource = constants::CEC_MSG_ACTIVE_SOURCE,
     ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,
     TextViewOn = constants::CEC_MSG_TEXT_VIEW_ON,
     InactiveSource = constants::CEC_MSG_INACTIVE_SOURCE,

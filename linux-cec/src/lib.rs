@@ -3,11 +3,11 @@ use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use thiserror::Error;
 
 pub(crate) mod ioctls;
-pub(crate) mod message;
-pub(crate) mod operand;
 
 pub mod constants;
 pub mod device;
+pub mod message;
+pub mod operand;
 
 pub type LogicalAddress = u8;
 pub type PhysicalAddress = u16;
