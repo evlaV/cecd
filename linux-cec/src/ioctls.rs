@@ -169,32 +169,32 @@ pub(crate) struct CecMessage {
 
 /// CEC logical addresses structure
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct CecLogicalAddresses {
     /// The claimed logical addresses. Set by the driver.
-    log_addr: [LogicalAddress; CEC_MAX_LOG_ADDRS],
+    pub log_addr: [LogicalAddress; CEC_MAX_LOG_ADDRS],
     /// Current logical address mask. Set by the driver.
-    log_addr_mask: LogicalAddressMask,
+    pub log_addr_mask: LogicalAddressMask,
     /// The CEC version that the adapter should implement. Set by the caller.
-    cec_version: u8,
+    pub cec_version: u8,
     /// How many logical addresses should be claimed. Set by the caller.
-    num_log_addrs: u8,
+    pub num_log_addrs: u8,
     /// The vendor ID of the device. Set by the caller.
-    vendor_id: u32,
+    pub vendor_id: u32,
     /// Flags.
-    flags: LogicalAddressesFlags,
+    pub flags: LogicalAddressesFlags,
     /// The OSD name of the device. Set by the caller.
-    osd_name: [c_char; 15],
+    pub osd_name: [c_char; 15],
     /// The primary device type for each logical address. Set by the caller.
-    primary_device_type: [u8; CEC_MAX_LOG_ADDRS],
+    pub primary_device_type: [u8; CEC_MAX_LOG_ADDRS],
     /// The logical address types. Set by the caller.
-    log_addr_type: [u8; CEC_MAX_LOG_ADDRS],
+    pub log_addr_type: [u8; CEC_MAX_LOG_ADDRS],
 
     /* CEC 2.0 */
     /// CEC 2.0: all device types represented by the logical address. Set by the caller.
-    all_device_types: [u8; CEC_MAX_LOG_ADDRS],
+    pub all_device_types: [u8; CEC_MAX_LOG_ADDRS],
     /// CEC 2.0: The logical address features. Set by the caller.
-    features: [[u8; 12]; CEC_MAX_LOG_ADDRS],
+    pub features: [[u8; 12]; CEC_MAX_LOG_ADDRS],
 }
 
 impl CecLogicalAddresses {

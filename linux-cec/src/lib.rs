@@ -13,7 +13,7 @@ pub type LogicalAddress = u8;
 pub type PhysicalAddress = u16;
 
 bitflags! {
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     pub struct Capabilities: u32 {
         /// Userspace has to configure the physical address
         const PHYS_ADDR = constants::CEC_CAP_PHYS_ADDR;
@@ -37,7 +37,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     struct LogicalAddressMask: u16 {
         const TV = constants::CEC_LOG_ADDR_MASK_TV;
         const MASK_RECORD = constants::CEC_LOG_ADDR_MASK_RECORD;
@@ -75,7 +75,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     struct MsgFlags: u32 {
         const REPLY_TO_FOLLOWERS = constants::CEC_MSG_FL_REPLY_TO_FOLLOWERS;
         const RAW = constants::CEC_MSG_FL_RAW;
@@ -83,7 +83,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     struct LogicalAddressesFlags: u32 {
         /// Allow a fallback to unregistered
         const ALLOW_UNREG_FALLBACK = constants::CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK;
@@ -95,7 +95,7 @@ bitflags! {
 }
 
 bitflags! {
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, Default)]
     struct EventFlags: u32 {
         const INITIAL_STATE = constants::CEC_EVENT_FL_INITIAL_STATE;
         const DROPPED_EVENTS = constants::CEC_EVENT_FL_DROPPED_EVENTS;
