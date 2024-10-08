@@ -62,8 +62,12 @@ pub fn message(input: TokenStream) -> TokenStream {
         impl MessageEncodable for #ident {
             const OPCODE: Opcode = Opcode::#ident;
 
-            fn len(&self) -> usize {
-                #(#sizes)*
+            fn to_message(&self) -> Message {
+                Message::#ident(*self)
+            }
+
+            fn into_message(self) -> Message {
+                Message::#ident(self)
             }
 
             fn parameters(&self) -> Vec<u8> {
@@ -82,6 +86,10 @@ pub fn message(input: TokenStream) -> TokenStream {
                 Ok(#ident {
                     #(#names),*
                 })
+            }
+
+            fn len(&self) -> usize {
+                #(#sizes)*
             }
         }
     }
@@ -199,4 +207,39 @@ pub fn operand(input: TokenStream) -> TokenStream {
         },
         _ => todo!(),
     }
+}
+
+#[proc_macro_derive(MessageEnum)]
+pub fn message_enum(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        data: Data::Enum(data),
+        ..
+    } = parse_macro_input!(input as DeriveInput)
+    else {
+        return quote! {
+            compile_error!("This macro only works on the Opcode enum");
+        }
+        .into();
+    };
+    let mut fields = Vec::new();
+    for variant in data.variants {
+        match (variant.fields, variant.discriminant) {
+            (Fields::Unit, Some(_)) => (),
+            _ => {
+                return quote! {
+                    compile_error!("This macro only works on the Opcode enum");
+                }
+                .into()
+            }
+        };
+
+        let ident = variant.ident;
+        fields.push(quote!(#ident(#ident)));
+    }
+    quote! {
+        pub enum Message {
+            #(#fields),*
+        };
+    }
+    .into()
 }

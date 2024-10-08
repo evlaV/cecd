@@ -1,4 +1,4 @@
-use linux_cec_macros::{Message, Operand};
+use linux_cec_macros::{Message, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
@@ -18,6 +18,8 @@ pub trait MessageEncodable: Sized {
         raw
     }
 
+    fn to_message(&self) -> Message;
+    fn into_message(self) -> Message;
     fn parameters(&self) -> Vec<u8>;
     fn from_parameters(params: &[u8]) -> Result<Self>;
     fn len(&self) -> usize;
@@ -396,7 +398,9 @@ pub struct ReportCurrentLatency {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand, MessageEnum,
+)]
 pub enum Opcode {
     ActiveSource = constants::CEC_MSG_ACTIVE_SOURCE,
     ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,
