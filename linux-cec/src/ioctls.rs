@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use modular_bitfield::prelude::*;
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 use std::ffi::c_char;
 
@@ -10,7 +11,7 @@ pub type Timestamp = u64;
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
-    struct Capabilities: u32 {
+    pub(crate) struct Capabilities: u32 {
         /// Userspace has to configure the physical address
         const PHYS_ADDR = constants::CEC_CAP_PHYS_ADDR;
         /// Userspace has to configure the logical addresses
@@ -34,7 +35,7 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
-    struct LogicalAddressMask: u16 {
+    pub(crate) struct LogicalAddressMask: u16 {
         const TV = constants::CEC_LOG_ADDR_MASK_TV;
         const MASK_RECORD = constants::CEC_LOG_ADDR_MASK_RECORD;
         const TUNER = constants::CEC_LOG_ADDR_MASK_TUNER;
@@ -48,7 +49,7 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone)]
-    struct TxStatus: u8 {
+    pub(crate) struct TxStatus: u8 {
         const OK = constants::CEC_TX_STATUS_OK;
         const ARB_LOST = constants::CEC_TX_STATUS_ARB_LOST;
         const NACK = constants::CEC_TX_STATUS_NACK;
@@ -62,7 +63,7 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone)]
-    struct RxStatus: u8 {
+    pub(crate) struct RxStatus: u8 {
         const OK = constants::CEC_RX_STATUS_OK;
         const TIMEOUT = constants::CEC_RX_STATUS_TIMEOUT;
         const FEATURE_ABORT = constants::CEC_RX_STATUS_FEATURE_ABORT;
@@ -72,7 +73,7 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
-    struct MsgFlags: u32 {
+    pub(crate) struct MsgFlags: u32 {
         const REPLY_TO_FOLLOWERS = constants::CEC_MSG_FL_REPLY_TO_FOLLOWERS;
         const RAW = constants::CEC_MSG_FL_RAW;
     }
@@ -80,7 +81,7 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
-    struct LogicalAddressesFlags: u32 {
+    pub(crate) struct LogicalAddressesFlags: u32 {
         /// Allow a fallback to unregistered
         const ALLOW_UNREG_FALLBACK = constants::CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK;
         /// Passthrough RC messages to the input subsystem
@@ -92,45 +93,79 @@ bitflags! {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
-    struct EventFlags: u32 {
+    pub(crate) struct EventFlags: u32 {
         const INITIAL_STATE = constants::CEC_EVENT_FL_INITIAL_STATE;
         const DROPPED_EVENTS = constants::CEC_EVENT_FL_DROPPED_EVENTS;
     }
 }
 
+#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
+#[bits = 4]
+#[repr(u32)]
+pub enum CecInitiatorModes {
+    NoInitiator = constants::CEC_MODE_NO_INITIATOR,
+    Initiator = constants::CEC_MODE_INITIATOR,
+    ExclusiveMode = constants::CEC_MODE_EXCL_INITIATOR,
+}
+
+#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
+#[bits = 4]
+#[repr(u32)]
+pub enum CecFollowerModes {
+    NoFollower = constants::CEC_MODE_NO_FOLLOWER >> 4,
+    Follower = constants::CEC_MODE_FOLLOWER >> 4,
+    ExclusiveFollower = constants::CEC_MODE_EXCL_FOLLOWER >> 4,
+    ExclusiveFollowerPassthru = constants::CEC_MODE_EXCL_FOLLOWER_PASSTHRU >> 4,
+    MonitorPin = constants::CEC_MODE_MONITOR_PIN >> 4,
+    Monitor = constants::CEC_MODE_MONITOR >> 4,
+    MonitorAll = constants::CEC_MODE_MONITOR_ALL >> 4,
+}
+
+#[bitfield(bytes = 4)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub(crate) struct CecMessageHandlingMode {
+    #[bits = 4]
+    pub initiator: CecInitiatorModes,
+    #[bits = 4]
+    pub follower: CecFollowerModes,
+    #[skip]
+    unused: B24,
+}
+
 /// CEC capabilities structure.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct CecCapabilities {
     /// Name of the CEC device driver.
-    driver: [c_char; 32],
+    pub driver: [c_char; 32],
     /// Name of the CEC device. `driver` + `name` must be unique.
-    name: [c_char; 32],
+    pub name: [c_char; 32],
     /// Number of available logical addresses.
-    available_log_addrs: u32,
+    pub available_log_addrs: u32,
     /// Capabilities of the CEC adapter.
-    capabilities: Capabilities,
+    pub capabilities: Capabilities,
     /// version of the CEC adapter framework.
-    version: u32,
+    pub version: u32,
 }
 
 /// Tells which drm connector is associated with the CEC adapter.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct CecDrmConnectorInfo {
     /// drm card number
-    card_no: u32,
+    pub card_no: u32,
     /// drm connector ID
-    connector_id: u32,
+    pub connector_id: u32,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-union CecConnectorInfoUnion {
+pub(crate) union CecConnectorInfoUnion {
     /// drm connector info
-    drm: CecDrmConnectorInfo,
+    pub drm: CecDrmConnectorInfo,
     /// Array to pad the union
-    raw: [u32; 16],
+    pub raw: [u32; 16],
 }
 
 /// Tells if and which connector is associated with the CEC adapter.
@@ -138,8 +173,17 @@ union CecConnectorInfoUnion {
 #[derive(Copy, Clone)]
 pub(crate) struct CecConnectorInfo {
     /// Connector type (if any)
-    ty: u32,
-    data: CecConnectorInfoUnion,
+    pub ty: u32,
+    pub data: CecConnectorInfoUnion,
+}
+
+impl Default for CecConnectorInfo {
+    fn default() -> CecConnectorInfo {
+        CecConnectorInfo {
+            ty: constants::CEC_CONNECTOR_TYPE_NO_CONNECTOR,
+            data: CecConnectorInfoUnion { raw: [0; 16] },
+        }
+    }
 }
 
 /// Used when the CEC adapter changes state.
@@ -147,9 +191,9 @@ pub(crate) struct CecConnectorInfo {
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CecEventStateChange {
     /// The current physical address
-    phys_addr: PhysicalAddress,
+    pub phys_addr: PhysicalAddress,
     /// The current logical address mask
-    log_addr_mask: LogicalAddressMask,
+    pub log_addr_mask: LogicalAddressMask,
     /** If non-zero, then HDMI connector information is available.
      *  This field is only valid if CEC_CAP_CONNECTOR_INFO is set. If that
      *  capability is set and @have_conn_info is zero, then that indicates
@@ -157,7 +201,7 @@ pub(crate) struct CecEventStateChange {
      *  the HDMI driver is still configuring the device or because the HDMI
      *  device was unbound.
      */
-    have_conn_info: u16,
+    pub have_conn_info: u16,
 }
 
 /// Tells you how many messages were lost.
@@ -165,18 +209,18 @@ pub(crate) struct CecEventStateChange {
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CecEventLostMsgs {
     /// How many messages were lost.
-    lost_msgs: u32,
+    pub lost_msgs: u32,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-union CecEventUnion {
+pub(crate) union CecEventUnion {
     /// The event payload for CEC_EVENT_STATE_CHANGE.
-    state_change: CecEventStateChange,
+    pub state_change: CecEventStateChange,
     /// The event payload for CEC_EVENT_LOST_MSGS.
-    lost_msgs: CecEventLostMsgs,
+    pub lost_msgs: CecEventLostMsgs,
     /// Array to pad the union.
-    raw: [u32; 16],
+    pub raw: [u32; 16],
 }
 
 /// CEC event structure
@@ -184,12 +228,12 @@ union CecEventUnion {
 #[derive(Copy, Clone)]
 pub(crate) struct CecEvent {
     /// The timestamp of when the event was sent.
-    ts: Timestamp,
+    pub ts: Timestamp,
     /// The event.
-    event: u32,
+    pub event: u32,
     /// Event flags.
-    flags: EventFlags,
-    data: CecEventUnion,
+    pub flags: EventFlags,
+    pub data: CecEventUnion,
 }
 
 /// CEC message structure.
@@ -197,12 +241,12 @@ pub(crate) struct CecEvent {
 pub(crate) struct CecMessage {
     /// Timestamp in nanoseconds using `CLOCK_MONOTONIC`. Set by the
     /// driver when the message transmission has finished.
-    tx_ts: Timestamp,
+    pub tx_ts: Timestamp,
     /// Timestamp in nanoseconds using `CLOCK_MONOTONIC`. Set by the
     /// driver when the message was received.
-    rx_ts: Timestamp,
+    pub rx_ts: Timestamp,
     /// Length in bytes of the message.
-    len: u32,
+    pub len: u32,
     /**
      * The timeout (in ms) that is used to timeout `CEC_RECEIVE`.
      * Set to 0 if you want to wait forever. This timeout can also be
@@ -210,14 +254,14 @@ pub(crate) struct CecMessage {
      * If 0, then it will use a 1 second timeout instead of waiting
      * forever as is done with `CEC_RECEIVE`.
      */
-    timeout: u32,
+    pub timeout: u32,
     /// The framework assigns a sequence number to messages that are
     /// sent. This can be used to track replies to previously sent messages.
-    sequence: u32,
+    pub sequence: u32,
     /// Set to 0.
-    flags: MsgFlags,
+    pub flags: MsgFlags,
     /// The message payload.
-    msg: [u8; constants::CEC_MAX_MSG_SIZE],
+    pub msg: [u8; constants::CEC_MAX_MSG_SIZE],
     /**
      * This field is ignored with `CEC_RECEIVE` and is only used by
      * `CEC_TRANSMIT`. If non-zero, then wait for a reply with this
@@ -236,19 +280,19 @@ pub(crate) struct CecMessage {
      * if reply is non-zero, then timeout is set to 1000 (the required
      * maximum response time).
      */
-    reply: u8,
+    pub reply: u8,
     /// The message receive status bits. Set by the driver.
-    rx_status: RxStatus,
+    pub rx_status: RxStatus,
     /// The message transmit status bits. Set by the driver.
-    tx_status: TxStatus,
+    pub tx_status: TxStatus,
     /// The number of 'Arbitration Lost' events. Set by the driver.
-    tx_arb_lost_cnt: u8,
+    pub tx_arb_lost_cnt: u8,
     /// The number of 'Not Acknowledged' events. Set by the driver.
-    tx_nack_cnt: u8,
+    pub tx_nack_cnt: u8,
     /// The number of 'Low Drive Detected' events. Set by the driver.
-    tx_low_drive_cnt: u8,
+    pub tx_low_drive_cnt: u8,
     /// The number of 'Error' events. Set by the driver.
-    tx_error_cnt: u8,
+    pub tx_error_cnt: u8,
 }
 
 /// CEC logical addresses structure
@@ -482,8 +526,8 @@ ioctl_readwrite!(dequeue_event, b'a', 7, CecEvent);
 /*
  * Get and set the message handling mode for this filehandle.
  */
-ioctl_read!(get_mode, b'a', 8, u32);
-ioctl_write_ptr!(set_mode, b'a', 9, u32);
+ioctl_read!(get_mode, b'a', 8, CecMessageHandlingMode);
+ioctl_write_ptr!(set_mode, b'a', 9, CecMessageHandlingMode);
 
 /* Get the connector info */
 ioctl_read!(adapter_get_connector_info, b'a', 10, CecConnectorInfo);

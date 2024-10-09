@@ -2,9 +2,11 @@ use nix::errno::Errno;
 use std::fs::File;
 use std::os::fd::AsRawFd;
 
+use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR};
 use crate::ioctls::{
-    adapter_get_logical_addresses, adapter_get_physical_address, receive_message, transmit_message,
-    CecLogicalAddresses, CecMessage,
+    adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
+    adapter_get_physical_address, get_mode, receive_message, transmit_message, CecCapabilities,
+    CecConnectorInfo, CecDrmConnectorInfo, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
 };
 use crate::{LogicalAddress, PhysicalAddress};
 
@@ -12,20 +14,36 @@ pub struct Device {
     file: File,
 }
 
+pub enum ConnectorInfo {
+    None,
+    /// Tells which drm connector is associated with the CEC adapter.
+    DrmConnector {
+        /// drm card number
+        card_no: u32,
+        /// drm connector ID
+        connector_id: u32,
+    },
+    Unknown {
+        ty: u32,
+        data: [u32; 16],
+    },
+}
+
 impl Device {
-    pub fn tx_raw_message(&self, message: &mut CecMessage) -> Result<(), Errno> {
+    pub(crate) fn get_capabilities(&self) -> Result<CecCapabilities, Errno> {
+        let mut caps = CecCapabilities::default();
         unsafe {
-            transmit_message(self.file.as_raw_fd(), message)?;
+            adapter_get_capabilities(self.file.as_raw_fd(), &mut caps)?;
         }
-        Ok(())
+        Ok(caps)
     }
 
-    pub fn rx_raw_message(&self, timeout_ms: u32) -> Result<CecMessage, Errno> {
-        let mut message = CecMessage::with_timeout(timeout_ms);
+    pub fn get_physical_address(&self) -> Result<PhysicalAddress, Errno> {
+        let mut phys_addr: PhysicalAddress = 0;
         unsafe {
-            receive_message(self.file.as_raw_fd(), &mut message)?;
+            adapter_get_physical_address(self.file.as_raw_fd(), &mut phys_addr)?;
         }
-        Ok(message)
+        Ok(phys_addr)
     }
 
     pub fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>, Errno> {
@@ -38,11 +56,50 @@ impl Device {
             .collect())
     }
 
-    pub fn get_physical_address(&self) -> Result<PhysicalAddress, Errno> {
-        let mut phys_addr: PhysicalAddress = 0;
+    pub(crate) fn tx_raw_message(&self, message: &mut CecMessage) -> Result<(), Errno> {
         unsafe {
-            adapter_get_physical_address(self.file.as_raw_fd(), &mut phys_addr)?;
+            transmit_message(self.file.as_raw_fd(), message)?;
         }
-        Ok(phys_addr)
+        Ok(())
+    }
+
+    pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<CecMessage, Errno> {
+        let mut message = CecMessage::with_timeout(timeout_ms);
+        unsafe {
+            receive_message(self.file.as_raw_fd(), &mut message)?;
+        }
+        Ok(message)
+    }
+
+    pub(crate) fn get_mode(&self) -> Result<CecMessageHandlingMode, Errno> {
+        let mut mode = CecMessageHandlingMode::default();
+        unsafe {
+            get_mode(self.file.as_raw_fd(), &mut mode)?;
+        }
+        Ok(mode)
+    }
+
+    pub fn get_connector_info(&self) -> Result<ConnectorInfo, Errno> {
+        let mut conn_info = CecConnectorInfo::default();
+        unsafe {
+            adapter_get_connector_info(self.file.as_raw_fd(), &mut conn_info)?;
+        }
+        match conn_info.ty {
+            CEC_CONNECTOR_TYPE_NO_CONNECTOR => Ok(ConnectorInfo::None),
+            CEC_CONNECTOR_TYPE_DRM => {
+                let CecDrmConnectorInfo {
+                    card_no,
+                    connector_id,
+                } = unsafe { conn_info.data.drm };
+                Ok(ConnectorInfo::DrmConnector {
+                    card_no,
+                    connector_id,
+                })
+            }
+            ty => Ok(ConnectorInfo::Unknown {
+                ty,
+                data: unsafe { conn_info.data.raw },
+            }),
+        }
     }
 }
