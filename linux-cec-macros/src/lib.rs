@@ -78,7 +78,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                 params
             }
 
-            fn from_parameters(bytes: &[u8]) -> Result<#ident> {
+            fn try_from_parameters(bytes: &[u8]) -> Result<#ident> {
                 let offset = 0;
 
                 #(#from_params)*
@@ -222,6 +222,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         .into();
     };
     let mut fields = Vec::new();
+    let mut patterns = Vec::new();
     for variant in data.variants {
         match (variant.fields, variant.discriminant) {
             (Fields::Unit, Some(_)) => (),
@@ -235,11 +236,29 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
 
         let ident = variant.ident;
         fields.push(quote!(#ident(#ident)));
+        patterns.push(quote! {
+            Opcode::#ident => Message::#ident(#ident::try_from_parameters(&bytes[1..])?),
+        });
     }
     quote! {
+        #[derive(Debug, Copy, Clone, PartialEq)]
         pub enum Message {
             #(#fields),*
-        };
+        }
+
+        impl Message {
+            fn try_from_bytes(bytes: &[u8]) -> Result<Message> {
+                if bytes.is_empty() {
+                    return Err(crate::Error::InsufficientLength {
+                        required: 1,
+                        got: 0,
+                    })
+                }
+                Ok(match Opcode::try_from_primitive(bytes[0])? {
+                    #(#patterns)*
+                })
+            }
+        }
     }
     .into()
 }

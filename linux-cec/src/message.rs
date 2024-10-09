@@ -14,20 +14,67 @@ pub trait MessageEncodable: Sized {
         raw[0] = Self::OPCODE.into();
 
         let parameters = self.parameters();
-        raw[1..=parameters.len() + 1].copy_from_slice(&self.parameters());
+        raw[1..=parameters.len()].copy_from_slice(&self.parameters());
         raw
     }
 
     fn to_message(&self) -> Message;
     fn into_message(self) -> Message;
     fn parameters(&self) -> Vec<u8>;
-    fn from_parameters(params: &[u8]) -> Result<Self>;
+    fn try_from_parameters(params: &[u8]) -> Result<Self>;
     fn len(&self) -> usize;
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ActiveSource {
     pub address: PhysicalAddress,
+}
+
+#[cfg(test)]
+mod active_source {
+    use crate::Error;
+    use super::*;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(ActiveSource { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            &ActiveSource { address: 0x1234 }.to_bytes(),
+            &[
+                Opcode::ActiveSource as u8,
+                0x12,
+                0x34,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        );
+    }
+
+    #[test]
+    fn test_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12, 0x34]),
+            Ok(Message::ActiveSource(ActiveSource { address: 0x1234 }))
+        );
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12]),
+            Err(Error::InsufficientLength { required: 2, got: 1 })
+        );
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]

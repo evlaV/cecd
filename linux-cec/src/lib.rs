@@ -12,7 +12,7 @@ pub mod operand;
 pub type LogicalAddress = u8;
 pub type PhysicalAddress = u16;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum Error {
     #[error("Expected at least {required} bytes, got {got} bytes")]
     InsufficientLength { required: usize, got: usize },
