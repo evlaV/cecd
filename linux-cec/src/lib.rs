@@ -1,3 +1,4 @@
+use nix::errno::Errno;
 use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use thiserror::Error;
 
@@ -27,6 +28,8 @@ pub enum Error {
     InvalidValueForType { ty: String, value: String },
     #[error("The provided data was not valid")]
     InvalidData,
+    #[error("Errno {0}")]
+    Errno(#[from] Errno),
 }
 
 pub(crate) fn check_range<T: ToString + PartialOrd>(val: T, min: T, max: T) -> Result<()> {

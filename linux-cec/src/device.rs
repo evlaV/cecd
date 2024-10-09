@@ -1,4 +1,3 @@
-use nix::errno::Errno;
 use std::fs::File;
 use std::os::fd::AsRawFd;
 
@@ -8,7 +7,7 @@ use crate::ioctls::{
     adapter_get_physical_address, get_mode, receive_message, transmit_message, CecCapabilities,
     CecConnectorInfo, CecDrmConnectorInfo, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
 };
-use crate::{LogicalAddress, PhysicalAddress};
+use crate::{LogicalAddress, PhysicalAddress, Result};
 
 pub struct Device {
     file: File,
@@ -30,7 +29,7 @@ pub enum ConnectorInfo {
 }
 
 impl Device {
-    pub(crate) fn get_capabilities(&self) -> Result<CecCapabilities, Errno> {
+    pub(crate) fn get_capabilities(&self) -> Result<CecCapabilities> {
         let mut caps = CecCapabilities::default();
         unsafe {
             adapter_get_capabilities(self.file.as_raw_fd(), &mut caps)?;
@@ -38,7 +37,7 @@ impl Device {
         Ok(caps)
     }
 
-    pub fn get_physical_address(&self) -> Result<PhysicalAddress, Errno> {
+    pub fn get_physical_address(&self) -> Result<PhysicalAddress> {
         let mut phys_addr: PhysicalAddress = 0;
         unsafe {
             adapter_get_physical_address(self.file.as_raw_fd(), &mut phys_addr)?;
@@ -46,7 +45,7 @@ impl Device {
         Ok(phys_addr)
     }
 
-    pub fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>, Errno> {
+    pub fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>> {
         let mut log_addrs = CecLogicalAddresses::default();
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut log_addrs)?;
@@ -56,14 +55,14 @@ impl Device {
             .collect())
     }
 
-    pub(crate) fn tx_raw_message(&self, message: &mut CecMessage) -> Result<(), Errno> {
+    pub(crate) fn tx_raw_message(&self, message: &mut CecMessage) -> Result<()> {
         unsafe {
             transmit_message(self.file.as_raw_fd(), message)?;
         }
         Ok(())
     }
 
-    pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<CecMessage, Errno> {
+    pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<CecMessage> {
         let mut message = CecMessage::with_timeout(timeout_ms);
         unsafe {
             receive_message(self.file.as_raw_fd(), &mut message)?;
@@ -71,7 +70,7 @@ impl Device {
         Ok(message)
     }
 
-    pub(crate) fn get_mode(&self) -> Result<CecMessageHandlingMode, Errno> {
+    pub(crate) fn get_mode(&self) -> Result<CecMessageHandlingMode> {
         let mut mode = CecMessageHandlingMode::default();
         unsafe {
             get_mode(self.file.as_raw_fd(), &mut mode)?;
@@ -79,7 +78,7 @@ impl Device {
         Ok(mode)
     }
 
-    pub fn get_connector_info(&self) -> Result<ConnectorInfo, Errno> {
+    pub fn get_connector_info(&self) -> Result<ConnectorInfo> {
         let mut conn_info = CecConnectorInfo::default();
         unsafe {
             adapter_get_connector_info(self.file.as_raw_fd(), &mut conn_info)?;
