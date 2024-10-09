@@ -2,7 +2,7 @@ use linux_cec_macros::{Message, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, Error, PhysicalAddress, Result};
+use crate::{constants, operand, PhysicalAddress, Result};
 
 pub type CdcOpcode = u8; // TODO
 
