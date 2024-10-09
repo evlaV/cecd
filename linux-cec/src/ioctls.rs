@@ -328,7 +328,7 @@ pub(crate) struct CecLogicalAddresses {
 impl CecLogicalAddresses {
     /* Helper functions to identify the 'special' CEC devices */
 
-    fn is_2nd_tv(&self) -> bool {
+    pub fn is_2nd_tv(&self) -> bool {
         /*
          * It is a second TV if the logical address is 14 or 15 and the
          * primary device type is a TV.
@@ -338,7 +338,7 @@ impl CecLogicalAddresses {
             && self.primary_device_type[0] == constants::CEC_OP_PRIM_DEVTYPE_TV
     }
 
-    fn is_processor(&self) -> bool {
+    pub fn is_processor(&self) -> bool {
         /*
          * It is a processor if the logical address is 12-15 and the
          * primary device type is a Processor.
@@ -348,7 +348,7 @@ impl CecLogicalAddresses {
             && self.primary_device_type[0] == constants::CEC_OP_PRIM_DEVTYPE_PROCESSOR
     }
 
-    fn is_switch(&self) -> bool {
+    pub fn is_switch(&self) -> bool {
         /*
          * It is a switch if the logical address is 15 and the
          * primary device type is a Switch and the CDC-Only flag is not set.
@@ -359,7 +359,7 @@ impl CecLogicalAddresses {
             && !self.flags.contains(LogicalAddressesFlags::CDC_ONLY)
     }
 
-    fn is_cdc_only(&self) -> bool {
+    pub fn is_cdc_only(&self) -> bool {
         /*
          * It is a CDC-only device if the logical address is 15 and the
          * primary device type is a Switch and the CDC-Only flag is set.
