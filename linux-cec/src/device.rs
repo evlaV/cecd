@@ -4,8 +4,9 @@ use std::os::fd::AsRawFd;
 use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR};
 use crate::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
-    adapter_get_physical_address, get_mode, receive_message, transmit_message, CecCapabilities,
-    CecConnectorInfo, CecDrmConnectorInfo, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
+    adapter_get_physical_address, adapter_set_physical_address, get_mode, receive_message,
+    set_mode, transmit_message, CecCapabilities, CecConnectorInfo, CecDrmConnectorInfo,
+    CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
 };
 use crate::{LogicalAddress, PhysicalAddress, Result};
 
@@ -45,6 +46,13 @@ impl Device {
         Ok(phys_addr)
     }
 
+    pub fn set_physical_address(&self, phys_addr: PhysicalAddress) -> Result<()> {
+        unsafe {
+            adapter_set_physical_address(self.file.as_raw_fd(), &phys_addr)?;
+        }
+        Ok(())
+    }
+
     pub fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>> {
         let mut log_addrs = CecLogicalAddresses::default();
         unsafe {
@@ -76,6 +84,13 @@ impl Device {
             get_mode(self.file.as_raw_fd(), &mut mode)?;
         }
         Ok(mode)
+    }
+
+    pub(crate) fn set_mode(&self, mode: CecMessageHandlingMode) -> Result<()> {
+        unsafe {
+            set_mode(self.file.as_raw_fd(), &mode)?;
+        }
+        Ok(())
     }
 
     pub fn get_connector_info(&self) -> Result<ConnectorInfo> {
