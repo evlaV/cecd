@@ -1110,7 +1110,7 @@ impl OperandEncodable for AudioStatus {
 
 // TODO: Limit range
 #[bitfield(bytes = 1)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Default)]
 #[repr(u8)]
 pub struct BcdByte {
     pub ones: B4,
