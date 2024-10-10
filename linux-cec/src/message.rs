@@ -9,12 +9,9 @@ pub type CdcOpcode = u8; // TODO
 pub trait MessageEncodable: Sized {
     const OPCODE: Opcode;
 
-    fn to_bytes(&self) -> [u8; 15] {
-        let mut raw = [0; 15];
-        raw[0] = Self::OPCODE.into();
-
-        let parameters = self.parameters();
-        raw[1..=parameters.len()].copy_from_slice(&self.parameters());
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut raw = vec![Self::OPCODE as u8];
+        raw.extend(self.parameters());
         raw
     }
 
@@ -23,6 +20,9 @@ pub trait MessageEncodable: Sized {
     fn parameters(&self) -> Vec<u8>;
     fn try_from_parameters(params: &[u8]) -> Result<Self>;
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
@@ -31,9 +31,9 @@ pub struct ActiveSource {
 }
 
 #[cfg(test)]
-mod active_source {
-    use crate::Error;
+mod test_active_source {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -44,23 +44,7 @@ mod active_source {
     fn test_encoding() {
         assert_eq!(
             &ActiveSource { address: 0x1234 }.to_bytes(),
-            &[
-                Opcode::ActiveSource as u8,
-                0x12,
-                0x34,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ]
+            &[Opcode::ActiveSource as u8, 0x12, 0x34]
         );
     }
 
@@ -72,7 +56,10 @@ mod active_source {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12]),
-            Err(Error::InsufficientLength { required: 2, got: 1 })
+            Err(Error::InsufficientLength {
+                required: 2,
+                got: 1
+            })
         );
     }
 }
@@ -86,6 +73,40 @@ pub struct TextViewOn;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct InactiveSource {
     pub address: PhysicalAddress,
+}
+
+#[cfg(test)]
+mod test_inactive_source {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(InactiveSource { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            &InactiveSource { address: 0x1234 }.to_bytes(),
+            &[Opcode::InactiveSource as u8, 0x12, 0x34]
+        );
+    }
+
+    #[test]
+    fn test_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12, 0x34]),
+            Ok(Message::InactiveSource(InactiveSource { address: 0x1234 }))
+        );
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12]),
+            Err(Error::InsufficientLength {
+                required: 2,
+                got: 1
+            })
+        );
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]

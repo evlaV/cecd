@@ -21,36 +21,77 @@ pub fn message(input: TokenStream) -> TokenStream {
     let mut params = Vec::new();
     let mut from_params = Vec::new();
     let mut names = Vec::new();
+    let mut tests = None;
 
-    if let Fields::Named(_) = data.fields {
-        for field in data.fields {
-            let Some(name) = field.ident else {
-                todo!("No name");
-            };
-            let typename = field.ty;
-            let getter: Ident = parse_str(format!("{name}").as_str()).unwrap();
-            let setter: Ident = parse_str(format!("set_{name}").as_str()).unwrap();
+    let testname: Ident =
+        parse_str(format!("test_{}", ident.to_string().to_lowercase()).as_str()).unwrap();
 
-            declarations.push(quote! {
-                fn #getter(&self) -> #typename {
-                    self.#name
+    match data.fields {
+        Fields::Named(_) => {
+            for field in data.fields {
+                let Some(name) = field.ident else {
+                    todo!("No name");
+                };
+                let typename = field.ty;
+                let getter: Ident = parse_str(format!("{name}").as_str()).unwrap();
+                let setter: Ident = parse_str(format!("set_{name}").as_str()).unwrap();
+
+                declarations.push(quote! {
+                    fn #getter(&self) -> #typename {
+                        self.#name
+                    }
+
+                    fn #setter(&mut self, value: #typename) {
+                        self.#name = value;
+                    }
+                });
+
+                sizes.push(quote!(+ ::core::mem::size_of::<#typename>()));
+                params.push(quote! {
+                    crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
+                });
+                from_params.push(quote! {
+                    let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)?;
+                    let offset = offset + #name.len();
+                });
+
+                names.push(name);
+            }
+        }
+        Fields::Unnamed(_) => (),
+        Fields::Unit => {
+            tests = Some(quote! {
+                #[cfg(test)]
+                mod #testname {
+                    use crate::Error;
+                    use super::*;
+
+                    #[test]
+                    fn test_len() {
+                        assert_eq!(#ident {}.len(), 1);
+                    }
+
+                    #[test]
+                    fn test_encoding() {
+                        assert_eq!(
+                            &#ident {}.to_bytes(),
+                            &[Opcode::#ident as u8]
+                        );
+                    }
+
+                    #[test]
+                    fn test_decoding() {
+                        assert_eq!(
+                            Message::try_from_bytes(&[Opcode::#ident as u8]),
+                            Ok(Message::#ident(#ident {}))
+                        );
+                        assert_eq!(
+                            Message::try_from_bytes(&[Opcode::#ident as u8, 0x12]),
+                            Ok(Message::#ident(#ident {}))
+                        );
+                    }
                 }
-
-                fn #setter(&mut self, value: #typename) {
-                    self.#name = value;
-                }
             });
-
-            sizes.push(quote!(+ ::core::mem::size_of::<#typename>()));
-            params.push(quote! {
-                crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
-            });
-            from_params.push(quote! {
-                let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)?;
-                let offset = offset + #name.len();
-            });
-
-            names.push(name);
         }
     }
 
@@ -92,6 +133,8 @@ pub fn message(input: TokenStream) -> TokenStream {
                 #(#sizes)*
             }
         }
+
+        #tests
     }
     .into()
 }
@@ -222,7 +265,8 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         .into();
     };
     let mut fields = Vec::new();
-    let mut patterns = Vec::new();
+    let mut from_bytes = Vec::new();
+    let mut idents = Vec::new();
     for variant in data.variants {
         match (variant.fields, variant.discriminant) {
             (Fields::Unit, Some(_)) => (),
@@ -236,9 +280,10 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
 
         let ident = variant.ident;
         fields.push(quote!(#ident(#ident)));
-        patterns.push(quote! {
+        from_bytes.push(quote! {
             Opcode::#ident => Message::#ident(#ident::try_from_parameters(&bytes[1..])?),
         });
+        idents.push(ident);
     }
     quote! {
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -247,7 +292,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         }
 
         impl Message {
-            fn try_from_bytes(bytes: &[u8]) -> Result<Message> {
+            pub fn try_from_bytes(bytes: &[u8]) -> Result<Message> {
                 if bytes.is_empty() {
                     return Err(crate::Error::InsufficientLength {
                         required: 1,
@@ -255,8 +300,14 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
                     })
                 }
                 Ok(match Opcode::try_from_primitive(bytes[0])? {
-                    #(#patterns)*
+                    #(#from_bytes)*
                 })
+            }
+
+            pub fn to_bytes(&self) -> Vec<u8> {
+                match self {
+                    #(Message::#idents(message) => message.to_bytes(),)*
+                }
             }
         }
     }
