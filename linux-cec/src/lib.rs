@@ -1,5 +1,6 @@
 use nix::errno::Errno;
 use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+use std::string::ToString;
 use thiserror::Error;
 
 pub(crate) mod ioctls;

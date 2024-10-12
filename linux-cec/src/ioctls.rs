@@ -1,5 +1,6 @@
+use bitfield_struct::bitfield;
 use bitflags::bitflags;
-use modular_bitfield::prelude::*;
+use linux_cec_macros::BitfieldSpecifier;
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 use std::ffi::c_char;
 
@@ -103,6 +104,7 @@ bitflags! {
 #[bits = 4]
 #[repr(u32)]
 pub enum CecInitiatorModes {
+    #[default]
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
     ExclusiveMode = constants::CEC_MODE_EXCL_INITIATOR,
@@ -112,6 +114,7 @@ pub enum CecInitiatorModes {
 #[bits = 4]
 #[repr(u32)]
 pub enum CecFollowerModes {
+    #[default]
     NoFollower = constants::CEC_MODE_NO_FOLLOWER >> 4,
     Follower = constants::CEC_MODE_FOLLOWER >> 4,
     ExclusiveFollower = constants::CEC_MODE_EXCL_FOLLOWER >> 4,
@@ -121,16 +124,15 @@ pub enum CecFollowerModes {
     MonitorAll = constants::CEC_MODE_MONITOR_ALL >> 4,
 }
 
-#[bitfield(bytes = 4)]
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u32)]
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
 pub(crate) struct CecMessageHandlingMode {
-    #[bits = 4]
+    #[bits(4)]
     pub initiator: CecInitiatorModes,
-    #[bits = 4]
+    #[bits(4)]
     pub follower: CecFollowerModes,
-    #[skip]
-    unused: B24,
+    #[bits(24)]
+    __: usize,
 }
 
 /// CEC capabilities structure.

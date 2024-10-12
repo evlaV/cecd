@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Data, DeriveInput, Fields, Ident, Type};
+use syn::{parse_macro_input, parse_str, Data, DeriveInput, Expr, Fields, Ident, Meta, Type};
 
 #[proc_macro_derive(Message)]
 pub fn message(input: TokenStream) -> TokenStream {
@@ -313,6 +313,99 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
             pub fn to_bytes(&self) -> Vec<u8> {
                 match self {
                     #(Message::#idents(message) => message.to_bytes(),)*
+                }
+            }
+        }
+    }
+    .into()
+}
+
+#[proc_macro_derive(BitfieldSpecifier, attributes(bits, default))]
+pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        attrs,
+        ident,
+        data: Data::Enum(data),
+        ..
+    } = parse_macro_input!(input as DeriveInput)
+    else {
+        return quote! {
+            compile_error!("This macro only works on enums");
+        }
+        .into();
+    };
+
+    let mut ty: Option<Type> = None;
+    let mut bits: Option<Expr> = None;
+    let mut patterns = Vec::new();
+    let mut default = None;
+
+    for attr in attrs {
+        match attr.meta {
+            Meta::List(list) => {
+                match list.path.get_ident() {
+                    Some(ident) if ident == "repr" => (),
+                    _ => continue,
+                }
+                match list.parse_args() {
+                    Ok(parsed_ty) => ty = Some(parsed_ty),
+                    Err(e) => {
+                        let e = format!("{e}");
+                        return quote! {
+                            compile_error!("Invalid repr: {}", #e);
+                        }
+                        .into();
+                    }
+                }
+            }
+            Meta::NameValue(nv) => {
+                match nv.path.get_ident() {
+                    Some(ident) if ident == "bits" => (),
+                    _ => continue,
+                }
+                bits = Some(nv.value);
+            }
+            _ => continue,
+        }
+    }
+    for variant in &data.variants {
+        let Fields::Unit = variant.fields else {
+            return quote! {
+                compile_error!("Variant contains fields, which is unsupported");
+            }
+            .into();
+        };
+        let Some((_, ref expr)) = variant.discriminant else {
+            return quote! {
+                compile_error!("Variant has no explicit value");
+            }
+            .into();
+        };
+        let var_ident = &variant.ident;
+        for attr in &variant.attrs {
+            let Meta::Path(ref path) = attr.meta else {
+                continue;
+            };
+            match path.get_ident() {
+                Some(attr_ident) if attr_ident == "default" => default = Some(quote!(_ => #ident::#var_ident,)),
+                _ => (),
+            }
+        }
+        match expr {
+            Expr::Path(_) => patterns.push(quote!(#expr => #ident::#var_ident)),
+            _ => patterns.push(quote!(x if x == #expr => #ident::#var_ident)),
+        }
+    }
+    quote! {
+        impl #ident {
+            const fn into_bits(self) -> #ty {
+                self as #ty
+            }
+
+            const fn from_bits(bits: #ty) -> #ident {
+                match bits & ((1 << (#bits)) - 1) {
+                    #(#patterns,)*
+                    #default
                 }
             }
         }

@@ -1,9 +1,9 @@
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::len_without_is_empty)]
 
+use bitfield_struct::bitfield;
 use bitflags::bitflags;
-use linux_cec_macros::Operand;
-use modular_bitfield::prelude::*;
+use linux_cec_macros::{BitfieldSpecifier, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 
@@ -271,9 +271,11 @@ pub enum AudioRate {
     NarrowSlow = constants::CEC_OP_AUD_RATE_NARROW_SLOW,
 }
 
+#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq)]
+#[bits = 2]
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioFormatId {
+    #[default]
     CEA861 = constants::CEC_OP_AUD_FMT_ID_CEA861,
     CEA861Cxt = constants::CEC_OP_AUD_FMT_ID_CEA861_CXT,
 }
@@ -1052,12 +1054,13 @@ pub enum MonthOfYear {
     December = 12,
 }
 
-#[bitfield(bytes = 1)]
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
+#[bitfield(u8)]
+#[derive(PartialEq, Eq)]
 pub struct AudioFormatIdAndCode {
-    pub code: B6,
-    pub id: B2,
+    #[bits(6)]
+    pub code: usize,
+    #[bits(2)]
+    pub id: AudioFormatId,
 }
 
 impl OperandEncodable for AudioFormatIdAndCode {
@@ -1080,12 +1083,12 @@ impl OperandEncodable for AudioFormatIdAndCode {
     }
 }
 
-#[bitfield(bytes = 1)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
+#[bitfield(u8)]
+#[derive(PartialEq, Eq)]
 pub struct AudioStatus {
-    pub mute: B1,
-    pub volume: B7,
+    #[bits(7)]
+    pub volume: usize,
+    pub mute: bool,
 }
 
 impl OperandEncodable for AudioStatus {
@@ -1109,12 +1112,13 @@ impl OperandEncodable for AudioStatus {
 }
 
 // TODO: Limit range
-#[bitfield(bytes = 1)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Default)]
-#[repr(u8)]
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, PartialOrd)]
 pub struct BcdByte {
-    pub ones: B4,
-    pub tens: B4,
+    #[bits(4)]
+    pub ones: usize,
+    #[bits(4)]
+    pub tens: usize,
 }
 
 impl OperandEncodable for BcdByte {
