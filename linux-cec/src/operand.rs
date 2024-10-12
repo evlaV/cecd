@@ -203,7 +203,7 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
 
     fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         let mut buf = Vec::new();
-        let mut offset = 0;
+        let mut offset = offset;
         while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
             buf.push(T::from_bytes(bytes, offset)?);
             offset += size_of::<T>();
@@ -1191,7 +1191,7 @@ impl TaggedLengthBuffer for DeviceFeatures {
     fn try_new(first: DeviceFeatures1, extra_params: &[u8]) -> Result<DeviceFeatures> {
         Ok(DeviceFeatures {
             device_features_1: first,
-            device_features_n: BoundedBufferOperand::<14, u8>::default(),
+            device_features_n: BoundedBufferOperand::<14, u8>::from_bytes(extra_params, 0)?,
         })
     }
 
@@ -1236,7 +1236,7 @@ impl TaggedLengthBuffer for RcProfile {
     fn try_new(first: RcProfile1, extra_params: &[u8]) -> Result<RcProfile> {
         Ok(RcProfile {
             rc_profile_1: first,
-            rc_profile_n: BoundedBufferOperand::<14, u8>::default(),
+            rc_profile_n: BoundedBufferOperand::<14, u8>::from_bytes(extra_params, 0)?,
         })
     }
 
