@@ -51,7 +51,9 @@ pub fn message(input: TokenStream) -> TokenStream {
                     crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
                 });
                 from_params.push(quote! {
-                    let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)?;
+                    let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
+                    .map_err(crate::add_error_offset(offset))?;
+
                     let offset = offset + #name.len();
                 });
 
@@ -281,7 +283,11 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         let ident = variant.ident;
         fields.push(quote!(#ident(#ident)));
         from_bytes.push(quote! {
-            Opcode::#ident => Message::#ident(#ident::try_from_parameters(&bytes[1..])?),
+            Opcode::#ident => {
+                Message::#ident(
+                    #ident::try_from_parameters(&bytes[1..])
+                    .map_err(crate::add_error_offset(1))?)
+            }
         });
         idents.push(ident);
     }

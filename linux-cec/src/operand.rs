@@ -1343,7 +1343,7 @@ impl OperandEncodable for TunerDeviceInfo {
             }),
             l => Err(Error::InvalidLength {
                 got: l,
-                expected: String::from("5 or 8"),
+                expected: vec![5, 8],
             }),
         }
     }
@@ -1378,7 +1378,7 @@ impl OperandEncodable for ExternalSource {
             )),
             l => Err(Error::InvalidLength {
                 got: l,
-                expected: String::from("1 or 2"),
+                expected: vec![1, 2],
             }),
         }
     }

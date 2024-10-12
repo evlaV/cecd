@@ -57,8 +57,8 @@ mod test_active_source {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12]),
             Err(Error::InsufficientLength {
-                required: 2,
-                got: 1
+                required: 3,
+                got: 2
             })
         );
     }
@@ -102,8 +102,8 @@ mod test_inactive_source {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12]),
             Err(Error::InsufficientLength {
-                required: 2,
-                got: 1
+                required: 3,
+                got: 2
             })
         );
     }
@@ -116,6 +116,54 @@ pub struct RequestActiveSource;
 pub struct RoutingChange {
     pub original_address: PhysicalAddress,
     pub new_address: PhysicalAddress,
+}
+
+#[cfg(test)]
+mod test_routing_change {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(
+            RoutingChange {
+                original_address: 0,
+                new_address: 0
+            }
+            .len(),
+            5
+        );
+    }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            &RoutingChange {
+                original_address: 0x1234,
+                new_address: 0x5678
+            }
+            .to_bytes(),
+            &[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56, 0x78]
+        );
+    }
+
+    #[test]
+    fn test_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56, 0x78]),
+            Ok(Message::RoutingChange(RoutingChange {
+                original_address: 0x1234,
+                new_address: 0x5678
+            }))
+        );
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56]),
+            Err(Error::InsufficientLength {
+                required: 5,
+                got: 4
+            })
+        );
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]

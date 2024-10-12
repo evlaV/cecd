@@ -16,8 +16,17 @@ pub type PhysicalAddress = u16;
 pub enum Error {
     #[error("Expected at least {required} bytes, got {got} bytes")]
     InsufficientLength { required: usize, got: usize },
-    #[error("Expected a length of one of {expected} bytes, got {got} bytes")]
-    InvalidLength { expected: String, got: usize },
+    #[error(
+        "Expected a length of one of {} bytes, got {got} bytes",
+        .expected.iter().map(ToString::to_string).fold(String::new(), |a, b| {
+            if a.is_empty() {
+                b
+            } else {
+                format!("{a}, {b}")
+            }
+        })
+    )]
+    InvalidLength { expected: Vec<usize>, got: usize },
     #[error("Value {provided} of range {min}..{max}")]
     OutOfRange {
         provided: String,
@@ -41,6 +50,20 @@ pub(crate) fn check_range<T: ToString + PartialOrd>(val: T, min: T, max: T) -> R
         })
     } else {
         Ok(())
+    }
+}
+
+pub(crate) fn add_error_offset(offset: usize) -> impl FnOnce(Error) -> Error {
+    move |error| match error {
+        Error::InsufficientLength { required, got } => Error::InsufficientLength {
+            required: required + offset,
+            got: got + offset,
+        },
+        Error::InvalidLength { expected, got } => Error::InvalidLength {
+            expected: expected.into_iter().map(|val| val + offset).collect(),
+            got: got + offset,
+        },
+        err => err,
     }
 }
 
