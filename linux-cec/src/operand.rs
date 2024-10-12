@@ -250,9 +250,11 @@ pub enum AnalogueBroadcastType {
     Terrestrial = constants::CEC_OP_ANA_BCAST_TYPE_TERRESTRIAL,
 }
 
+#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq)]
+#[bits = 2]
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioOutCompensated {
+    #[default]
     NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
     Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
     NoDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_NO_DELAY,
@@ -833,34 +835,11 @@ pub enum ServiceId {
     },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct AnalogueServiceId {
     pub broadcast_type: AnalogueBroadcastType,
     pub frequency: AnalogueFrequency,
     pub broadcast_system: BroadcastSystem,
-}
-
-impl OperandEncodable for AnalogueServiceId {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        self.broadcast_type.to_bytes(buf);
-        self.frequency.to_bytes(buf);
-        self.broadcast_system.to_bytes(buf);
-    }
-
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<AnalogueServiceId> {
-        let broadcast_type = AnalogueBroadcastType::from_bytes(bytes, offset)?;
-        let frequency = <AnalogueFrequency as OperandEncodable>::from_bytes(bytes, offset + 1)?;
-        let broadcast_system = BroadcastSystem::from_bytes(bytes, offset + 3)?;
-        Ok(AnalogueServiceId {
-            broadcast_type,
-            frequency,
-            broadcast_system,
-        })
-    }
-
-    fn len(&self) -> usize {
-        4
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -1055,7 +1034,7 @@ pub enum MonthOfYear {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Operand)]
 pub struct AudioFormatIdAndCode {
     #[bits(6)]
     pub code: usize,
@@ -1063,52 +1042,12 @@ pub struct AudioFormatIdAndCode {
     pub id: AudioFormatId,
 }
 
-impl OperandEncodable for AudioFormatIdAndCode {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        buf.extend([u8::from(*self)]);
-    }
-
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        if bytes.len() < 1 + offset {
-            return Err(Error::InsufficientLength {
-                required: 1,
-                got: bytes.len() - offset,
-            });
-        }
-        Ok(Self::from(bytes[offset]))
-    }
-
-    fn len(&self) -> usize {
-        1
-    }
-}
-
 #[bitfield(u8)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Operand)]
 pub struct AudioStatus {
     #[bits(7)]
     pub volume: usize,
     pub mute: bool,
-}
-
-impl OperandEncodable for AudioStatus {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        buf.extend([u8::from(*self)]);
-    }
-
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        if bytes.len() < 1 + offset {
-            return Err(Error::InsufficientLength {
-                required: 1,
-                got: bytes.len() - offset,
-            });
-        }
-        Ok(Self::from(bytes[offset]))
-    }
-
-    fn len(&self) -> usize {
-        1
-    }
 }
 
 // TODO: Limit range
@@ -1208,24 +1147,14 @@ impl TaggedLengthBuffer for DeviceFeatures {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Operand)]
 pub struct LatencyFlags {
+    #[bits(2)]
     pub audio_out_compensated: AudioOutCompensated,
     pub low_latency_mode: bool,
-}
-
-impl OperandEncodable for LatencyFlags {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        todo!();
-    }
-
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<LatencyFlags> {
-        todo!();
-    }
-
-    fn len(&self) -> usize {
-        1
-    }
+    #[bits(5)]
+    _reserved: usize,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

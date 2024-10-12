@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Data, DeriveInput, Expr, Fields, Ident, Meta, Type};
+use syn::{parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type};
 
 #[proc_macro_derive(Message)]
 pub fn message(input: TokenStream) -> TokenStream {
@@ -168,7 +168,7 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
     .into()
 }
 
-fn into_u8_encodable(ident: Ident) -> TokenStream {
+fn try_into_u8_encodable(ident: Ident) -> TokenStream {
     quote! {
         impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
@@ -195,12 +195,39 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
     .into()
 }
 
+fn into_u8_encodable(ident: Ident) -> TokenStream {
+    quote! {
+        impl crate::operand::OperandEncodable for #ident {
+            fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+                let prim = <Self as Into<u8>>::into(*self);
+                <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
+            }
+
+            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+                if bytes.is_empty() {
+                    Err(crate::Error::InsufficientLength {
+                        required: 1,
+                        got: bytes.len() - offset,
+                    })
+                } else {
+                    Ok(#ident::from(bytes[offset]))
+                }
+            }
+
+            fn len(&self) -> usize {
+                1
+            }
+        }
+    }
+    .into()
+}
+
 #[proc_macro_derive(Operand)]
 pub fn operand(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
 
     match data {
-        Data::Enum(_) => into_u8_encodable(ident),
+        Data::Enum(_) => try_into_u8_encodable(ident),
         Data::Struct(data) => match data.fields {
             Fields::Named(_) => {
                 let mut to = Vec::new();
@@ -247,7 +274,17 @@ pub fn operand(input: TokenStream) -> TokenStream {
                 };
                 q.into()
             }
-            Fields::Unnamed(_) => bits_u8_encodable(ident),
+            Fields::Unnamed(data) => {
+                if let Some(Field { ty: Type::Path(ty), ..}) = data.unnamed.first() {
+                    if ty.qself.is_some() {
+                        bits_u8_encodable(ident)
+                    } else {
+                        into_u8_encodable(ident)
+                    }
+                } else {
+                    todo!();
+                }
+            }
             Fields::Unit => todo!(),
         },
         _ => todo!(),
