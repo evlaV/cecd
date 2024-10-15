@@ -2,6 +2,7 @@ use bitfield_struct::bitfield;
 use bitflags::bitflags;
 use linux_cec_macros::BitfieldSpecifier;
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ffi::c_char;
 
 use crate::constants;
@@ -9,6 +10,24 @@ use crate::message::Opcode;
 use crate::{LogicalAddress, PhysicalAddress};
 
 pub type Timestamp = u64;
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
+pub enum CecEventType {
+    /// Event that occurs when the adapter state changes
+    StateChange = constants::CEC_EVENT_STATE_CHANGE,
+    /**
+     * This event is sent when messages are lost because the application
+     * didn't empty the message queue in time
+     */
+    LostMessages = constants::CEC_EVENT_LOST_MSGS,
+    PinCecLow = constants::CEC_EVENT_PIN_CEC_LOW,
+    PinCecHigh = constants::CEC_EVENT_PIN_CEC_HIGH,
+    PinHpdLow = constants::CEC_EVENT_PIN_HPD_LOW,
+    PinHpdHigh = constants::CEC_EVENT_PIN_HPD_HIGH,
+    Pin5VLow = constants::CEC_EVENT_PIN_5V_LOW,
+    Pin5VHigh = constants::CEC_EVENT_PIN_5V_HIGH,
+}
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Default)]
@@ -238,6 +257,17 @@ pub(crate) struct CecEvent {
     /// Event flags.
     pub flags: EventFlags,
     pub data: CecEventUnion,
+}
+
+impl Default for CecEvent {
+    fn default() -> CecEvent {
+        CecEvent {
+            ts: 0,
+            event: 0,
+            flags: EventFlags::default(),
+            data: CecEventUnion { raw: [0; 16] },
+        }
+    }
 }
 
 /// CEC message structure.

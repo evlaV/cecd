@@ -4,9 +4,9 @@ use std::os::fd::AsRawFd;
 use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR};
 use crate::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
-    adapter_get_physical_address, adapter_set_physical_address, get_mode, receive_message,
-    set_mode, transmit_message, CecCapabilities, CecConnectorInfo, CecDrmConnectorInfo,
-    CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
+    adapter_get_physical_address, adapter_set_physical_address, dequeue_event, get_mode,
+    receive_message, set_mode, transmit_message, CecCapabilities, CecConnectorInfo,
+    CecDrmConnectorInfo, CecEvent, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
 };
 use crate::{LogicalAddress, PhysicalAddress, Result};
 
@@ -76,6 +76,14 @@ impl Device {
             receive_message(self.file.as_raw_fd(), &mut message)?;
         }
         Ok(message)
+    }
+
+    pub(crate) fn dequeue_event(&self) -> Result<CecEvent> {
+        let mut event = CecEvent::default();
+        unsafe {
+            dequeue_event(self.file.as_raw_fd(), &mut event)?;
+        }
+        Ok(event)
     }
 
     pub(crate) fn get_mode(&self) -> Result<CecMessageHandlingMode> {

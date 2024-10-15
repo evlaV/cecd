@@ -598,9 +598,7 @@ pub enum Opcode {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand,
-)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum CdcOpcode {
     HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
     HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
