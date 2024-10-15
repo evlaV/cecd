@@ -4,8 +4,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use crate::operand::OperandEncodable;
 use crate::{constants, operand, PhysicalAddress, Result};
 
-pub type CdcOpcode = u8; // TODO
-
 pub trait MessageEncodable: Sized {
     const OPCODE: Opcode;
 
@@ -597,4 +595,20 @@ pub enum Opcode {
     GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
     RequestCurrentLatency = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
     ReportCurrentLatency = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
+}
+
+#[repr(u8)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand,
+)]
+pub enum CdcOpcode {
+    HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
+    HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
+    HecSetStateAdjacent = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
+    HecSetState = constants::CEC_MSG_CDC_HEC_SET_STATE,
+    HecRequestDeactivation = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
+    HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
+    HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
+    HpdSetState = constants::CEC_MSG_CDC_HPD_SET_STATE,
+    HpdReportState = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
 }
