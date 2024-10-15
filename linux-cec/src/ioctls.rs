@@ -104,17 +104,17 @@ bitflags! {
 #[bits = 4]
 #[repr(u32)]
 pub enum CecInitiatorModes {
-    #[default]
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
     ExclusiveMode = constants::CEC_MODE_EXCL_INITIATOR,
+    #[default]
+    Invalid(u32),
 }
 
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
 #[bits = 4]
 #[repr(u32)]
 pub enum CecFollowerModes {
-    #[default]
     NoFollower = constants::CEC_MODE_NO_FOLLOWER >> 4,
     Follower = constants::CEC_MODE_FOLLOWER >> 4,
     ExclusiveFollower = constants::CEC_MODE_EXCL_FOLLOWER >> 4,
@@ -122,6 +122,8 @@ pub enum CecFollowerModes {
     MonitorPin = constants::CEC_MODE_MONITOR_PIN >> 4,
     Monitor = constants::CEC_MODE_MONITOR >> 4,
     MonitorAll = constants::CEC_MODE_MONITOR_ALL >> 4,
+    #[default]
+    Invalid(u32),
 }
 
 #[bitfield(u32)]

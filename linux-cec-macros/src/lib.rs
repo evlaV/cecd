@@ -1,6 +1,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type};
+use syn::{
+    parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type,
+};
 
 #[proc_macro_derive(Message)]
 pub fn message(input: TokenStream) -> TokenStream {
@@ -275,7 +277,10 @@ pub fn operand(input: TokenStream) -> TokenStream {
                 q.into()
             }
             Fields::Unnamed(data) => {
-                if let Some(Field { ty: Type::Path(ty), ..}) = data.unnamed.first() {
+                if let Some(Field {
+                    ty: Type::Path(ty), ..
+                }) = data.unnamed.first()
+                {
                     if ty.qself.is_some() {
                         bits_u8_encodable(ident)
                     } else {
@@ -374,7 +379,8 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
 
     let mut ty: Option<Type> = None;
     let mut bits: Option<Expr> = None;
-    let mut patterns = Vec::new();
+    let mut into_patterns = Vec::new();
+    let mut from_patterns = Vec::new();
     let mut default = None;
 
     for attr in attrs {
@@ -405,12 +411,50 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
             _ => continue,
         }
     }
+    let Some(ty) = ty else {
+        return quote! {
+            compile_error!("Type repr is required");
+        }
+        .into();
+    };
     for variant in &data.variants {
-        let Fields::Unit = variant.fields else {
-            return quote! {
-                compile_error!("Variant contains fields, which is unsupported");
+        let var_ident = &variant.ident;
+        match &variant.fields {
+            Fields::Unit => (),
+            Fields::Unnamed(fields) => {
+                for attr in &variant.attrs {
+                    let Meta::Path(ref path) = attr.meta else {
+                        continue;
+                    };
+                    match fields.unnamed.first() {
+                        Some(field) if ty == field.ty => (),
+                        Some(_) => {
+                            return quote! {
+                                compile_error!("Default must have type matching repr");
+                            }
+                            .into();
+                        }
+                        _ => continue,
+                    }
+                    match path.get_ident() {
+                        Some(attr_ident) if attr_ident == "default" => default = Some(var_ident),
+                        _ => (),
+                    }
+                }
+                if fields.unnamed.len() != 1 || default.is_none() {
+                    return quote! {
+                        compile_error!("Variant contains fields, which is unsupported");
+                    }
+                    .into();
+                }
+                continue;
             }
-            .into();
+            _ => {
+                return quote! {
+                    compile_error!("Variant contains fields, which is unsupported");
+                }
+                .into();
+            }
         };
         let Some((_, ref expr)) = variant.discriminant else {
             return quote! {
@@ -418,31 +462,25 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
             }
             .into();
         };
-        let var_ident = &variant.ident;
-        for attr in &variant.attrs {
-            let Meta::Path(ref path) = attr.meta else {
-                continue;
-            };
-            match path.get_ident() {
-                Some(attr_ident) if attr_ident == "default" => default = Some(quote!(_ => #ident::#var_ident,)),
-                _ => (),
-            }
-        }
+        into_patterns.push(quote!(#ident::#var_ident => #expr));
         match expr {
-            Expr::Path(_) => patterns.push(quote!(#expr => #ident::#var_ident)),
-            _ => patterns.push(quote!(x if x == #expr => #ident::#var_ident)),
+            Expr::Path(_) => from_patterns.push(quote!(#expr => #ident::#var_ident)),
+            _ => from_patterns.push(quote!(x if x == #expr => #ident::#var_ident)),
         }
     }
     quote! {
         impl #ident {
             const fn into_bits(self) -> #ty {
-                self as #ty
+                match self {
+                    #(#into_patterns,)*
+                    #ident::#default(x) => x,
+                }
             }
 
             const fn from_bits(bits: #ty) -> #ident {
                 match bits & ((1 << (#bits)) - 1) {
-                    #(#patterns,)*
-                    #default
+                    #(#from_patterns,)*
+                    x => #ident::#default(x),
                 }
             }
         }

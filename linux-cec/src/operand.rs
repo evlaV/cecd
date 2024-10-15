@@ -254,11 +254,12 @@ pub enum AnalogueBroadcastType {
 #[bits = 2]
 #[repr(u8)]
 pub enum AudioOutCompensated {
-    #[default]
     NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
     Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
     NoDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_NO_DELAY,
     PartialDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_PARTIAL_DELAY,
+    #[default]
+    Invalid(u8),
 }
 
 #[repr(u8)]
@@ -277,9 +278,10 @@ pub enum AudioRate {
 #[bits = 2]
 #[repr(u8)]
 pub enum AudioFormatId {
-    #[default]
     CEA861 = constants::CEC_OP_AUD_FMT_ID_CEA861,
     CEA861Cxt = constants::CEC_OP_AUD_FMT_ID_CEA861_CXT,
+    #[default]
+    Invalid(u8),
 }
 
 #[repr(u8)]
