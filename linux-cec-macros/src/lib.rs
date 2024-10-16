@@ -4,6 +4,15 @@ use syn::{
     parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type,
 };
 
+macro_rules! bail {
+    ($text:literal $(, $args:ident)*) => {
+        return quote! {
+            compile_error!($text $(, #$args)*);
+        }
+        .into()
+    };
+}
+
 #[proc_macro_derive(Message)]
 pub fn message(input: TokenStream) -> TokenStream {
     let DeriveInput {
@@ -12,13 +21,10 @@ pub fn message(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as DeriveInput)
     else {
-        return quote! {
-            compile_error!("This macro only works on structs");
-        }
-        .into();
+        bail!("This macro only works on structs");
     };
 
-    let mut sizes = vec![quote!(1)];
+    let mut sizes = Vec::new();
     let mut declarations = Vec::new();
     let mut params = Vec::new();
     let mut from_params = Vec::new();
@@ -50,9 +56,9 @@ pub fn message(input: TokenStream) -> TokenStream {
 
                 match typename {
                     Type::Path(ref path) if path.path.get_ident().is_none() => {
-                        sizes.push(quote!(+ self.#name.len()))
+                        sizes.push(quote!(self.#name.len()))
                     }
-                    _ => sizes.push(quote!(+ ::core::mem::size_of::<#typename>())),
+                    _ => sizes.push(quote!(::core::mem::size_of::<#typename>())),
                 }
                 params.push(quote! {
                     crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
@@ -139,7 +145,7 @@ pub fn message(input: TokenStream) -> TokenStream {
             }
 
             fn len(&self) -> usize {
-                #(#sizes)*
+                1#( + #sizes)*
             }
         }
 
@@ -253,7 +259,8 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         Type::Path(_) => from.push(quote! {
                             let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
                             .map_err(crate::add_error_offset(offset))?;
-                            offset += ::core::mem::size_of::<#typename>();
+
+                            let offset = offset + #name.len();
                         }),
                         Type::Array(_) => (),
                         _ => todo!(),
@@ -309,10 +316,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as DeriveInput)
     else {
-        return quote! {
-            compile_error!("This macro only works on the Opcode enum");
-        }
-        .into();
+        bail!("This macro only works on the Opcode enum");
     };
     let mut fields = Vec::new();
     let mut from_bytes = Vec::new();
@@ -321,10 +325,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         match (variant.fields, variant.discriminant) {
             (Fields::Unit, Some(_)) => (),
             _ => {
-                return quote! {
-                    compile_error!("This macro only works on the Opcode enum");
-                }
-                .into()
+                bail!("This macro only works on the Opcode enum");
             }
         };
 
@@ -377,10 +378,7 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as DeriveInput)
     else {
-        return quote! {
-            compile_error!("This macro only works on enums");
-        }
-        .into();
+        bail!("This macro only works on enums");
     };
 
     let mut ty: Option<Type> = None;
@@ -389,6 +387,8 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
     let mut from_patterns = Vec::new();
     let mut default = None;
 
+    // Scan enum attrs for #[repr(..)] and #[bits = ..]
+    // Reject invalid repr attributes and ignore all else
     for attr in attrs {
         match attr.meta {
             Meta::List(list) => {
@@ -399,11 +399,8 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                 match list.parse_args() {
                     Ok(parsed_ty) => ty = Some(parsed_ty),
                     Err(e) => {
-                        let e = format!("{e}");
-                        return quote! {
-                            compile_error!("Invalid repr: {}", #e);
-                        }
-                        .into();
+                        let e = e.to_string();
+                        bail!("Invalid repr: {}", e);
                     }
                 }
             }
@@ -418,11 +415,12 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
         }
     }
     let Some(ty) = ty else {
-        return quote! {
-            compile_error!("Type repr is required");
-        }
-        .into();
+        bail!("Type repr is required");
     };
+    let Some(bits) = bits else {
+        bail!("Bits attribute is required");
+    };
+
     for variant in &data.variants {
         let var_ident = &variant.ident;
         match &variant.fields {
@@ -434,12 +432,7 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                     };
                     match fields.unnamed.first() {
                         Some(field) if ty == field.ty => (),
-                        Some(_) => {
-                            return quote! {
-                                compile_error!("Default must have type matching repr");
-                            }
-                            .into();
-                        }
+                        Some(_) => bail!("Default must have type matching repr"),
                         _ => continue,
                     }
                     match path.get_ident() {
@@ -448,25 +441,14 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                     }
                 }
                 if fields.unnamed.len() != 1 || default.is_none() {
-                    return quote! {
-                        compile_error!("Variant contains fields, which is unsupported");
-                    }
-                    .into();
+                    bail!("Variant contains fields, which is unsupported");
                 }
                 continue;
             }
-            _ => {
-                return quote! {
-                    compile_error!("Variant contains fields, which is unsupported");
-                }
-                .into();
-            }
+            _ => bail!("Variant contains fields, which is unsupported"),
         };
         let Some((_, ref expr)) = variant.discriminant else {
-            return quote! {
-                compile_error!("Variant has no explicit value");
-            }
-            .into();
+            bail!("Variant has no explicit value");
         };
         into_patterns.push(quote!(#ident::#var_ident => #expr));
         match expr {
