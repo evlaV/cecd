@@ -169,9 +169,79 @@ pub struct RoutingInformation {
     pub address: PhysicalAddress,
 }
 
+#[cfg(test)]
+mod test_routing_information {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(RoutingInformation { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            &RoutingInformation { address: 0x1234 }.to_bytes(),
+            &[Opcode::RoutingInformation as u8, 0x12, 0x34]
+        );
+    }
+
+    #[test]
+    fn test_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12, 0x34]),
+            Ok(Message::RoutingInformation(RoutingInformation {
+                address: 0x1234
+            }))
+        );
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12]),
+            Err(Error::InsufficientLength {
+                required: 3,
+                got: 2
+            })
+        );
+    }
+}
+
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetStreamPath {
     pub address: PhysicalAddress,
+}
+
+#[cfg(test)]
+mod test_set_stream_path {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(SetStreamPath { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            &SetStreamPath { address: 0x1234 }.to_bytes(),
+            &[Opcode::SetStreamPath as u8, 0x12, 0x34]
+        );
+    }
+
+    #[test]
+    fn test_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12, 0x34]),
+            Ok(Message::SetStreamPath(SetStreamPath { address: 0x1234 }))
+        );
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12]),
+            Err(Error::InsufficientLength {
+                required: 3,
+                got: 2
+            })
+        );
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
