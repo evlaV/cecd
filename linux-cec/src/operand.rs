@@ -7,7 +7,7 @@ use linux_cec_macros::{BitfieldSpecifier, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 
-use crate::{check_range, constants, Error, PhysicalAddress, Result};
+use crate::{add_error_offset, check_range, constants, Error, PhysicalAddress, Result};
 
 pub type AnalogueFrequency = u16; // TODO: Limit range
 pub type Delay = u8; // TODO: Limit range
@@ -909,8 +909,10 @@ impl OperandEncodable for DigitalServiceId {
         let service_id_method = ServiceIdMethod::try_from_primitive(head & 1)?;
         let broadcast_system = System::try_from_primitive(head >> 1)?;
         if service_id_method == ServiceIdMethod::ByChannel {
-            let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)?;
-            let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
+            let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)
+                .map_err(add_error_offset(1))?;
+            let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)
+                .map_err(add_error_offset(5))?;
             Ok(Id::Channel {
                 broadcast_system,
                 channel_id,
@@ -918,31 +920,45 @@ impl OperandEncodable for DigitalServiceId {
             })
         } else {
             Ok(match broadcast_system {
-                System::AribGeneric => {
-                    Id::AribGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::AtscGeneric => {
-                    Id::AtscGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::DvbGeneric => {
-                    Id::DvbGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::AribCs => Id::AribCs(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::AribBs => Id::AribBs(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::AribT => Id::AribT(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::AtscCable => {
-                    Id::AtscCable(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::AtscSatellite => {
-                    Id::AtscSatellite(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::AtscTerrestrial => {
-                    Id::AtscTerrestrial(OperandEncodable::from_bytes(bytes, offset + 1)?)
-                }
-                System::DvbC => Id::DvbC(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::DvbS => Id::DvbS(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::DvbS2 => Id::DvbS2(OperandEncodable::from_bytes(bytes, offset + 1)?),
-                System::DvbT => Id::DvbT(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::AribGeneric => Id::AribGeneric(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AtscGeneric => Id::AtscGeneric(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::DvbGeneric => Id::DvbGeneric(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AribCs => Id::AribCs(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AribBs => Id::AribBs(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AribT => Id::AribT(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AtscCable => Id::AtscCable(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AtscSatellite => Id::AtscSatellite(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::AtscTerrestrial => Id::AtscTerrestrial(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::DvbC => Id::DvbC(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::DvbS => Id::DvbS(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::DvbS2 => Id::DvbS2(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
+                System::DvbT => Id::DvbT(
+                    OperandEncodable::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ),
             })
         }
     }
@@ -1376,14 +1392,16 @@ impl OperandEncodable for RecordSource {
         match record_source_type {
             RecordSourceType::Own => Ok(RecordSource::Own),
             RecordSourceType::Digital => Ok(RecordSource::DigitalService(
-                DigitalServiceId::from_bytes(bytes, offset + 1)?,
+                DigitalServiceId::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
             )),
             RecordSourceType::Analogue => Ok(RecordSource::AnalogueService(
-                AnalogueServiceId::from_bytes(bytes, offset + 1)?,
+                AnalogueServiceId::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
             )),
-            RecordSourceType::ExternalPlug | RecordSourceType::ExternalPhysicalAddress => Ok(
-                RecordSource::External(ExternalSource::from_bytes(bytes, offset + 1)?),
-            ),
+            RecordSourceType::ExternalPlug | RecordSourceType::ExternalPhysicalAddress => {
+                Ok(RecordSource::External(
+                    ExternalSource::from_bytes(bytes, offset + 1).map_err(add_error_offset(1))?,
+                ))
+            }
         }
     }
 

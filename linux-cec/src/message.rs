@@ -252,8 +252,324 @@ pub struct RecordOff;
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordOn {
-    pub record_source_type: operand::RecordSourceType,
     pub source: operand::RecordSource,
+}
+
+#[cfg(test)]
+mod test_record_on {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn test_own_len() {
+        assert_eq!(
+            RecordOn {
+                source: operand::RecordSource::Own
+            }
+            .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_own_encoding() {
+        assert_eq!(
+            &RecordOn {
+                source: operand::RecordSource::Own
+            }
+            .to_bytes(),
+            &[Opcode::RecordOn as u8, operand::RecordSourceType::Own as u8]
+        );
+    }
+
+    #[test]
+    fn test_own_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Own as u8
+            ]),
+            Ok(Message::RecordOn(RecordOn {
+                source: operand::RecordSource::Own
+            }))
+        );
+
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RecordOn as u8,]),
+            Err(Error::InsufficientLength {
+                required: 2,
+                got: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_len() {
+        assert_eq!(
+            RecordOn {
+                source: operand::RecordSource::DigitalService(
+                    operand::DigitalServiceId::AribGeneric(operand::AribData {
+                        transport_stream_id: 0,
+                        service_id: 0,
+                        original_network_id: 0,
+                    })
+                ),
+            }
+            .len(),
+            9
+        );
+    }
+
+    #[test]
+    fn test_digital_encoding() {
+        assert_eq!(
+            &RecordOn {
+                source: operand::RecordSource::DigitalService(
+                    operand::DigitalServiceId::AribGeneric(operand::AribData {
+                        transport_stream_id: 0x1234,
+                        service_id: 0x5678,
+                        original_network_id: 0x9ABC,
+                    })
+                ),
+            }
+            .to_bytes(),
+            &[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78,
+                0x9A,
+                0xBC
+            ]
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78,
+                0x9A,
+                0xBC
+            ]),
+            Ok(Message::RecordOn(RecordOn {
+                source: operand::RecordSource::DigitalService(
+                    operand::DigitalServiceId::AribGeneric(operand::AribData {
+                        transport_stream_id: 0x1234,
+                        service_id: 0x5678,
+                        original_network_id: 0x9ABC,
+                    })
+                ),
+            }))
+        );
+
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78,
+                0x9A
+            ]),
+            Err(Error::InsufficientLength {
+                required: 9,
+                got: 8,
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_len() {
+        assert_eq!(
+            RecordOn {
+                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
+                    broadcast_type: operand::AnalogueBroadcastType::Cable,
+                    frequency: 1,
+                    broadcast_system: operand::BroadcastSystem::NtscM,
+                }),
+            }
+            .len(),
+            6
+        );
+    }
+
+    #[test]
+    fn test_analogue_encoding() {
+        assert_eq!(
+            &RecordOn {
+                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
+                    broadcast_type: operand::AnalogueBroadcastType::Satellite,
+                    frequency: 0x1234,
+                    broadcast_system: operand::BroadcastSystem::SecamL,
+                }),
+            }
+            .to_bytes(),
+            &[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+                operand::AnalogueBroadcastType::Satellite as u8,
+                0x12,
+                0x34,
+                operand::BroadcastSystem::SecamL as u8
+            ]
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+                operand::AnalogueBroadcastType::Satellite as u8,
+                0x12,
+                0x34,
+                operand::BroadcastSystem::SecamL as u8
+            ]),
+            Ok(Message::RecordOn(RecordOn {
+                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
+                    broadcast_type: operand::AnalogueBroadcastType::Satellite,
+                    frequency: 0x1234,
+                    broadcast_system: operand::BroadcastSystem::SecamL,
+                }),
+            }))
+        );
+
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+                operand::AnalogueBroadcastType::Satellite as u8,
+                0x12,
+                0x34
+            ]),
+            Err(Error::InsufficientLength {
+                required: 6,
+                got: 5,
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_plug_len() {
+        assert_eq!(
+            RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::Plug(0))
+            }
+            .len(),
+            3
+        );
+    }
+
+    #[test]
+    fn test_external_plug_encoding() {
+        assert_eq!(
+            &RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
+            }
+            .to_bytes(),
+            &[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPlug as u8,
+                0x56,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_external_plug_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPlug as u8,
+                0x56,
+            ]),
+            Ok(Message::RecordOn(RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
+            }))
+        );
+
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPlug as u8,
+            ]),
+            Err(Error::InsufficientLength {
+                required: 3,
+                got: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_len() {
+        assert_eq!(
+            RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
+                    0
+                ))
+            }
+            .len(),
+            4
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_encoding() {
+        assert_eq!(
+            &RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
+                    0x1234
+                ))
+            }
+            .to_bytes(),
+            &[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPhysicalAddress as u8,
+                0x12,
+                0x34
+            ]
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_decoding() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPhysicalAddress as u8,
+                0x12,
+                0x34
+            ]),
+            Ok(Message::RecordOn(RecordOn {
+                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(0x1234))
+            }))
+        );
+
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPhysicalAddress as u8,
+                0x12,
+            ]),
+            Err(Error::InsufficientLength {
+                required: 4,
+                got: 3,
+            })
+        );
+    }
 }
 
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
