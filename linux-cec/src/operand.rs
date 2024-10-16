@@ -814,29 +814,6 @@ impl RecordingSequence {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ServiceId {
-    AribData {
-        transport_stream_id: u16,
-        service_id: u16,
-        original_network_id: u16,
-    },
-    AtscData {
-        transport_stream_id: u16,
-        program_number: u16,
-        reserved: u16,
-    },
-    DvbData {
-        transport_stream_id: u16,
-        service_id: u16,
-        original_network_id: u16,
-    },
-    ChannelData {
-        channel_id: ChannelId,
-        reserved: u16,
-    },
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct AnalogueServiceId {
     pub broadcast_type: AnalogueBroadcastType,
@@ -845,54 +822,83 @@ pub struct AnalogueServiceId {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct DigitalServiceId {
-    pub service_id_method: ServiceIdMethod,
-    pub digital_broadcast_system: DigitalServiceBroadcastSystem,
-    pub service_id: ServiceId,
+pub enum DigitalServiceId {
+    AribGeneric(AribData),
+    AtscGeneric(AtscData),
+    DvbGeneric(DvbData),
+    AribBs(AribData),
+    AribCs(AribData),
+    AribT(AribData),
+    AtscCable(AtscData),
+    AtscSatellite(AtscData),
+    AtscTerrestrial(AtscData),
+    DvbC(DvbData),
+    DvbS(DvbData),
+    DvbS2(DvbData),
+    DvbT(DvbData),
+    Channel {
+        broadcast_system: DigitalServiceBroadcastSystem,
+        channel_id: ChannelId,
+        reserved: u16,
+    },
 }
 
 impl OperandEncodable for DigitalServiceId {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        buf.extend([(self.service_id_method as u8) | ((self.digital_broadcast_system as u8) << 1)]);
-        match self.service_id {
-            ServiceId::AribData {
-                ref transport_stream_id,
-                ref service_id,
-                ref original_network_id,
-            } => {
-                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
-                <u16 as OperandEncodable>::to_bytes(service_id, buf);
-                <u16 as OperandEncodable>::to_bytes(original_network_id, buf);
+        use DigitalServiceBroadcastSystem as System;
+        use DigitalServiceId as Id;
+
+        let (broadcast_system, service_id_method) = match self {
+            Id::AribGeneric(_) => (System::AribGeneric, ServiceIdMethod::ByDigitalId),
+            Id::AtscGeneric(_) => (System::AtscGeneric, ServiceIdMethod::ByDigitalId),
+            Id::DvbGeneric(_) => (System::DvbGeneric, ServiceIdMethod::ByDigitalId),
+            Id::AribBs(_) => (System::AribBs, ServiceIdMethod::ByDigitalId),
+            Id::AribCs(_) => (System::AribCs, ServiceIdMethod::ByDigitalId),
+            Id::AribT(_) => (System::AribT, ServiceIdMethod::ByDigitalId),
+            Id::AtscCable(_) => (System::AtscCable, ServiceIdMethod::ByDigitalId),
+            Id::AtscSatellite(_) => (System::AtscSatellite, ServiceIdMethod::ByDigitalId),
+            Id::AtscTerrestrial(_) => (System::AtscTerrestrial, ServiceIdMethod::ByDigitalId),
+            Id::DvbC(_) => (System::DvbC, ServiceIdMethod::ByDigitalId),
+            Id::DvbS(_) => (System::DvbS, ServiceIdMethod::ByDigitalId),
+            Id::DvbS2(_) => (System::DvbS2, ServiceIdMethod::ByDigitalId),
+            Id::DvbT(_) => (System::DvbT, ServiceIdMethod::ByDigitalId),
+            Id::Channel {
+                broadcast_system, ..
+            } => (*broadcast_system, ServiceIdMethod::ByChannel),
+        };
+        buf.extend([((broadcast_system as u8) << 1) | (service_id_method as u8)]);
+        match self {
+            Id::AribGeneric(data) | Id::AribBs(data) | Id::AribCs(data) | Id::AribT(data) => {
+                data.to_bytes(buf);
             }
-            ServiceId::AtscData {
-                ref transport_stream_id,
-                ref program_number,
-                ref reserved,
-            } => {
-                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
-                <u16 as OperandEncodable>::to_bytes(program_number, buf);
-                <u16 as OperandEncodable>::to_bytes(reserved, buf);
+            Id::AtscGeneric(data)
+            | Id::AtscCable(data)
+            | Id::AtscSatellite(data)
+            | Id::AtscTerrestrial(data) => {
+                data.to_bytes(buf);
             }
-            ServiceId::DvbData {
-                ref transport_stream_id,
-                ref service_id,
-                ref original_network_id,
-            } => {
-                <u16 as OperandEncodable>::to_bytes(transport_stream_id, buf);
-                <u16 as OperandEncodable>::to_bytes(service_id, buf);
-                <u16 as OperandEncodable>::to_bytes(original_network_id, buf);
+            Id::DvbGeneric(data)
+            | Id::DvbC(data)
+            | Id::DvbS(data)
+            | Id::DvbS2(data)
+            | Id::DvbT(data) => {
+                data.to_bytes(buf);
             }
-            ServiceId::ChannelData {
-                ref channel_id,
-                ref reserved,
+            Id::Channel {
+                channel_id,
+                reserved,
+                ..
             } => {
-                <ChannelId as OperandEncodable>::to_bytes(channel_id, buf);
+                channel_id.to_bytes(buf);
                 <u16 as OperandEncodable>::to_bytes(reserved, buf);
             }
         }
     }
 
     fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+        use DigitalServiceBroadcastSystem as System;
+        use DigitalServiceId as Id;
+
         if bytes.len() < offset + 7 {
             return Err(Error::InsufficientLength {
                 required: 7,
@@ -901,64 +907,44 @@ impl OperandEncodable for DigitalServiceId {
         }
         let head = bytes[offset];
         let service_id_method = ServiceIdMethod::try_from_primitive(head & 1)?;
-        let digital_broadcast_system =
-            DigitalServiceBroadcastSystem::try_from_primitive(head >> 1)?;
-        let service_id = if service_id_method == ServiceIdMethod::ByChannel {
+        let broadcast_system = System::try_from_primitive(head >> 1)?;
+        if service_id_method == ServiceIdMethod::ByChannel {
             let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)?;
             let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
-            ServiceId::ChannelData {
+            Ok(Id::Channel {
+                broadcast_system,
                 channel_id,
                 reserved,
-            }
+            })
         } else {
-            let transport_stream_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 1)?;
-            match digital_broadcast_system {
-                DigitalServiceBroadcastSystem::AribGeneric
-                | DigitalServiceBroadcastSystem::AribBs
-                | DigitalServiceBroadcastSystem::AribCs
-                | DigitalServiceBroadcastSystem::AribT => {
-                    let service_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
-                    let original_network_id =
-                        <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
-                    ServiceId::AribData {
-                        transport_stream_id,
-                        service_id,
-                        original_network_id,
-                    }
+            Ok(match broadcast_system {
+                System::AribGeneric => {
+                    Id::AribGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
                 }
-                DigitalServiceBroadcastSystem::AtscGeneric
-                | DigitalServiceBroadcastSystem::AtscCable
-                | DigitalServiceBroadcastSystem::AtscSatellite
-                | DigitalServiceBroadcastSystem::AtscTerrestrial => {
-                    let program_number = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
-                    let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
-                    ServiceId::AtscData {
-                        transport_stream_id,
-                        program_number,
-                        reserved,
-                    }
+                System::AtscGeneric => {
+                    Id::AtscGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
                 }
-                DigitalServiceBroadcastSystem::DvbGeneric
-                | DigitalServiceBroadcastSystem::DvbC
-                | DigitalServiceBroadcastSystem::DvbS
-                | DigitalServiceBroadcastSystem::DvbS2
-                | DigitalServiceBroadcastSystem::DvbT => {
-                    let service_id = <u16 as OperandEncodable>::from_bytes(bytes, offset + 3)?;
-                    let original_network_id =
-                        <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)?;
-                    ServiceId::DvbData {
-                        transport_stream_id,
-                        service_id,
-                        original_network_id,
-                    }
+                System::DvbGeneric => {
+                    Id::DvbGeneric(OperandEncodable::from_bytes(bytes, offset + 1)?)
                 }
-            }
-        };
-        Ok(DigitalServiceId {
-            service_id_method,
-            digital_broadcast_system,
-            service_id,
-        })
+                System::AribCs => Id::AribCs(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::AribBs => Id::AribBs(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::AribT => Id::AribT(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::AtscCable => {
+                    Id::AtscCable(OperandEncodable::from_bytes(bytes, offset + 1)?)
+                }
+                System::AtscSatellite => {
+                    Id::AtscSatellite(OperandEncodable::from_bytes(bytes, offset + 1)?)
+                }
+                System::AtscTerrestrial => {
+                    Id::AtscTerrestrial(OperandEncodable::from_bytes(bytes, offset + 1)?)
+                }
+                System::DvbC => Id::DvbC(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::DvbS => Id::DvbS(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::DvbS2 => Id::DvbS2(OperandEncodable::from_bytes(bytes, offset + 1)?),
+                System::DvbT => Id::DvbT(OperandEncodable::from_bytes(bytes, offset + 1)?),
+            })
+        }
     }
 
     fn len(&self) -> usize {
@@ -1085,6 +1071,26 @@ impl OperandEncodable for BcdByte {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct AribData {
+    pub transport_stream_id: u16,
+    pub service_id: u16,
+    pub original_network_id: u16,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct AtscData {
+    pub transport_stream_id: u16,
+    pub program_number: u16,
+    pub reserved: u16,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct ChannelData {
+    pub channel_id: ChannelId,
+    pub reserved: u16,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ChannelId {
     pub number_format: ChannelNumberFormat,
@@ -1147,6 +1153,13 @@ impl TaggedLengthBuffer for DeviceFeatures {
     fn extra_params(&self) -> &[u8] {
         &self.device_features_n.buffer[..self.device_features_n.len]
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct DvbData {
+    pub transport_stream_id: u16,
+    pub service_id: u16,
+    pub original_network_id: u16,
 }
 
 #[bitfield(u8)]
@@ -1337,38 +1350,50 @@ pub enum RecordSource {
 impl OperandEncodable for RecordSource {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         match self {
-            RecordSource::Own => (),
-            RecordSource::DigitalService(ref service_id) => service_id.to_bytes(buf),
-            RecordSource::AnalogueService(ref service_id) => service_id.to_bytes(buf),
-            RecordSource::External(ref source) => source.to_bytes(buf),
+            RecordSource::Own => RecordSourceType::Own.to_bytes(buf),
+            RecordSource::DigitalService(ref service_id) => {
+                RecordSourceType::Digital.to_bytes(buf);
+                service_id.to_bytes(buf);
+            }
+            RecordSource::AnalogueService(ref service_id) => {
+                RecordSourceType::Analogue.to_bytes(buf);
+                service_id.to_bytes(buf);
+            }
+            RecordSource::External(ref source) => {
+                match source {
+                    ExternalSource::Plug(_) => RecordSourceType::ExternalPlug.to_bytes(buf),
+                    ExternalSource::PhysicalAddress(_) => {
+                        RecordSourceType::ExternalPhysicalAddress.to_bytes(buf)
+                    }
+                }
+                source.to_bytes(buf);
+            }
         }
     }
 
     fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        if offset < 1 {
-            return Err(Error::InvalidData);
-        }
-        let record_source_type = RecordSourceType::from_bytes(bytes, offset - 1)?;
+        let record_source_type = RecordSourceType::from_bytes(bytes, offset)?;
         match record_source_type {
             RecordSourceType::Own => Ok(RecordSource::Own),
             RecordSourceType::Digital => Ok(RecordSource::DigitalService(
-                DigitalServiceId::from_bytes(bytes, offset)?,
+                DigitalServiceId::from_bytes(bytes, offset + 1)?,
             )),
             RecordSourceType::Analogue => Ok(RecordSource::AnalogueService(
-                AnalogueServiceId::from_bytes(bytes, offset)?,
+                AnalogueServiceId::from_bytes(bytes, offset + 1)?,
             )),
             RecordSourceType::ExternalPlug | RecordSourceType::ExternalPhysicalAddress => Ok(
-                RecordSource::External(ExternalSource::from_bytes(bytes, offset)?),
+                RecordSource::External(ExternalSource::from_bytes(bytes, offset + 1)?),
             ),
         }
     }
 
     fn len(&self) -> usize {
-        match self {
+        let len = match self {
             RecordSource::Own => 0,
             RecordSource::DigitalService(ref service_id) => service_id.len(),
             RecordSource::AnalogueService(ref service_id) => service_id.len(),
             RecordSource::External(ref source) => source.len(),
-        }
+        };
+        len + 1
     }
 }
