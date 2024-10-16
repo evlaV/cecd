@@ -48,7 +48,12 @@ pub fn message(input: TokenStream) -> TokenStream {
                     }
                 });
 
-                sizes.push(quote!(+ ::core::mem::size_of::<#typename>()));
+                match typename {
+                    Type::Path(ref path) if path.path.get_ident().is_none() => {
+                        sizes.push(quote!(+ self.#name.len()))
+                    }
+                    _ => sizes.push(quote!(+ ::core::mem::size_of::<#typename>())),
+                }
                 params.push(quote! {
                     crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
                 });
@@ -158,7 +163,7 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
                         got: bytes.len() - offset,
                     })
                 } else {
-                    Ok(#ident::from_bits_retain(bytes[0]))
+                    Ok(#ident::from_bits_retain(bytes[offset]))
                 }
             }
 
@@ -179,7 +184,7 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
             }
 
             fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
-                if bytes.is_empty() {
+                if bytes.len() < offset + 1 {
                     Err(crate::Error::InsufficientLength {
                         required: 1,
                         got: bytes.len() - offset,
@@ -246,7 +251,8 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     let typename = field.ty;
                     match typename {
                         Type::Path(_) => from.push(quote! {
-                            let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)?;
+                            let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
+                            .map_err(crate::add_error_offset(offset))?;
                             offset += ::core::mem::size_of::<#typename>();
                         }),
                         Type::Array(_) => (),
