@@ -883,9 +883,81 @@ pub struct RecordStatus {
     pub status: operand::RecordStatusInfo,
 }
 
+#[cfg(test)]
+mod test_record_status {
+    use super::*;
+
+    #[test]
+    fn test_len() {
+        assert_eq!(
+            RecordStatus {
+                status: operand::RecordStatusInfo::CurrentSource
+            }
+            .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_encode() {
+        assert_eq!(
+            RecordStatus {
+                status: operand::RecordStatusInfo::CurrentSource
+            }
+            .to_bytes(),
+            &[
+                Opcode::RecordStatus as u8,
+                operand::RecordStatusInfo::CurrentSource as u8
+            ]
+        );
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordStatus as u8,
+                operand::RecordStatusInfo::CurrentSource as u8
+            ]),
+            Ok(Message::RecordStatus(RecordStatus {
+                status: operand::RecordStatusInfo::CurrentSource
+            }))
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordStatus as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: String::from("bytes")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_invalid_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordStatus as u8,
+                0xFE,
+            ]),
+            Err(Error::InvalidValueForType {
+                ty: String::from("RecordStatusInfo"),
+                value: String::from("254"),
+            })
+        );
+    }
+}
+
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RecordTvScreen;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearAnalogueTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -896,6 +968,7 @@ pub struct ClearAnalogueTimer {
     pub service_id: operand::AnalogueServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearDigitalTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -906,6 +979,7 @@ pub struct ClearDigitalTimer {
     pub service_id: operand::DigitalServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClearExtTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -916,6 +990,7 @@ pub struct ClearExtTimer {
     pub external_source: operand::ExternalSource,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAnalogueTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -926,6 +1001,7 @@ pub struct SetAnalogueTimer {
     pub service_id: operand::AnalogueServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetDigitalTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -936,6 +1012,7 @@ pub struct SetDigitalTimer {
     pub service_id: operand::DigitalServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetExtTimer {
     pub day_of_month: operand::DayOfMonth,
@@ -946,22 +1023,26 @@ pub struct SetExtTimer {
     pub external_source: operand::ExternalSource,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetTimerProgramTitle {
     pub title: operand::BufferOperand,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerClearedStatus {
     pub timer_cleared_status: operand::TimerClearedStatusData,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerStatus {
     data: u8,
     duration_available: Option<operand::Duration>,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CecVersion {
     pub version: operand::Version,
@@ -976,52 +1057,62 @@ pub struct GivePhysicalAddr;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GetMenuLanguage;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportPhysicalAddr {
     pub physical_address: PhysicalAddress,
     pub device_type: operand::PrimaryDeviceType,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetMenuLanguage {
     pub language: [u8; 3],
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckControl {
     pub mode: operand::DeckControlMode,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeckStatus {
     pub info: operand::DeckInfo,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDeckStatus {
     pub request: operand::StatusRequest,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Play {
     pub mode: operand::PlayMode,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveTunerDeviceStatus {
     pub request: operand::StatusRequest,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectAnalogueService {
     pub service_id: operand::AnalogueServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SelectDigitalService {
     pub service_id: operand::DigitalServiceId,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TunerDeviceStatus {
     pub info: operand::TunerDeviceInfo,
@@ -1033,6 +1124,7 @@ pub struct TunerStepDecrement;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TunerStepIncrement;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeviceVendorId {
     pub vendor_id: operand::VendorId,
@@ -1041,17 +1133,20 @@ pub struct DeviceVendorId {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDeviceVendorId;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommand {
     pub command: operand::BufferOperand,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorCommandWithId {
     pub vendor_id: operand::VendorId,
     pub vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonDown {
     pub rc_code: operand::BufferOperand,
@@ -1060,6 +1155,7 @@ pub struct VendorRemoteButtonDown {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VendorRemoteButtonUp;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdString {
     pub display_control: operand::DisplayControl,
@@ -1069,21 +1165,25 @@ pub struct SetOsdString {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveOsdName;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdName {
     pub name: operand::BufferOperand,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuRequest {
     pub request_type: operand::MenuRequestType,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MenuStatus {
     pub state: operand::MenuState,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct UserControlPressed {
     pub ui_command: operand::UiCommand,
@@ -1095,11 +1195,13 @@ pub struct UserControlReleased;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveDevicePowerStatus;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportPowerStatus {
     pub status: operand::PowerStatus,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FeatureAbort {
     pub opcode: Opcode,
@@ -1115,36 +1217,43 @@ pub struct GiveAudioStatus;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveSystemAudioModeStatus;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportAudioStatus {
     pub status: operand::AudioStatus,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportShortAudioDescriptor {
     pub descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestShortAudioDescriptor {
     pub descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetSystemAudioMode {
     pub status: bool,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SystemAudioModeRequest {
     pub physical_address: PhysicalAddress,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SystemAudioModeStatus {
     pub system_audio_status: bool,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetAudioRate {
     pub audio_rate: operand::AudioRate,
@@ -1170,6 +1279,7 @@ pub struct RequestArcTermination;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TerminateArc;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CdcMessage {
     pub initiator: PhysicalAddress,
@@ -1179,6 +1289,7 @@ pub struct CdcMessage {
 
 /* HDMI 2.0 */
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportFeatures {
     pub version: operand::Version,
@@ -1190,11 +1301,13 @@ pub struct ReportFeatures {
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GiveFeatures;
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RequestCurrentLatency {
     pub physical_address: PhysicalAddress,
 }
 
+// TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReportCurrentLatency {
     pub physical_address: PhysicalAddress,
