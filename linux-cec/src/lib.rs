@@ -47,7 +47,7 @@ impl<T: PartialOrd + Display> Display for Range<T> {
         match self {
             Range::AtMost(max) => f.write_fmt(format_args!("at most {max}")),
             Range::AtLeast(min) => f.write_fmt(format_args!("at least {min}")),
-            Range::Exact(x) => f.write_fmt(format_args!("x")),
+            Range::Exact(x) => f.write_fmt(format_args!("{x}")),
             Range::Only(list) => {
                 let list = list
                     .iter()
