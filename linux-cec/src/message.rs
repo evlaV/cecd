@@ -3,6 +3,8 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
 use crate::{constants, operand, PhysicalAddress, Result};
+#[cfg(test)]
+use crate::{Error, Range};
 
 pub trait MessageEncodable: Sized {
     const OPCODE: Opcode;
@@ -31,7 +33,6 @@ pub struct ActiveSource {
 #[cfg(test)]
 mod test_active_source {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -54,9 +55,10 @@ mod test_active_source {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12]),
-            Err(Error::InsufficientLength {
-                required: 3,
-                got: 2
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -76,7 +78,6 @@ pub struct InactiveSource {
 #[cfg(test)]
 mod test_inactive_source {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -99,9 +100,10 @@ mod test_inactive_source {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12]),
-            Err(Error::InsufficientLength {
-                required: 3,
-                got: 2
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -119,7 +121,6 @@ pub struct RoutingChange {
 #[cfg(test)]
 mod test_routing_change {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -156,9 +157,10 @@ mod test_routing_change {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56]),
-            Err(Error::InsufficientLength {
-                required: 5,
-                got: 4
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -172,7 +174,6 @@ pub struct RoutingInformation {
 #[cfg(test)]
 mod test_routing_information {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -197,9 +198,10 @@ mod test_routing_information {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12]),
-            Err(Error::InsufficientLength {
-                required: 3,
-                got: 2
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -213,7 +215,6 @@ pub struct SetStreamPath {
 #[cfg(test)]
 mod test_set_stream_path {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_len() {
@@ -236,9 +237,10 @@ mod test_set_stream_path {
         );
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12]),
-            Err(Error::InsufficientLength {
-                required: 3,
-                got: 2
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -258,7 +260,6 @@ pub struct RecordOn {
 #[cfg(test)]
 mod test_record_on {
     use super::*;
-    use crate::Error;
 
     #[test]
     fn test_own_len() {
@@ -296,9 +297,10 @@ mod test_record_on {
 
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RecordOn as u8,]),
-            Err(Error::InsufficientLength {
-                required: 2,
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
                 got: 1,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -383,9 +385,10 @@ mod test_record_on {
                 0x78,
                 0x9A
             ]),
-            Err(Error::InsufficientLength {
-                required: 9,
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
                 got: 8,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -455,9 +458,10 @@ mod test_record_on {
                 0x12,
                 0x34
             ]),
-            Err(Error::InsufficientLength {
-                required: 6,
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
                 got: 5,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -506,9 +510,10 @@ mod test_record_on {
                 Opcode::RecordOn as u8,
                 operand::RecordSourceType::ExternalPlug as u8,
             ]),
-            Err(Error::InsufficientLength {
-                required: 3,
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
                 got: 2,
+                quantity: String::from("bytes"),
             })
         );
     }
@@ -554,7 +559,9 @@ mod test_record_on {
                 0x34
             ]),
             Ok(Message::RecordOn(RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(0x1234))
+                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
+                    0x1234
+                ))
             }))
         );
 
@@ -564,9 +571,10 @@ mod test_record_on {
                 operand::RecordSourceType::ExternalPhysicalAddress as u8,
                 0x12,
             ]),
-            Err(Error::InsufficientLength {
-                required: 4,
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
                 got: 3,
+                quantity: String::from("bytes"),
             })
         );
     }

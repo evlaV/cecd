@@ -65,7 +65,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                 });
                 from_params.push(quote! {
                     let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
-                    .map_err(crate::add_error_offset(offset))?;
+                    .map_err(crate::Error::add_offset(offset))?;
 
                     let offset = offset + #name.len();
                 });
@@ -164,9 +164,10 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
 
             fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.len() < offset + 1 {
-                    Err(crate::Error::InsufficientLength {
-                        required: 1,
+                    Err(crate::Error::OutOfRange {
+                        expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
+                        quantity: String::from("bytes"),
                     })
                 } else {
                     Ok(#ident::from_bits_retain(bytes[offset]))
@@ -191,9 +192,10 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
 
             fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.len() < offset + 1 {
-                    Err(crate::Error::InsufficientLength {
-                        required: 1,
+                    Err(crate::Error::OutOfRange {
+                        expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
+                        quantity: String::from("bytes"),
                     })
                 } else {
                     Ok(#ident::try_from(bytes[offset])?)
@@ -218,9 +220,10 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
 
             fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.is_empty() {
-                    Err(crate::Error::InsufficientLength {
-                        required: 1,
+                    Err(crate::Error::OutOfRange {
+                        expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
+                        quantity: String::from("bytes"),
                     })
                 } else {
                     Ok(#ident::from(bytes[offset]))
@@ -258,7 +261,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     match typename {
                         Type::Path(_) => from.push(quote! {
                             let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
-                            .map_err(crate::add_error_offset(offset))?;
+                            .map_err(crate::Error::add_offset(offset))?;
 
                             let offset = offset + #name.len();
                         }),
@@ -335,7 +338,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
             Opcode::#ident => {
                 Message::#ident(
                     #ident::try_from_parameters(&bytes[1..])
-                    .map_err(crate::add_error_offset(1))?)
+                    .map_err(crate::Error::add_offset(1))?)
             }
         });
         idents.push(ident);
@@ -349,9 +352,10 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         impl Message {
             pub fn try_from_bytes(bytes: &[u8]) -> Result<Message> {
                 if bytes.is_empty() {
-                    return Err(crate::Error::InsufficientLength {
-                        required: 1,
+                    return Err(crate::Error::OutOfRange {
+                        expected: crate::Range::AtLeast(1),
                         got: 0,
+                        quantity: String::from("bytes"),
                     })
                 }
                 Ok(match Opcode::try_from_primitive(bytes[0])? {
