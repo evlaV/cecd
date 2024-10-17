@@ -137,6 +137,7 @@ impl OperandEncodable for bool {
     }
 }
 
+// TODO: Unit tests
 pub trait TaggedLengthBuffer: Sized {
     type FixedParam: Into<u8> + TryFrom<u8> + Copy;
 
@@ -190,6 +191,7 @@ where
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable + Default + Copy> {
     buffer: [T; S],
@@ -818,11 +820,109 @@ impl RecordingSequence {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct AnalogueServiceId {
     pub broadcast_type: AnalogueBroadcastType,
     pub frequency: AnalogueFrequency,
     pub broadcast_system: BroadcastSystem,
+}
+
+#[cfg(test)]
+mod test_analogue_service_id {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        let mut buf = Vec::new();
+        AnalogueServiceId {
+            broadcast_type: AnalogueBroadcastType::Terrestrial,
+            frequency: 0x1234,
+            broadcast_system: BroadcastSystem::PalBg,
+        }
+        .to_bytes(&mut buf);
+
+        assert_eq!(
+            buf,
+            &[
+                AnalogueBroadcastType::Terrestrial as u8,
+                0x12,
+                0x34,
+                BroadcastSystem::PalBg as u8
+            ]
+        );
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            AnalogueServiceId::from_bytes(
+                &[
+                    AnalogueBroadcastType::Terrestrial as u8,
+                    0x12,
+                    0x34,
+                    BroadcastSystem::PalBg as u8
+                ],
+                0
+            ),
+            Ok(AnalogueServiceId {
+                broadcast_type: AnalogueBroadcastType::Terrestrial,
+                frequency: 0x1234,
+                broadcast_system: BroadcastSystem::PalBg
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_opcodes_1() {
+        assert_eq!(
+            AnalogueServiceId::from_bytes(
+                &[AnalogueBroadcastType::Terrestrial as u8, 0x12, 0x34],
+                0
+            ),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: String::from("bytes")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_opcodes_1_and_byte() {
+        assert_eq!(
+            AnalogueServiceId::from_bytes(&[AnalogueBroadcastType::Terrestrial as u8, 0x12], 0),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_opcodes_2() {
+        assert_eq!(
+            AnalogueServiceId::from_bytes(&[AnalogueBroadcastType::Terrestrial as u8], 0),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: String::from("bytes")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_opcodes_3() {
+        assert_eq!(
+            AnalogueServiceId::from_bytes(&[], 0),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(1),
+                got: 0,
+                quantity: String::from("bytes")
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -986,12 +1086,14 @@ impl OperandEncodable for DigitalServiceId {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct Duration {
     pub hours: DurationHours,
     pub minutes: Minute,
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct Time {
     pub hour: Hour,
@@ -1055,6 +1157,7 @@ pub enum MonthOfYear {
     December = 12,
 }
 
+// TODO: Unit tests
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Operand)]
 pub struct AudioFormatIdAndCode {
@@ -1064,6 +1167,7 @@ pub struct AudioFormatIdAndCode {
     pub id: AudioFormatId,
 }
 
+// TODO: Unit tests
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Operand)]
 pub struct AudioStatus {
@@ -1106,6 +1210,7 @@ impl OperandEncodable for BcdByte {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct AribData {
     pub transport_stream_id: u16,
@@ -1113,6 +1218,7 @@ pub struct AribData {
     pub original_network_id: u16,
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct AtscData {
     pub transport_stream_id: u16,
@@ -1120,12 +1226,14 @@ pub struct AtscData {
     pub reserved: u16,
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct ChannelData {
     pub channel_id: ChannelId,
     pub reserved: u16,
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ChannelId {
     pub number_format: ChannelNumberFormat,
@@ -1166,6 +1274,7 @@ impl OperandEncodable for ChannelId {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DeviceFeatures {
     pub device_features_1: DeviceFeatures1,
@@ -1191,6 +1300,7 @@ impl TaggedLengthBuffer for DeviceFeatures {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct DvbData {
     pub transport_stream_id: u16,
@@ -1198,6 +1308,7 @@ pub struct DvbData {
     pub original_network_id: u16,
 }
 
+// TODO: Unit tests
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Operand)]
 pub struct LatencyFlags {
@@ -1208,6 +1319,7 @@ pub struct LatencyFlags {
     _reserved: usize,
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RcProfile {
     pub rc_profile_1: RcProfile1,
