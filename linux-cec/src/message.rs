@@ -368,7 +368,7 @@ mod test_record_on {
     #[test]
     fn test_decode_all_missing() {
         assert_eq!(
-            Message::try_from_bytes(&[Opcode::RecordOn as u8,]),
+            Message::try_from_bytes(&[Opcode::RecordOn as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
@@ -928,9 +928,7 @@ mod test_record_status {
     #[test]
     fn test_decode_missing_operand() {
         assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordStatus as u8,
-            ]),
+            Message::try_from_bytes(&[Opcode::RecordStatus as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
@@ -942,10 +940,7 @@ mod test_record_status {
     #[test]
     fn test_decode_invalid_operand() {
         assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordStatus as u8,
-                0xFE,
-            ]),
+            Message::try_from_bytes(&[Opcode::RecordStatus as u8, 0xFE]),
             Err(Error::InvalidValueForType {
                 ty: String::from("RecordStatusInfo"),
                 value: String::from("254"),

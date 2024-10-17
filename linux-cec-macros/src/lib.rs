@@ -64,7 +64,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                     crate::operand::OperandEncodable::to_bytes(&self.#name, &mut params);
                 });
                 from_params.push(quote! {
-                    let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
+                    let #name = <#typename as OperandEncodable>::try_from_bytes(bytes, offset)
                     .map_err(crate::Error::add_offset(offset))?;
 
                     let offset = offset + #name.len();
@@ -162,7 +162,7 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
                 <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
-            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+            fn try_from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.len() < offset + 1 {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
@@ -190,7 +190,7 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
                 <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
-            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+            fn try_from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.len() < offset + 1 {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
@@ -218,7 +218,7 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
                 <u8 as crate::operand::OperandEncodable>::to_bytes(&prim, buf);
             }
 
-            fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+            fn try_from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                 if bytes.is_empty() {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
@@ -260,7 +260,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     let typename = field.ty;
                     match typename {
                         Type::Path(_) => from.push(quote! {
-                            let #name = <#typename as OperandEncodable>::from_bytes(bytes, struct_offset + offset)
+                            let #name = <#typename as OperandEncodable>::try_from_bytes(bytes, struct_offset + offset)
                             .map_err(crate::Error::add_offset(struct_offset))?;
 
                             let struct_offset = struct_offset + #name.len();
@@ -277,7 +277,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                             #(#to)*
                         }
 
-                        fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+                        fn try_from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
                             let mut struct_offset = 0;
                             #(#from)*
                             Ok(Self {

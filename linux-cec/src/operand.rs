@@ -19,16 +19,17 @@ pub type VendorId = [u8; 3];
 
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self>;
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self>;
     fn len(&self) -> usize;
 }
 
+// TODO: Unit tests
 impl OperandEncodable for u8 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([*self]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
@@ -45,6 +46,25 @@ impl OperandEncodable for u8 {
     }
 }
 
+#[cfg(test)]
+mod test_u8 {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        let mut buf = Vec::new();
+        <u8 as OperandEncodable>::to_bytes(&0x56, &mut buf);
+
+        assert_eq!(buf, &[0x56]);
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(<u8 as OperandEncodable>::try_from_bytes(&[0x56], 0), Ok(0x56));
+    }
+}
+
+// TODO: Unit tests
 impl<T: OperandEncodable> OperandEncodable for Option<T> {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         if let Some(data) = self {
@@ -52,11 +72,11 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
             Ok(None)
         } else {
-            Ok(Some(T::from_bytes(bytes, offset)?))
+            Ok(Some(T::try_from_bytes(bytes, offset)?))
         }
     }
 
@@ -69,12 +89,13 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
     }
 }
 
+// TODO: Unit tests
 impl OperandEncodable for [u8; 3] {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend(*self);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         match bytes[offset..=offset + 2].try_into() {
             Ok(array) => Ok(array),
             Err(_) => Err(crate::Error::OutOfRange {
@@ -90,6 +111,7 @@ impl OperandEncodable for [u8; 3] {
     }
 }
 
+// TODO: Unit tests
 impl OperandEncodable for u16 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([
@@ -98,7 +120,7 @@ impl OperandEncodable for u16 {
         ]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 2 {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(2),
@@ -115,12 +137,13 @@ impl OperandEncodable for u16 {
     }
 }
 
+// TODO: Unit tests
 impl OperandEncodable for bool {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([if *self { 1 } else { 0 }]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 1 {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
@@ -171,7 +194,7 @@ where
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         let first = T::try_from(bytes[offset])?;
         let mut extra = Vec::new();
         let mut offset = offset;
@@ -207,11 +230,11 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         let mut buf = Vec::new();
         let mut offset = offset;
         while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
-            buf.push(T::from_bytes(bytes, offset)?);
+            buf.push(T::try_from_bytes(bytes, offset)?);
             offset += size_of::<T>();
         }
         buf.resize(S, T::default());
@@ -856,7 +879,7 @@ mod test_analogue_service_id {
     #[test]
     fn test_decode() {
         assert_eq!(
-            AnalogueServiceId::from_bytes(
+            AnalogueServiceId::try_from_bytes(
                 &[
                     AnalogueBroadcastType::Terrestrial as u8,
                     0x12,
@@ -876,7 +899,7 @@ mod test_analogue_service_id {
     #[test]
     fn test_decode_missing_opcodes_1() {
         assert_eq!(
-            AnalogueServiceId::from_bytes(
+            AnalogueServiceId::try_from_bytes(
                 &[AnalogueBroadcastType::Terrestrial as u8, 0x12, 0x34],
                 0
             ),
@@ -891,7 +914,7 @@ mod test_analogue_service_id {
     #[test]
     fn test_decode_missing_opcodes_1_and_byte() {
         assert_eq!(
-            AnalogueServiceId::from_bytes(&[AnalogueBroadcastType::Terrestrial as u8, 0x12], 0),
+            AnalogueServiceId::try_from_bytes(&[AnalogueBroadcastType::Terrestrial as u8, 0x12], 0),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
@@ -903,7 +926,7 @@ mod test_analogue_service_id {
     #[test]
     fn test_decode_missing_opcodes_2() {
         assert_eq!(
-            AnalogueServiceId::from_bytes(&[AnalogueBroadcastType::Terrestrial as u8], 0),
+            AnalogueServiceId::try_from_bytes(&[AnalogueBroadcastType::Terrestrial as u8], 0),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
@@ -915,7 +938,7 @@ mod test_analogue_service_id {
     #[test]
     fn test_decode_missing_opcodes_3() {
         assert_eq!(
-            AnalogueServiceId::from_bytes(&[], 0),
+            AnalogueServiceId::try_from_bytes(&[], 0),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(1),
                 got: 0,
@@ -999,7 +1022,7 @@ impl OperandEncodable for DigitalServiceId {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         use DigitalServiceBroadcastSystem as System;
         use DigitalServiceId as Id;
 
@@ -1014,9 +1037,9 @@ impl OperandEncodable for DigitalServiceId {
         let service_id_method = ServiceIdMethod::try_from_primitive(head & 1)?;
         let broadcast_system = System::try_from_primitive(head >> 1)?;
         if service_id_method == ServiceIdMethod::ByChannel {
-            let channel_id = <ChannelId as OperandEncodable>::from_bytes(bytes, offset + 1)
+            let channel_id = <ChannelId as OperandEncodable>::try_from_bytes(bytes, offset + 1)
                 .map_err(Error::add_offset(1))?;
-            let reserved = <u16 as OperandEncodable>::from_bytes(bytes, offset + 5)
+            let reserved = <u16 as OperandEncodable>::try_from_bytes(bytes, offset + 5)
                 .map_err(Error::add_offset(5))?;
             Ok(Id::Channel {
                 broadcast_system,
@@ -1026,55 +1049,55 @@ impl OperandEncodable for DigitalServiceId {
         } else {
             Ok(match broadcast_system {
                 System::AribGeneric => Id::AribGeneric(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AtscGeneric => Id::AtscGeneric(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::DvbGeneric => Id::DvbGeneric(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AribCs => Id::AribCs(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AribBs => Id::AribBs(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AribT => Id::AribT(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AtscCable => Id::AtscCable(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AtscSatellite => Id::AtscSatellite(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::AtscTerrestrial => Id::AtscTerrestrial(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::DvbC => Id::DvbC(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::DvbS => Id::DvbS(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::DvbS2 => Id::DvbS2(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
                 System::DvbT => Id::DvbT(
-                    OperandEncodable::from_bytes(bytes, offset + 1)
+                    OperandEncodable::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 ),
             })
@@ -1191,7 +1214,7 @@ impl OperandEncodable for BcdByte {
         buf.extend([u8::from(*self)]);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte> {
         if bytes.len() < 1 + offset {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
@@ -1249,7 +1272,7 @@ impl OperandEncodable for ChannelId {
         self.minor_channel.to_bytes(buf);
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() < offset + 4 {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(4),
@@ -1257,8 +1280,8 @@ impl OperandEncodable for ChannelId {
                 quantity: String::from("bytes"),
             });
         }
-        let major = <u16 as OperandEncodable>::from_bytes(bytes, offset)?;
-        let minor_channel = <u16 as OperandEncodable>::from_bytes(bytes, offset + 2)?;
+        let major = <u16 as OperandEncodable>::try_from_bytes(bytes, offset)?;
+        let minor_channel = <u16 as OperandEncodable>::try_from_bytes(bytes, offset + 2)?;
         let number_format = u8::try_from(major & 0x3F).unwrap();
         let number_format = ChannelNumberFormat::try_from_primitive(number_format)?;
         let major_channel = major >> 6;
@@ -1287,7 +1310,7 @@ impl TaggedLengthBuffer for DeviceFeatures {
     fn try_new(first: DeviceFeatures1, extra_params: &[u8]) -> Result<DeviceFeatures> {
         Ok(DeviceFeatures {
             device_features_1: first,
-            device_features_n: BoundedBufferOperand::<14, u8>::from_bytes(extra_params, 0)?,
+            device_features_n: BoundedBufferOperand::<14, u8>::try_from_bytes(extra_params, 0)?,
         })
     }
 
@@ -1332,7 +1355,7 @@ impl TaggedLengthBuffer for RcProfile {
     fn try_new(first: RcProfile1, extra_params: &[u8]) -> Result<RcProfile> {
         Ok(RcProfile {
             rc_profile_1: first,
-            rc_profile_n: BoundedBufferOperand::<14, u8>::from_bytes(extra_params, 0)?,
+            rc_profile_n: BoundedBufferOperand::<14, u8>::try_from_bytes(extra_params, 0)?,
         })
     }
 
@@ -1416,7 +1439,7 @@ impl OperandEncodable for TunerDeviceInfo {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         if bytes.len() - offset < 5 {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(5),
@@ -1431,12 +1454,12 @@ impl OperandEncodable for TunerDeviceInfo {
             5 => Ok(TunerDeviceInfo::Analogue {
                 recording,
                 tuner_display_info,
-                service_id: AnalogueServiceId::from_bytes(bytes, offset)?,
+                service_id: AnalogueServiceId::try_from_bytes(bytes, offset)?,
             }),
             8 => Ok(TunerDeviceInfo::Digital {
                 recording,
                 tuner_display_info,
-                service_id: DigitalServiceId::from_bytes(bytes, offset)?,
+                service_id: DigitalServiceId::try_from_bytes(bytes, offset)?,
             }),
             l => Err(Error::OutOfRange {
                 got: l,
@@ -1468,11 +1491,11 @@ impl OperandEncodable for ExternalSource {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         match bytes.len() - offset {
             1 => Ok(ExternalSource::Plug(bytes[offset])),
             2 => Ok(ExternalSource::PhysicalAddress(
-                <PhysicalAddress as OperandEncodable>::from_bytes(bytes, offset)?,
+                <PhysicalAddress as OperandEncodable>::try_from_bytes(bytes, offset)?,
             )),
             l => Err(Error::OutOfRange {
                 got: l,
@@ -1522,15 +1545,17 @@ impl OperandEncodable for RecordSource {
         }
     }
 
-    fn from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        let record_source_type = RecordSourceType::from_bytes(bytes, offset)?;
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+        let record_source_type = RecordSourceType::try_from_bytes(bytes, offset)?;
         match record_source_type {
             RecordSourceType::Own => Ok(RecordSource::Own),
             RecordSourceType::Digital => Ok(RecordSource::DigitalService(
-                DigitalServiceId::from_bytes(bytes, offset + 1).map_err(Error::add_offset(1))?,
+                DigitalServiceId::try_from_bytes(bytes, offset + 1)
+                    .map_err(Error::add_offset(1))?,
             )),
             RecordSourceType::Analogue => Ok(RecordSource::AnalogueService(
-                AnalogueServiceId::from_bytes(bytes, offset + 1).map_err(Error::add_offset(1))?,
+                AnalogueServiceId::try_from_bytes(bytes, offset + 1)
+                    .map_err(Error::add_offset(1))?,
             )),
             RecordSourceType::ExternalPlug => {
                 if bytes.len() < offset + 2 {
@@ -1547,7 +1572,7 @@ impl OperandEncodable for RecordSource {
             }
             RecordSourceType::ExternalPhysicalAddress => {
                 Ok(RecordSource::External(ExternalSource::PhysicalAddress(
-                    <PhysicalAddress as OperandEncodable>::from_bytes(bytes, offset + 1)
+                    <PhysicalAddress as OperandEncodable>::try_from_bytes(bytes, offset + 1)
                         .map_err(Error::add_offset(1))?,
                 )))
             }
