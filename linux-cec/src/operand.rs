@@ -1420,10 +1420,24 @@ impl OperandEncodable for RecordSource {
             RecordSourceType::Analogue => Ok(RecordSource::AnalogueService(
                 AnalogueServiceId::from_bytes(bytes, offset + 1).map_err(Error::add_offset(1))?,
             )),
-            RecordSourceType::ExternalPlug | RecordSourceType::ExternalPhysicalAddress => {
-                Ok(RecordSource::External(
-                    ExternalSource::from_bytes(bytes, offset + 1).map_err(Error::add_offset(1))?,
-                ))
+            RecordSourceType::ExternalPlug => {
+                if bytes.len() < offset + 2 {
+                    Err(crate::Error::OutOfRange {
+                        expected: crate::Range::AtLeast(2),
+                        got: bytes.len() - offset,
+                        quantity: String::from("bytes"),
+                    })
+                } else {
+                    Ok(RecordSource::External(ExternalSource::Plug(
+                        bytes[offset + 1],
+                    )))
+                }
+            }
+            RecordSourceType::ExternalPhysicalAddress => {
+                Ok(RecordSource::External(ExternalSource::PhysicalAddress(
+                    <PhysicalAddress as OperandEncodable>::from_bytes(bytes, offset + 1)
+                        .map_err(Error::add_offset(1))?,
+                )))
             }
         }
     }
