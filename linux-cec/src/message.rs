@@ -694,7 +694,7 @@ mod test_record_on {
                 0x12,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
+                expected: Range::AtLeast(5),
                 got: 4,
                 quantity: String::from("bytes"),
             })
@@ -710,7 +710,7 @@ mod test_record_on {
                 operand::AnalogueBroadcastType::Satellite as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
+                expected: Range::AtLeast(5),
                 got: 3,
                 quantity: String::from("bytes"),
             })
@@ -869,10 +869,7 @@ mod test_record_on {
     #[test]
     fn test_decoding_invalid_operand() {
         assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                0xFE,
-            ]),
+            Message::try_from_bytes(&[Opcode::RecordOn as u8, 0xFE]),
             Err(Error::InvalidValueForType {
                 ty: String::from("RecordSourceType"),
                 value: String::from("254"),

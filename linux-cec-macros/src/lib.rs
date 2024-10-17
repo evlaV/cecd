@@ -260,10 +260,10 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     let typename = field.ty;
                     match typename {
                         Type::Path(_) => from.push(quote! {
-                            let #name = <#typename as OperandEncodable>::from_bytes(bytes, offset)
-                            .map_err(crate::Error::add_offset(offset))?;
+                            let #name = <#typename as OperandEncodable>::from_bytes(bytes, struct_offset + offset)
+                            .map_err(crate::Error::add_offset(struct_offset))?;
 
-                            let offset = offset + #name.len();
+                            let struct_offset = struct_offset + #name.len();
                         }),
                         Type::Array(_) => (),
                         _ => todo!(),
@@ -278,7 +278,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         }
 
                         fn from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
-                            let mut offset = offset;
+                            let mut struct_offset = 0;
                             #(#from)*
                             Ok(Self {
                                 #(#fields),*
