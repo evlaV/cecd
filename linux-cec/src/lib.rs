@@ -120,7 +120,7 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
     fn from(val: TryFromPrimitiveError<T>) -> Error {
         Error::InvalidValueForType {
             ty: T::NAME.to_string(),
-            value: format!("{:?}", val),
+            value: format!("{:?}", val.number),
         }
     }
 }

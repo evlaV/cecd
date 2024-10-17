@@ -53,6 +53,22 @@ mod test_active_source {
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12, 0x34]),
             Ok(Message::ActiveSource(ActiveSource { address: 0x1234 }))
         );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ActiveSource as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12]),
             Err(Error::OutOfRange {
@@ -98,11 +114,27 @@ mod test_inactive_source {
             Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12, 0x34]),
             Ok(Message::InactiveSource(InactiveSource { address: 0x1234 }))
         );
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::InactiveSource as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
                 quantity: String::from("bytes"),
             })
         );
@@ -155,11 +187,51 @@ mod test_routing_change {
                 new_address: 0x5678
             }))
         );
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 4,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingChange as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
                 quantity: String::from("bytes"),
             })
         );
@@ -196,11 +268,27 @@ mod test_routing_information {
                 address: 0x1234
             }))
         );
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RoutingInformation as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
                 quantity: String::from("bytes"),
             })
         );
@@ -235,11 +323,27 @@ mod test_set_stream_path {
             Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12, 0x34]),
             Ok(Message::SetStreamPath(SetStreamPath { address: 0x1234 }))
         );
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetStreamPath as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
                 quantity: String::from("bytes"),
             })
         );
@@ -260,6 +364,18 @@ pub struct RecordOn {
 #[cfg(test)]
 mod test_record_on {
     use super::*;
+
+    #[test]
+    fn test_decode_all_missing() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RecordOn as u8,]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
 
     #[test]
     fn test_own_len() {
@@ -293,15 +409,6 @@ mod test_record_on {
             Ok(Message::RecordOn(RecordOn {
                 source: operand::RecordSource::Own
             }))
-        );
-
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RecordOn as u8,]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: String::from("bytes"),
-            })
         );
     }
 
@@ -373,7 +480,10 @@ mod test_record_on {
                 ),
             }))
         );
+    }
 
+    #[test]
+    fn test_digital_decoding_missing_bytes_1() {
         assert_eq!(
             Message::try_from_bytes(&[
                 Opcode::RecordOn as u8,
@@ -388,6 +498,111 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 8,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 7,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 6,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 5,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 4,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 3,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Digital as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(9),
+                got: 2,
                 quantity: String::from("bytes"),
             })
         );
@@ -449,7 +664,10 @@ mod test_record_on {
                 }),
             }))
         );
+    }
 
+    #[test]
+    fn test_analogue_decoding_missing_operands_1() {
         assert_eq!(
             Message::try_from_bytes(&[
                 Opcode::RecordOn as u8,
@@ -461,6 +679,54 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(6),
                 got: 5,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_1_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+                operand::AnalogueBroadcastType::Satellite as u8,
+                0x12,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
+                got: 4,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+                operand::AnalogueBroadcastType::Satellite as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
+                got: 3,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::Analogue as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
                 quantity: String::from("bytes"),
             })
         );
@@ -504,7 +770,10 @@ mod test_record_on {
                 source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
             }))
         );
+    }
 
+    #[test]
+    fn test_external_plug_decoding_missing_operand() {
         assert_eq!(
             Message::try_from_bytes(&[
                 Opcode::RecordOn as u8,
@@ -564,7 +833,10 @@ mod test_record_on {
                 ))
             }))
         );
+    }
 
+    #[test]
+    fn test_external_phys_addr_decoding_missing_byte() {
         assert_eq!(
             Message::try_from_bytes(&[
                 Opcode::RecordOn as u8,
@@ -575,6 +847,35 @@ mod test_record_on {
                 expected: Range::AtLeast(4),
                 got: 3,
                 quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                operand::RecordSourceType::ExternalPhysicalAddress as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 2,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_invalid_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::RecordOn as u8,
+                0xFE,
+            ]),
+            Err(Error::InvalidValueForType {
+                ty: String::from("RecordSourceType"),
+                value: String::from("254"),
             })
         );
     }
