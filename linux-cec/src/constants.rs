@@ -1,3 +1,5 @@
+#![allow(clippy::identity_op)]
+
 pub const CEC_MAX_MSG_SIZE: usize = 16;
 
 /* cec_msg flags field */
