@@ -462,14 +462,14 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
     }
     quote! {
         impl #ident {
-            const fn into_bits(self) -> #ty {
+            pub const fn into_bits(self) -> #ty {
                 match self {
                     #(#into_patterns,)*
                     #ident::#default(x) => x,
                 }
             }
 
-            const fn from_bits(bits: #ty) -> #ident {
+            pub const fn from_bits(bits: #ty) -> #ident {
                 match bits & ((1 << (#bits)) - 1) {
                     #(#from_patterns,)*
                     x => #ident::#default(x),

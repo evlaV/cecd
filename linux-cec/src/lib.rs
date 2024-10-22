@@ -1,6 +1,7 @@
 use nix::errno::Errno;
 use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Display, Formatter};
+use std::io;
 use std::ops::Add;
 use std::string::ToString;
 use thiserror::Error;
@@ -112,6 +113,16 @@ impl Error {
                 quantity,
             },
             _ => error,
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(val: io::Error) -> Error {
+        if let Some(raw) = val.raw_os_error() {
+            Errno::from_raw(raw).into()
+        } else {
+            todo!();
         }
     }
 }

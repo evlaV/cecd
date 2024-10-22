@@ -122,7 +122,7 @@ bitflags! {
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
 #[bits = 4]
 #[repr(u32)]
-pub enum CecInitiatorModes {
+pub(crate) enum CecInitiatorModes {
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
     ExclusiveMode = constants::CEC_MODE_EXCL_INITIATOR,
@@ -133,7 +133,7 @@ pub enum CecInitiatorModes {
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
 #[bits = 4]
 #[repr(u32)]
-pub enum CecFollowerModes {
+pub(crate) enum CecFollowerModes {
     NoFollower = constants::CEC_MODE_NO_FOLLOWER >> 4,
     Follower = constants::CEC_MODE_FOLLOWER >> 4,
     ExclusiveFollower = constants::CEC_MODE_EXCL_FOLLOWER >> 4,

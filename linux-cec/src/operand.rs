@@ -60,7 +60,10 @@ mod test_u8 {
 
     #[test]
     fn test_decode() {
-        assert_eq!(<u8 as OperandEncodable>::try_from_bytes(&[0x56], 0), Ok(0x56));
+        assert_eq!(
+            <u8 as OperandEncodable>::try_from_bytes(&[0x56], 0),
+            Ok(0x56)
+        );
     }
 }
 

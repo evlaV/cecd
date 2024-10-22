@@ -1,5 +1,6 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
+use std::path::Path;
 
 use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR};
 use crate::ioctls::{
@@ -14,6 +15,7 @@ pub struct Device {
     file: File,
 }
 
+#[derive(Debug)]
 pub enum ConnectorInfo {
     None,
     /// Tells which drm connector is associated with the CEC adapter.
@@ -30,6 +32,16 @@ pub enum ConnectorInfo {
 }
 
 impl Device {
+    pub fn open(path: impl AsRef<Path>) -> Result<Device> {
+        Ok(Device {
+            file: OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(false)
+                .open(path)?,
+        })
+    }
+
     pub(crate) fn get_capabilities(&self) -> Result<CecCapabilities> {
         let mut caps = CecCapabilities::default();
         unsafe {
