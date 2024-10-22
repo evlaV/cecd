@@ -1,19 +1,47 @@
 use nix::errno::Errno;
-use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Display, Formatter};
 use std::io;
 use std::ops::Add;
 use std::string::ToString;
 use thiserror::Error;
 
-pub(crate) mod ioctls;
+pub mod ioctls;
 
 pub mod constants;
 pub mod device;
 pub mod message;
 pub mod operand;
 
-pub type LogicalAddress = u8;
+#[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[repr(u8)]
+pub enum LogicalAddress {
+    Tv = constants::CEC_LOG_ADDR_TV,
+    RecordingDevice1 = constants::CEC_LOG_ADDR_RECORD_1,
+    RecordingDevice2 = constants::CEC_LOG_ADDR_RECORD_2,
+    Tuner1 = constants::CEC_LOG_ADDR_TUNER_1,
+    PlaybackDevice1 = constants::CEC_LOG_ADDR_PLAYBACK_1,
+    AudioSystem = constants::CEC_LOG_ADDR_AUDIOSYSTEM,
+    Tuner2 = constants::CEC_LOG_ADDR_TUNER_2,
+    Tuner3 = constants::CEC_LOG_ADDR_TUNER_3,
+    PlaybackDevice2 = constants::CEC_LOG_ADDR_PLAYBACK_2,
+    RecordingDevice3 = constants::CEC_LOG_ADDR_RECORD_3,
+    Tuner4 = constants::CEC_LOG_ADDR_TUNER_4,
+    PlaybackDevice3 = constants::CEC_LOG_ADDR_PLAYBACK_3,
+    Backup1 = constants::CEC_LOG_ADDR_BACKUP_1,
+    Backup2 = constants::CEC_LOG_ADDR_BACKUP_2,
+    Specific = constants::CEC_LOG_ADDR_SPECIFIC,
+    #[default]
+    UnregisteredOrBroadcast = constants::CEC_LOG_ADDR_UNREGISTERED,
+}
+
+impl LogicalAddress {
+    /** When used as initiator address */
+    pub const UNREGISTERED: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
+    /** When used as destination address */
+    pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
+}
+
 pub type PhysicalAddress = u16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

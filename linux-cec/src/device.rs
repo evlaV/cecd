@@ -2,17 +2,19 @@ use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
 use std::path::Path;
 
-use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR};
+use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS};
 use crate::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
     adapter_get_physical_address, adapter_set_physical_address, dequeue_event, get_mode,
     receive_message, set_mode, transmit_message, CecCapabilities, CecConnectorInfo,
     CecDrmConnectorInfo, CecEvent, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
 };
-use crate::{LogicalAddress, PhysicalAddress, Result};
+use crate::message::Message;
+use crate::{LogicalAddress, PhysicalAddress, Range, Result};
 
 pub struct Device {
     file: File,
+    tx_logical_address: LogicalAddress,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ impl Device {
                 .write(true)
                 .create(false)
                 .open(path)?,
+            tx_logical_address: LogicalAddress::UNREGISTERED,
         })
     }
 
@@ -70,9 +73,28 @@ impl Device {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut log_addrs)?;
         }
-        Ok((0..log_addrs.num_log_addrs)
-            .map(|index| log_addrs.log_addr[index as usize])
-            .collect())
+
+        let mut vec = Vec::new();
+        for index in 0..log_addrs.num_log_addrs {
+            vec.push(log_addrs.log_addr[index as usize].try_into()?);
+        }
+        Ok(vec)
+    }
+
+    pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddress]) -> Result<()> {
+        Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
+
+        todo!();
+    }
+
+    pub fn set_logical_address(&mut self, log_addr: LogicalAddress) -> Result<()> {
+        self.set_logical_addresses(&[log_addr])
+    }
+
+    pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
+        let mut raw_message =
+            CecMessage::new(self.tx_logical_address, destination).with_message(message);
+        self.tx_raw_message(&mut raw_message)
     }
 
     pub(crate) fn tx_raw_message(&self, message: &mut CecMessage) -> Result<()> {
@@ -83,7 +105,7 @@ impl Device {
     }
 
     pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<CecMessage> {
-        let mut message = CecMessage::with_timeout(timeout_ms);
+        let mut message = CecMessage::from_timeout(timeout_ms);
         unsafe {
             receive_message(self.file.as_raw_fd(), &mut message)?;
         }

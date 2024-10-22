@@ -6,10 +6,20 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ffi::c_char;
 
 use crate::constants;
-use crate::message::Opcode;
+use crate::message::{Message, Opcode};
 use crate::{LogicalAddress, PhysicalAddress};
 
 pub type Timestamp = u64;
+
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CecVendorId(u32);
+
+impl Default for CecVendorId {
+    fn default() -> Self {
+        CecVendorId(constants::CEC_VENDOR_ID_NONE)
+    }
+}
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
@@ -334,7 +344,7 @@ pub(crate) struct CecMessage {
 #[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct CecLogicalAddresses {
     /// The claimed logical addresses. Set by the driver.
-    pub log_addr: [LogicalAddress; constants::CEC_MAX_LOG_ADDRS],
+    pub log_addr: [u8; constants::CEC_MAX_LOG_ADDRS],
     /// Current logical address mask. Set by the driver.
     pub log_addr_mask: LogicalAddressMask,
     /// The CEC version that the adapter should implement. Set by the caller.
@@ -342,7 +352,7 @@ pub(crate) struct CecLogicalAddresses {
     /// How many logical addresses should be claimed. Set by the caller.
     pub num_log_addrs: u8,
     /// The vendor ID of the device. Set by the caller.
-    pub vendor_id: u32,
+    pub vendor_id: CecVendorId,
     /// Flags.
     pub flags: LogicalAddressesFlags,
     /// The OSD name of the device. Set by the caller.
@@ -455,12 +465,25 @@ impl CecMessage {
             tx_low_drive_cnt: 0,
             tx_error_cnt: 0,
         };
-        msg.msg[0] = (initiator << 4) | destination;
+        msg.msg[0] = ((initiator as u8) << 4) | (destination as u8);
 
         msg
     }
 
-    pub fn with_timeout(timeout_ms: u32) -> CecMessage {
+    pub fn with_message(mut self, message: &Message) -> CecMessage {
+        let bytes = message.to_bytes();
+        let len = usize::min(bytes.len(), 15);
+        self.len = len.try_into().unwrap();
+        self.msg[..len].copy_from_slice(&bytes[..len]);
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout_ms: u32) -> CecMessage {
+        self.timeout = timeout_ms;
+        self
+    }
+
+    pub(crate) fn from_timeout(timeout_ms: u32) -> CecMessage {
         CecMessage {
             tx_ts: 0,
             rx_ts: 0,
