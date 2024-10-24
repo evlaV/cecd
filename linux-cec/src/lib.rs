@@ -44,6 +44,21 @@ impl LogicalAddress {
 
 pub type PhysicalAddress = u16;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InitiatorMode {
+    Disabled,
+    Enabled,
+    Exclusive,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FollowerMode {
+    Disabled,
+    Enabled,
+    Exclusive,
+    // TODO: other modes
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Range<T: PartialOrd + Display> {
     AtMost(T),

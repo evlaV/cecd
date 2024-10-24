@@ -7,7 +7,7 @@ use std::ffi::c_char;
 
 use crate::constants;
 use crate::message::{Message, Opcode};
-use crate::{LogicalAddress, PhysicalAddress};
+use crate::{FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress};
 
 pub type Timestamp = u64;
 
@@ -135,9 +135,19 @@ bitflags! {
 pub(crate) enum CecInitiatorModes {
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
-    ExclusiveMode = constants::CEC_MODE_EXCL_INITIATOR,
+    ExclusiveInitiator = constants::CEC_MODE_EXCL_INITIATOR,
     #[default]
     Invalid(u32),
+}
+
+impl From<InitiatorMode> for CecInitiatorModes {
+    fn from(mode: InitiatorMode) -> CecInitiatorModes {
+        match mode {
+            InitiatorMode::Disabled => CecInitiatorModes::NoInitiator,
+            InitiatorMode::Enabled => CecInitiatorModes::Initiator,
+            InitiatorMode::Exclusive => CecInitiatorModes::ExclusiveInitiator,
+        }
+    }
 }
 
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq)]
@@ -153,6 +163,16 @@ pub(crate) enum CecFollowerModes {
     MonitorAll = constants::CEC_MODE_MONITOR_ALL >> 4,
     #[default]
     Invalid(u32),
+}
+
+impl From<FollowerMode> for CecFollowerModes {
+    fn from(mode: FollowerMode) -> CecFollowerModes {
+        match mode {
+            FollowerMode::Disabled => CecFollowerModes::NoFollower,
+            FollowerMode::Enabled => CecFollowerModes::Follower,
+            FollowerMode::Exclusive => CecFollowerModes::ExclusiveFollower,
+        }
+    }
 }
 
 #[bitfield(u32)]
@@ -472,9 +492,9 @@ impl CecMessage {
 
     pub fn with_message(mut self, message: &Message) -> CecMessage {
         let bytes = message.to_bytes();
-        let len = usize::min(bytes.len(), 15);
+        let len = usize::min(bytes.len(), 15) + 1;
         self.len = len.try_into().unwrap();
-        self.msg[..len].copy_from_slice(&bytes[..len]);
+        self.msg[1..len].copy_from_slice(&bytes[..len - 1]);
         self
     }
 

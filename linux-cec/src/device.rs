@@ -1,20 +1,25 @@
+use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
 use std::path::Path;
 
-use crate::constants::{CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS};
+use crate::constants::{
+    CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS,
+};
 use crate::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
-    adapter_get_physical_address, adapter_set_physical_address, dequeue_event, get_mode,
-    receive_message, set_mode, transmit_message, CecCapabilities, CecConnectorInfo,
-    CecDrmConnectorInfo, CecEvent, CecLogicalAddresses, CecMessage, CecMessageHandlingMode,
+    adapter_get_physical_address, adapter_set_logical_addresses, adapter_set_physical_address,
+    dequeue_event, get_mode, receive_message, set_mode, transmit_message, CecCapabilities,
+    CecConnectorInfo, CecDrmConnectorInfo, CecEvent, CecLogicalAddresses, CecMessage,
+    CecMessageHandlingMode,
 };
 use crate::message::Message;
-use crate::{LogicalAddress, PhysicalAddress, Range, Result};
+use crate::{FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result};
 
 pub struct Device {
     file: File,
     tx_logical_address: LogicalAddress,
+    internal_log_addrs: CecLogicalAddresses,
 }
 
 #[derive(Debug)]
@@ -35,14 +40,36 @@ pub enum ConnectorInfo {
 
 impl Device {
     pub fn open(path: impl AsRef<Path>) -> Result<Device> {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(false)
+            .open(path)?;
+        let mut internal_log_addrs = CecLogicalAddresses::default();
+        unsafe {
+            adapter_get_logical_addresses(file.as_raw_fd(), &mut internal_log_addrs)?;
+        }
+        let tx_logical_address = if internal_log_addrs.num_log_addrs > 0 {
+            LogicalAddress::try_from_primitive(internal_log_addrs.log_addr[0]).unwrap_or_default()
+        } else {
+            LogicalAddress::UNREGISTERED
+        };
+
         Ok(Device {
-            file: OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(false)
-                .open(path)?,
-            tx_logical_address: LogicalAddress::UNREGISTERED,
+            file,
+            tx_logical_address,
+            internal_log_addrs,
         })
+    }
+
+    pub fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
+        let mode = self.get_mode()?.with_initiator(mode.into());
+        self.set_mode(mode)
+    }
+
+    pub fn set_follower(&self, mode: FollowerMode) -> Result<()> {
+        let mode = self.get_mode()?.with_follower(mode.into());
+        self.set_mode(mode)
     }
 
     pub(crate) fn get_capabilities(&self) -> Result<CecCapabilities> {
@@ -84,7 +111,14 @@ impl Device {
     pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddress]) -> Result<()> {
         Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
 
-        todo!();
+        for (index, log_addr) in log_addrs.iter().enumerate() {
+            self.internal_log_addrs.log_addr[index] = (*log_addr).into();
+        }
+        self.internal_log_addrs.num_log_addrs = log_addrs.len().try_into().unwrap();
+        unsafe {
+            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        Ok(())
     }
 
     pub fn set_logical_address(&mut self, log_addr: LogicalAddress) -> Result<()> {
