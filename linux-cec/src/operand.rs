@@ -6,6 +6,7 @@ use bitflags::bitflags;
 use linux_cec_macros::{BitfieldSpecifier, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 use crate::{constants, Error, PhysicalAddress, Range, Result};
 
@@ -258,6 +259,21 @@ impl<const S: usize, T: OperandEncodable + Copy + Default> Default for BoundedBu
             buffer: [T::default(); S],
             len: 0,
         }
+    }
+}
+
+impl<const S: usize> FromStr for BoundedBufferOperand<S, u8> {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let bytes = s.as_bytes();
+        Range::AtMost(S).check(bytes.len(), "characters")?;
+        let mut buffer = [0; S];
+        buffer[..bytes.len()].copy_from_slice(bytes);
+        Ok(BoundedBufferOperand::<S, u8> {
+            buffer,
+            len: bytes.len(),
+        })
     }
 }
 
@@ -1590,5 +1606,41 @@ impl OperandEncodable for RecordSource {
             RecordSource::External(ref source) => source.len(),
         };
         len + 1
+    }
+}
+
+#[cfg(test)]
+mod bounded_buffer_operand {
+    use super::*;
+
+    #[test]
+    fn test_from_string_fit() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<3, u8>::from_str(s).unwrap();
+        assert_eq!(buffer.len, 3);
+        assert_eq!(&buffer.buffer, s.as_bytes());
+    }
+
+    #[test]
+    fn test_from_string_underfull() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<4, u8>::from_str(s).unwrap();
+        assert_eq!(buffer.len, 3);
+        assert_ne!(&buffer.buffer, s.as_bytes());
+        assert_eq!(&buffer.buffer, &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+    }
+
+    #[test]
+    fn test_from_string_overfull() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
+        assert_eq!(
+            buffer,
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(2),
+                got: 3,
+                quantity: String::from("characters"),
+            })
+        );
     }
 }

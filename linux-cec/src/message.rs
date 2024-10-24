@@ -1,10 +1,11 @@
 use linux_cec_macros::{Message, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::str::FromStr;
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
-use crate::{Error, Range};
+use crate::Range;
+use crate::{constants, operand, Error, PhysicalAddress, Result};
 
 pub trait MessageEncodable: Sized {
     const OPCODE: Opcode;
@@ -1024,6 +1025,16 @@ pub struct SetTimerProgramTitle {
     pub title: operand::BufferOperand,
 }
 
+impl FromStr for SetTimerProgramTitle {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(SetTimerProgramTitle {
+            title: operand::BufferOperand::from_str(s)?,
+        })
+    }
+}
+
 // TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerClearedStatus {
@@ -1164,6 +1175,16 @@ pub struct GiveOsdName;
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SetOsdName {
     pub name: operand::BufferOperand,
+}
+
+impl FromStr for SetOsdName {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(SetOsdName {
+            name: operand::BufferOperand::from_str(s)?,
+        })
+    }
 }
 
 // TODO: Unit tests
