@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
 use linux_cec::message::{self, MessageEncodable};
 use linux_cec::{InitiatorMode, LogicalAddress, Result};
+use num_enum::TryFromPrimitive;
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -19,14 +20,16 @@ enum Command {
     GetConnectorInfo,
     GetPhysicalAddress,
     GetLogicalAddress,
+    SetLogicalAddress { log_addr: u8 },
     SetOsdName { name: String },
+    SetActive,
+    Standby,
 }
 
 fn main() -> Result<()> {
     let args = Arguments::parse();
 
     let mut dev = Device::open(args.device)?;
-    let log_addr = LogicalAddress::RecordingDevice1;
 
     match args.command {
         Command::GetConnectorInfo => {
@@ -40,9 +43,23 @@ fn main() -> Result<()> {
                 println!("Logical address: {:x}", addr as u8);
             }
         }
+        Command::SetLogicalAddress { log_addr } => {
+            let log_addr = LogicalAddress::try_from_primitive(log_addr)?;
+            dev.set_logical_address(log_addr)?;
+        }
         Command::SetOsdName { name } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
             let message = message::SetOsdName::from_str(&name)?;
+            dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+        }
+        Command::SetActive => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            let message = message::RequestActiveSource {};
+            dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+        }
+        Command::Standby => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            let message = message::Standby {};
             dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
         }
     }
