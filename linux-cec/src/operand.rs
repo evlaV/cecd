@@ -373,6 +373,44 @@ pub enum ChannelNumberFormat {
 }
 
 #[repr(u8)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
+)]
+pub enum DayOfMonth {
+    Day1 = 1,
+    Day2 = 2,
+    Day3 = 3,
+    Day4 = 4,
+    Day5 = 5,
+    Day6 = 6,
+    Day7 = 7,
+    Day8 = 8,
+    Day9 = 9,
+    Day10 = 10,
+    Day11 = 11,
+    Day12 = 12,
+    Day13 = 13,
+    Day14 = 14,
+    Day15 = 15,
+    Day16 = 16,
+    Day17 = 17,
+    Day18 = 18,
+    Day19 = 19,
+    Day20 = 20,
+    Day21 = 21,
+    Day22 = 22,
+    Day23 = 23,
+    Day24 = 24,
+    Day25 = 25,
+    Day26 = 26,
+    Day27 = 27,
+    Day28 = 28,
+    Day29 = 29,
+    Day30 = 30,
+    Day31 = 31,
+}
+
+#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum DeckControlMode {
     SkipForward = constants::CEC_OP_DECK_CTL_MODE_SKIP_FWD,
@@ -504,19 +542,22 @@ pub enum MenuState {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum NotProgrammedErrorInfo {
-    NoFreeTimer = constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER,
-    DateOutOfRange = constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE,
-    RecordingSequenceError = constants::CEC_OP_PROG_ERROR_REC_SEQ_ERROR,
-    InvalidExternalPlug = constants::CEC_OP_PROG_ERROR_INV_EXT_PLUG,
-    InvalidExternalPhysicalAddress = constants::CEC_OP_PROG_ERROR_INV_EXT_PHYS_ADDR,
-    CaUnsupported = constants::CEC_OP_PROG_ERROR_CA_UNSUPP,
-    InsufficientCaEntitlements = constants::CEC_OP_PROG_ERROR_INSUF_CA_ENTITLEMENTS,
-    ResolutionUnsupported = constants::CEC_OP_PROG_ERROR_RESOLUTION_UNSUPP,
-    ParentalLock = constants::CEC_OP_PROG_ERROR_PARENTAL_LOCK,
-    ClockFailure = constants::CEC_OP_PROG_ERROR_CLOCK_FAILURE,
-    Duplicate = constants::CEC_OP_PROG_ERROR_DUPLICATE,
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
+)]
+pub enum MonthOfYear {
+    January = 1,
+    February = 2,
+    March = 3,
+    April = 4,
+    May = 5,
+    June = 6,
+    July = 7,
+    August = 8,
+    September = 9,
+    October = 10,
+    November = 11,
+    December = 12,
 }
 
 #[repr(u8)]
@@ -558,15 +599,6 @@ pub enum PrimaryDeviceType {
     Audio = constants::CEC_OP_PRIM_DEVTYPE_AUDIOSYSTEM,
     Switch = constants::CEC_OP_PRIM_DEVTYPE_SWITCH,
     Processor = constants::CEC_OP_PRIM_DEVTYPE_PROCESSOR,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum ProgrammedInfo {
-    EnoughSpace = constants::CEC_OP_PROG_INFO_ENOUGH_SPACE,
-    NotEnoughSpace = constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE,
-    MayNotBeEnoughSpace = constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE,
-    NoneAvailable = constants::CEC_OP_PROG_INFO_NONE_AVAILABLE,
 }
 
 #[repr(u8)]
@@ -1128,75 +1160,39 @@ impl OperandEncodable for DigitalServiceId {
     }
 }
 
-// TODO: Unit tests
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
-pub struct Duration {
-    pub hours: DurationHours,
-    pub minutes: Minute,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ProgrammedInfo {
+    EnoughSpace,
+    NotEnoughSpace {
+        duration_available: Option<Duration>,
+    },
+    MayNotBeEnoughSpace {
+        duration_available: Option<Duration>,
+    },
+    NoneAvailable,
 }
 
-// TODO: Unit tests
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
-pub struct Time {
-    pub hour: Hour,
-    pub minute: Minute,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum NotProgrammedErrorInfo {
+    NoFreeTimer,
+    DateOutOfRange,
+    RecordingSequenceError,
+    InvalidExternalPlug,
+    InvalidExternalPhysicalAddress,
+    CaUnsupported,
+    InsufficientCaEntitlements,
+    ResolutionUnsupported,
+    ParentalLock,
+    ClockFailure,
+    Duplicate {
+        duration_available: Option<Duration>,
+    },
 }
 
-#[repr(u8)]
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
-)]
-pub enum DayOfMonth {
-    Day1 = 1,
-    Day2 = 2,
-    Day3 = 3,
-    Day4 = 4,
-    Day5 = 5,
-    Day6 = 6,
-    Day7 = 7,
-    Day8 = 8,
-    Day9 = 9,
-    Day10 = 10,
-    Day11 = 11,
-    Day12 = 12,
-    Day13 = 13,
-    Day14 = 14,
-    Day15 = 15,
-    Day16 = 16,
-    Day17 = 17,
-    Day18 = 18,
-    Day19 = 19,
-    Day20 = 20,
-    Day21 = 21,
-    Day22 = 22,
-    Day23 = 23,
-    Day24 = 24,
-    Day25 = 25,
-    Day26 = 26,
-    Day27 = 27,
-    Day28 = 28,
-    Day29 = 29,
-    Day30 = 30,
-    Day31 = 31,
-}
-
-#[repr(u8)]
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive, TryFromPrimitive, Operand,
-)]
-pub enum MonthOfYear {
-    January = 1,
-    February = 2,
-    March = 3,
-    April = 4,
-    May = 5,
-    June = 6,
-    July = 7,
-    August = 8,
-    September = 9,
-    October = 10,
-    November = 11,
-    December = 12,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TimerProgrammedInfo {
+    Programmed(ProgrammedInfo),
+    NotProgrammed(NotProgrammedErrorInfo),
 }
 
 // TODO: Unit tests
@@ -1344,6 +1340,13 @@ impl TaggedLengthBuffer for DeviceFeatures {
 
 // TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct Duration {
+    pub hours: DurationHours,
+    pub minutes: Minute,
+}
+
+// TODO: Unit tests
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
 pub struct DvbData {
     pub transport_stream_id: u16,
     pub service_id: u16,
@@ -1414,6 +1417,200 @@ impl TryFrom<u8> for RcProfile1 {
             Ok(RcProfile1::RcProfileId(RcProfileId::try_from_primitive(
                 flags,
             )?))
+        }
+    }
+}
+
+// TODO: Unit tests
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct Time {
+    pub hour: Hour,
+    pub minute: Minute,
+}
+
+// TODO: Unit tests
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TimerStatusData {
+    pub overlap_warning: bool,
+    pub media_info: MediaInfo,
+    pub programmed_info: TimerProgrammedInfo,
+}
+
+impl OperandEncodable for TimerStatusData {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        let mut byte: u8 = 0;
+        if self.overlap_warning {
+            byte |= 1;
+        }
+        byte |= <_ as Into<u8>>::into(self.media_info) << 1;
+        let mut duration = None;
+
+        match self.programmed_info {
+            TimerProgrammedInfo::Programmed(programmed) => {
+                byte |= 8;
+                byte |= (match programmed {
+                    ProgrammedInfo::EnoughSpace => constants::CEC_OP_PROG_INFO_ENOUGH_SPACE,
+                    ProgrammedInfo::NotEnoughSpace { duration_available } => {
+                        duration = duration_available;
+                        constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE
+                    }
+                    ProgrammedInfo::MayNotBeEnoughSpace { duration_available } => {
+                        duration = duration_available;
+                        constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE
+                    }
+                    ProgrammedInfo::NoneAvailable => constants::CEC_OP_PROG_INFO_NONE_AVAILABLE,
+                }) << 4;
+            }
+            TimerProgrammedInfo::NotProgrammed(not_programmed) => {
+                byte |= (match not_programmed {
+                    NotProgrammedErrorInfo::NoFreeTimer => {
+                        constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER
+                    }
+                    NotProgrammedErrorInfo::DateOutOfRange => {
+                        constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE
+                    }
+                    NotProgrammedErrorInfo::RecordingSequenceError => {
+                        constants::CEC_OP_PROG_ERROR_REC_SEQ_ERROR
+                    }
+                    NotProgrammedErrorInfo::InvalidExternalPlug => {
+                        constants::CEC_OP_PROG_ERROR_INV_EXT_PLUG
+                    }
+                    NotProgrammedErrorInfo::InvalidExternalPhysicalAddress => {
+                        constants::CEC_OP_PROG_ERROR_INV_EXT_PHYS_ADDR
+                    }
+                    NotProgrammedErrorInfo::CaUnsupported => constants::CEC_OP_PROG_ERROR_CA_UNSUPP,
+                    NotProgrammedErrorInfo::InsufficientCaEntitlements => {
+                        constants::CEC_OP_PROG_ERROR_INSUF_CA_ENTITLEMENTS
+                    }
+                    NotProgrammedErrorInfo::ResolutionUnsupported => {
+                        constants::CEC_OP_PROG_ERROR_RESOLUTION_UNSUPP
+                    }
+                    NotProgrammedErrorInfo::ParentalLock => {
+                        constants::CEC_OP_PROG_ERROR_PARENTAL_LOCK
+                    }
+                    NotProgrammedErrorInfo::ClockFailure => {
+                        constants::CEC_OP_PROG_ERROR_CLOCK_FAILURE
+                    }
+                    NotProgrammedErrorInfo::Duplicate { duration_available } => {
+                        duration = duration_available;
+                        constants::CEC_OP_PROG_ERROR_DUPLICATE
+                    }
+                }) << 4;
+            }
+        }
+
+        buf.extend([byte]);
+        duration.to_bytes(buf);
+    }
+
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<TimerStatusData> {
+        if bytes.len() < offset + 1 {
+            return Err(crate::Error::OutOfRange {
+                expected: crate::Range::AtLeast(1),
+                got: bytes.len() - offset,
+                quantity: String::from("bytes"),
+            });
+        }
+        let byte = bytes[offset];
+        let overlap_warning = (byte & 1) == 1;
+        let media_info = MediaInfo::try_from_primitive((byte >> 1) & 3)?;
+        let programmed_info = if (byte & 8) == 8 {
+            TimerProgrammedInfo::Programmed(match byte >> 4 {
+                constants::CEC_OP_PROG_INFO_ENOUGH_SPACE => ProgrammedInfo::EnoughSpace,
+                constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE => {
+                    let duration_available = if bytes.len() < offset + 3 {
+                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    } else {
+                        None
+                    };
+                    ProgrammedInfo::NotEnoughSpace { duration_available }
+                }
+                constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE => {
+                    let duration_available = if bytes.len() < offset + 3 {
+                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    } else {
+                        None
+                    };
+                    ProgrammedInfo::MayNotBeEnoughSpace { duration_available }
+                }
+                constants::CEC_OP_PROG_INFO_NONE_AVAILABLE => ProgrammedInfo::NoneAvailable,
+                v => {
+                    return Err(Error::InvalidValueForType {
+                        ty: String::from("ProgrammedInfo"),
+                        value: v.to_string(),
+                    })
+                }
+            })
+        } else {
+            TimerProgrammedInfo::NotProgrammed(match byte >> 4 {
+                constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER => NotProgrammedErrorInfo::NoFreeTimer,
+                constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE => {
+                    NotProgrammedErrorInfo::DateOutOfRange
+                }
+                constants::CEC_OP_PROG_ERROR_REC_SEQ_ERROR => {
+                    NotProgrammedErrorInfo::RecordingSequenceError
+                }
+                constants::CEC_OP_PROG_ERROR_INV_EXT_PLUG => {
+                    NotProgrammedErrorInfo::InvalidExternalPlug
+                }
+                constants::CEC_OP_PROG_ERROR_INV_EXT_PHYS_ADDR => {
+                    NotProgrammedErrorInfo::InvalidExternalPhysicalAddress
+                }
+                constants::CEC_OP_PROG_ERROR_CA_UNSUPP => NotProgrammedErrorInfo::CaUnsupported,
+                constants::CEC_OP_PROG_ERROR_INSUF_CA_ENTITLEMENTS => {
+                    NotProgrammedErrorInfo::InsufficientCaEntitlements
+                }
+                constants::CEC_OP_PROG_ERROR_RESOLUTION_UNSUPP => {
+                    NotProgrammedErrorInfo::ResolutionUnsupported
+                }
+                constants::CEC_OP_PROG_ERROR_PARENTAL_LOCK => NotProgrammedErrorInfo::ParentalLock,
+                constants::CEC_OP_PROG_ERROR_CLOCK_FAILURE => NotProgrammedErrorInfo::ClockFailure,
+                constants::CEC_OP_PROG_ERROR_DUPLICATE => {
+                    let duration_available = if bytes.len() < offset + 3 {
+                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    } else {
+                        None
+                    };
+                    NotProgrammedErrorInfo::Duplicate { duration_available }
+                }
+                v => {
+                    return Err(Error::InvalidValueForType {
+                        ty: String::from("ProgrammedInfo"),
+                        value: v.to_string(),
+                    })
+                }
+            })
+        };
+        Ok(TimerStatusData {
+            overlap_warning,
+            media_info,
+            programmed_info,
+        })
+    }
+
+    fn len(&self) -> usize {
+        match self.programmed_info {
+            TimerProgrammedInfo::Programmed(programmed) => match programmed {
+                ProgrammedInfo::NotEnoughSpace { duration_available }
+                | ProgrammedInfo::MayNotBeEnoughSpace { duration_available } => {
+                    if duration_available.is_some() {
+                        3
+                    } else {
+                        1
+                    }
+                }
+                _ => 1,
+            },
+            TimerProgrammedInfo::NotProgrammed(not_programmed) => match not_programmed {
+                NotProgrammedErrorInfo::Duplicate { duration_available } => {
+                    if duration_available.is_some() {
+                        3
+                    } else {
+                        1
+                    }
+                }
+                _ => 1,
+            },
         }
     }
 }

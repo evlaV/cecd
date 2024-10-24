@@ -1044,8 +1044,7 @@ pub struct TimerClearedStatus {
 // TODO: Unit tests
 #[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TimerStatus {
-    data: u8,
-    duration_available: Option<operand::Duration>,
+    data: operand::TimerStatusData,
 }
 
 // TODO: Unit tests
