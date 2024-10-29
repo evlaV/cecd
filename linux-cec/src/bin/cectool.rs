@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
 use linux_cec::message::{self, MessageEncodable};
+use linux_cec::operand::UiCommand;
 use linux_cec::{InitiatorMode, LogicalAddress, Result};
 use num_enum::TryFromPrimitive;
 use std::str::FromStr;
@@ -24,6 +25,7 @@ enum Command {
     SetOsdName { name: String },
     SetActive,
     Standby,
+    SendKey { key: UiCommand },
 }
 
 fn main() -> Result<()> {
@@ -44,6 +46,7 @@ fn main() -> Result<()> {
             }
         }
         Command::SetLogicalAddress { log_addr } => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
             let log_addr = LogicalAddress::try_from_primitive(log_addr)?;
             dev.set_logical_address(log_addr)?;
         }
@@ -61,6 +64,15 @@ fn main() -> Result<()> {
             dev.set_initiator(InitiatorMode::Enabled)?;
             let message = message::Standby {};
             dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+        }
+        Command::SendKey { key } => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            let message = message::UserControlPressed {
+                ui_command: key
+            };
+            dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;
+            let message = message::UserControlReleased {};
+            dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;
         }
     }
     Ok(())

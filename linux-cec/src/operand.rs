@@ -7,6 +7,7 @@ use linux_cec_macros::{BitfieldSpecifier, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 use std::str::FromStr;
+use strum::{Display, EnumString};
 
 use crate::{constants, Error, PhysicalAddress, Range, Result};
 
@@ -701,7 +702,10 @@ pub enum UiBroadcastType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand, Display, EnumString,
+)]
+#[strum(serialize_all = "kebab-case")]
 pub enum UiCommand {
     Select = constants::CEC_OP_UI_CMD_SELECT,
     Up = constants::CEC_OP_UI_CMD_UP,
@@ -720,17 +724,29 @@ pub enum UiCommand {
     MediaTopMenu = constants::CEC_OP_UI_CMD_MEDIA_TOP_MENU,
     MediaContextSensitiveMenu = constants::CEC_OP_UI_CMD_MEDIA_CONTEXT_SENSITIVE_MENU,
     NumberEntryMode = constants::CEC_OP_UI_CMD_NUMBER_ENTRY_MODE,
+    #[strum(serialize = "11")]
     Number11 = constants::CEC_OP_UI_CMD_NUMBER_11,
+    #[strum(serialize = "12")]
     Number12 = constants::CEC_OP_UI_CMD_NUMBER_12,
+    #[strum(serialize = "0", serialize = "10")]
     Number0OrNumber10 = constants::CEC_OP_UI_CMD_NUMBER_0_OR_NUMBER_10,
+    #[strum(serialize = "1")]
     Number1 = constants::CEC_OP_UI_CMD_NUMBER_1,
+    #[strum(serialize = "2")]
     Number2 = constants::CEC_OP_UI_CMD_NUMBER_2,
+    #[strum(serialize = "3")]
     Number3 = constants::CEC_OP_UI_CMD_NUMBER_3,
+    #[strum(serialize = "4")]
     Number4 = constants::CEC_OP_UI_CMD_NUMBER_4,
+    #[strum(serialize = "5")]
     Number5 = constants::CEC_OP_UI_CMD_NUMBER_5,
+    #[strum(serialize = "6")]
     Number6 = constants::CEC_OP_UI_CMD_NUMBER_6,
+    #[strum(serialize = "7")]
     Number7 = constants::CEC_OP_UI_CMD_NUMBER_7,
+    #[strum(serialize = "8")]
     Number8 = constants::CEC_OP_UI_CMD_NUMBER_8,
+    #[strum(serialize = "9")]
     Number9 = constants::CEC_OP_UI_CMD_NUMBER_9,
     Dot = constants::CEC_OP_UI_CMD_DOT,
     Enter = constants::CEC_OP_UI_CMD_ENTER,
@@ -785,9 +801,13 @@ pub enum UiCommand {
     PowerToggleFunction = constants::CEC_OP_UI_CMD_POWER_TOGGLE_FUNCTION,
     PowerOffFunction = constants::CEC_OP_UI_CMD_POWER_OFF_FUNCTION,
     PowerOnFunction = constants::CEC_OP_UI_CMD_POWER_ON_FUNCTION,
+    #[strum(serialize = "f1", serialize = "blue")]
     F1Blue = constants::CEC_OP_UI_CMD_F1_BLUE,
+    #[strum(serialize = "f2", serialize = "red")]
     F2Red = constants::CEC_OP_UI_CMD_F2_RED,
+    #[strum(serialize = "f3", serialize = "green")]
     F3Green = constants::CEC_OP_UI_CMD_F3_GREEN,
+    #[strum(serialize = "f4", serialize = "yellow")]
     F4Yellow = constants::CEC_OP_UI_CMD_F4_YELLOW,
     F5 = constants::CEC_OP_UI_CMD_F5,
     Data = constants::CEC_OP_UI_CMD_DATA,
