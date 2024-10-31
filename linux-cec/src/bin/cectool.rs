@@ -67,9 +67,7 @@ fn main() -> Result<()> {
         }
         Command::SendKey { key } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = message::UserControlPressed {
-                ui_command: key
-            };
+            let message = message::UserControlPressed { ui_command: key };
             dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;
             let message = message::UserControlReleased {};
             dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;

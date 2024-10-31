@@ -14,7 +14,10 @@ use crate::ioctls::{
     CecMessageHandlingMode,
 };
 use crate::message::Message;
-use crate::{FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result};
+use crate::{Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result};
+
+#[cfg(feature = "async")]
+pub use crate::async_support::Device as AsyncDevice;
 
 pub struct Device {
     file: File,
@@ -45,21 +48,7 @@ impl Device {
             .write(true)
             .create(false)
             .open(path)?;
-        let mut internal_log_addrs = CecLogicalAddresses::default();
-        unsafe {
-            adapter_get_logical_addresses(file.as_raw_fd(), &mut internal_log_addrs)?;
-        }
-        let tx_logical_address = if internal_log_addrs.num_log_addrs > 0 {
-            LogicalAddress::try_from_primitive(internal_log_addrs.log_addr[0]).unwrap_or_default()
-        } else {
-            LogicalAddress::UNREGISTERED
-        };
-
-        Ok(Device {
-            file,
-            tx_logical_address,
-            internal_log_addrs,
-        })
+        Device::try_from(file)
     }
 
     pub fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
@@ -191,5 +180,27 @@ impl Device {
                 data: unsafe { conn_info.data.raw },
             }),
         }
+    }
+}
+
+impl TryFrom<File> for Device {
+    type Error = Error;
+
+    fn try_from(file: File) -> Result<Device> {
+        let mut internal_log_addrs = CecLogicalAddresses::default();
+        unsafe {
+            adapter_get_logical_addresses(file.as_raw_fd(), &mut internal_log_addrs)?;
+        }
+        let tx_logical_address = if internal_log_addrs.num_log_addrs > 0 {
+            LogicalAddress::try_from_primitive(internal_log_addrs.log_addr[0]).unwrap_or_default()
+        } else {
+            LogicalAddress::UNREGISTERED
+        };
+
+        Ok(Device {
+            file,
+            tx_logical_address,
+            internal_log_addrs,
+        })
     }
 }

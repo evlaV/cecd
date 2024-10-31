@@ -13,6 +13,9 @@ pub mod device;
 pub mod message;
 pub mod operand;
 
+#[cfg(feature = "async")]
+mod async_support;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum LogicalAddress {
@@ -141,6 +144,8 @@ pub enum Error {
     InvalidData,
     #[error("Errno {0}")]
     Errno(#[from] Errno),
+    #[error("Unknown error: {0}")]
+    UnknownError(String),
 }
 
 impl Error {

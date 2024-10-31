@@ -3,6 +3,10 @@ name = "linux-cec"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["async"]
+async = ["dep:tokio"]
+
 [lib]
 
 [[bin]]
@@ -17,3 +21,4 @@ linux-cec-macros = { path = "../linux-cec-macros" }
 num_enum = "0.7"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0"
+tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"], optional = true }
