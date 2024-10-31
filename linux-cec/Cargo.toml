@@ -4,18 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["async"]
+default = ["async", "cectool"]
 async = ["dep:tokio"]
+cectool = ["dep:clap"]
 
 [lib]
 
 [[bin]]
 name = "cectool"
+required-features = ["cectool"]
 
 [dependencies]
 bitfield-struct = "0.9"
 bitflags = "2.6"
-clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
+clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"], optional = true }
 nix = { version = "0.29", default-features = false, features = ["ioctl"] }
 linux-cec-macros = { path = "../linux-cec-macros" }
 num_enum = "0.7"
