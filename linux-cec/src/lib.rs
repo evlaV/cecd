@@ -1,3 +1,4 @@
+use linux_cec_sys::constants;
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Display, Formatter};
@@ -8,13 +9,14 @@ use thiserror::Error;
 
 pub mod ioctls;
 
-pub mod constants;
 pub mod device;
 pub mod message;
 pub mod operand;
 
 #[cfg(feature = "async")]
 mod async_support;
+
+pub use linux_cec_sys::PhysicalAddress;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
@@ -44,8 +46,6 @@ impl LogicalAddress {
     /** When used as destination address */
     pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
 }
-
-pub type PhysicalAddress = u16;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InitiatorMode {

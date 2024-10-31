@@ -556,6 +556,7 @@ dependencies = [
  "bitflags",
  "clap",
  "linux-cec-macros",
+ "linux-cec-sys",
  "nix",
  "num_enum",
  "strum",
@@ -569,6 +570,14 @@ version = "0.1.0"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "linux-cec-sys"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "nix",
 ]
 
 [[package]]
