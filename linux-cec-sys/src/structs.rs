@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 
 use bitflags::bitflags;
-use std::ffi::c_char;
+use core::ffi::c_char;
 
 use crate::constants::*;
 use crate::{LogicalAddress, PhysicalAddress, Timestamp};
@@ -29,7 +29,7 @@ pub struct cec_msg {
     /// sent. This can be used to track replies to previously sent messages.
     pub sequence: u32,
     /// Set to 0.
-    pub flags: cec_msg_flags,
+    pub flags: CEC_MSG_FL,
     /// The message payload.
     pub msg: [u8; CEC_MAX_MSG_SIZE],
     /**
@@ -52,9 +52,9 @@ pub struct cec_msg {
      */
     pub reply: u8,
     /// The message receive status bits. Set by the driver.
-    pub rx_status: cec_rx_status,
+    pub rx_status: CEC_RX_STATUS,
     /// The message transmit status bits. Set by the driver.
-    pub tx_status: cec_tx_status,
+    pub tx_status: CEC_TX_STATUS,
     /// The number of 'Arbitration Lost' events. Set by the driver.
     pub tx_arb_lost_cnt: u8,
     /// The number of 'Not Acknowledged' events. Set by the driver.
@@ -66,16 +66,18 @@ pub struct cec_msg {
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_MSG_FL_* constants
     #[derive(Debug, Copy, Clone, Default)]
-    pub struct cec_msg_flags: u32 {
+    pub struct CEC_MSG_FL: u32 {
         const REPLY_TO_FOLLOWERS = CEC_MSG_FL_REPLY_TO_FOLLOWERS;
         const RAW = CEC_MSG_FL_RAW;
     }
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_TX_STATUS_* constants
     #[derive(Debug, Copy, Clone)]
-    pub struct cec_tx_status: u8 {
+    pub struct CEC_TX_STATUS: u8 {
         const OK = CEC_TX_STATUS_OK;
         const ARB_LOST = CEC_TX_STATUS_ARB_LOST;
         const NACK = CEC_TX_STATUS_NACK;
@@ -88,8 +90,9 @@ bitflags! {
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_RX_STATUS_* constants
     #[derive(Debug, Copy, Clone)]
-    pub struct cec_rx_status: u8 {
+    pub struct CEC_RX_STATUS: u8 {
         const OK = CEC_RX_STATUS_OK;
         const TIMEOUT = CEC_RX_STATUS_TIMEOUT;
         const FEATURE_ABORT = CEC_RX_STATUS_FEATURE_ABORT;
@@ -137,11 +140,11 @@ impl cec_msg {
             len: 1,
             timeout: 0,
             sequence: 0,
-            flags: cec_msg_flags::empty(),
+            flags: CEC_MSG_FL::empty(),
             msg: [0; 16],
             reply: 0,
-            rx_status: cec_rx_status::empty(),
-            tx_status: cec_tx_status::empty(),
+            rx_status: CEC_RX_STATUS::empty(),
+            tx_status: CEC_TX_STATUS::empty(),
             tx_arb_lost_cnt: 0,
             tx_nack_cnt: 0,
             tx_low_drive_cnt: 0,
@@ -164,11 +167,11 @@ impl cec_msg {
             len: 0,
             timeout: timeout_ms,
             sequence: 0,
-            flags: cec_msg_flags::empty(),
+            flags: CEC_MSG_FL::empty(),
             msg: [0; 16],
             reply: 0,
-            rx_status: cec_rx_status::empty(),
-            tx_status: cec_tx_status::empty(),
+            rx_status: CEC_RX_STATUS::empty(),
+            tx_status: CEC_TX_STATUS::empty(),
             tx_arb_lost_cnt: 0,
             tx_nack_cnt: 0,
             tx_low_drive_cnt: 0,
@@ -201,22 +204,23 @@ impl cec_msg {
     }
 
     pub fn status_is_ok(&self) -> bool {
-        if !self.tx_status.is_empty() && !self.tx_status.contains(cec_tx_status::OK) {
+        if !self.tx_status.is_empty() && !self.tx_status.contains(CEC_TX_STATUS::OK) {
             return false;
         }
-        if !self.rx_status.is_empty() && !self.rx_status.contains(cec_rx_status::OK) {
+        if !self.rx_status.is_empty() && !self.rx_status.contains(CEC_RX_STATUS::OK) {
             return false;
         }
         if self.tx_status.is_empty() && self.rx_status.is_empty() {
             return false;
         }
-        !self.rx_status.contains(cec_rx_status::FEATURE_ABORT)
+        !self.rx_status.contains(CEC_RX_STATUS::FEATURE_ABORT)
     }
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_LOG_ADDR_MASK_* constants
     #[derive(Debug, Copy, Clone, Default)]
-    pub struct cec_log_addr_mask: u16 {
+    pub struct CEC_LOG_ADDR_MASK: u16 {
         const TV = CEC_LOG_ADDR_MASK_TV;
         const MASK_RECORD = CEC_LOG_ADDR_MASK_RECORD;
         const TUNER = CEC_LOG_ADDR_MASK_TUNER;
@@ -229,8 +233,9 @@ bitflags! {
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_CAP_* constants
     #[derive(Debug, Copy, Clone, Default)]
-    pub struct cec_cap_mask: u32 {
+    pub struct CEC_CAP: u32 {
         /// Userspace has to configure the physical address
         const PHYS_ADDR = CEC_CAP_PHYS_ADDR;
         /// Userspace has to configure the logical addresses
@@ -263,7 +268,7 @@ pub struct cec_caps {
     /// Number of available logical addresses.
     pub available_log_addrs: u32,
     /// Capabilities of the CEC adapter.
-    pub capabilities: cec_cap_mask,
+    pub capabilities: CEC_CAP,
     /// version of the CEC adapter framework.
     pub version: u32,
 }
@@ -275,7 +280,7 @@ pub struct cec_log_addrs {
     /// The claimed logical addresses. Set by the driver.
     pub log_addr: [u8; CEC_MAX_LOG_ADDRS],
     /// Current logical address mask. Set by the driver.
-    pub log_addr_mask: cec_log_addr_mask,
+    pub log_addr_mask: CEC_LOG_ADDR_MASK,
     /// The CEC version that the adapter should implement. Set by the caller.
     pub cec_version: u8,
     /// How many logical addresses should be claimed. Set by the caller.
@@ -283,7 +288,7 @@ pub struct cec_log_addrs {
     /// The vendor ID of the device. Set by the caller.
     pub vendor_id: u32,
     /// Flags.
-    pub flags: cec_log_addrs_flags,
+    pub flags: CEC_LOG_ADDRS_FL,
     /// The OSD name of the device. Set by the caller.
     pub osd_name: [c_char; 15],
     /// The primary device type for each logical address. Set by the caller.
@@ -329,7 +334,7 @@ impl cec_log_addrs {
         self.num_log_addrs == 1
             && self.log_addr[0] == CEC_LOG_ADDR_UNREGISTERED
             && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_SWITCH
-            && !self.flags.contains(cec_log_addrs_flags::CDC_ONLY)
+            && !self.flags.contains(CEC_LOG_ADDRS_FL::CDC_ONLY)
     }
 
     pub fn is_cdc_only(&self) -> bool {
@@ -340,13 +345,14 @@ impl cec_log_addrs {
         self.num_log_addrs == 1
             && self.log_addr[0] == CEC_LOG_ADDR_UNREGISTERED
             && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_SWITCH
-            && self.flags.contains(cec_log_addrs_flags::CDC_ONLY)
+            && self.flags.contains(CEC_LOG_ADDRS_FL::CDC_ONLY)
     }
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_LOG_ADDRS_FL_* constants
     #[derive(Debug, Copy, Clone, Default)]
-    pub struct cec_log_addrs_flags: u32 {
+    pub struct CEC_LOG_ADDRS_FL: u32 {
         /// Allow a fallback to unregistered
         const ALLOW_UNREG_FALLBACK = CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK;
         /// Passthrough RC messages to the input subsystem
@@ -394,8 +400,9 @@ impl Default for cec_connector_info {
 }
 
 bitflags! {
+    /// A bitflag struct for values of the CEC_EVENT_FL_* constants
     #[derive(Debug, Copy, Clone, Default)]
-    pub struct cec_event_flags: u32 {
+    pub struct CEC_EVENT_FL: u32 {
         const INITIAL_STATE = CEC_EVENT_FL_INITIAL_STATE;
         const DROPPED_EVENTS = CEC_EVENT_FL_DROPPED_EVENTS;
     }
@@ -408,7 +415,7 @@ pub struct cec_event_state_change {
     /// The current physical address
     pub phys_addr: PhysicalAddress,
     /// The current logical address mask
-    pub log_addr_mask: cec_log_addr_mask,
+    pub log_addr_mask: CEC_LOG_ADDR_MASK,
     /** If non-zero, then HDMI connector information is available.
      *  This field is only valid if CEC_CAP_CONNECTOR_INFO is set. If that
      *  capability is set and @have_conn_info is zero, then that indicates
@@ -447,7 +454,7 @@ pub struct cec_event {
     /// The event.
     pub event: u32,
     /// Event flags.
-    pub flags: cec_event_flags,
+    pub flags: CEC_EVENT_FL,
     pub data: cec_event_union,
 }
 
@@ -456,7 +463,7 @@ impl Default for cec_event {
         cec_event {
             ts: 0,
             event: 0,
-            flags: cec_event_flags::default(),
+            flags: CEC_EVENT_FL::default(),
             data: cec_event_union { raw: [0; 16] },
         }
     }
