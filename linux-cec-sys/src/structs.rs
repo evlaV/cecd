@@ -150,7 +150,7 @@ impl cec_msg {
             tx_low_drive_cnt: 0,
             tx_error_cnt: 0,
         };
-        msg.msg[0] = ((initiator as u8) << 4) | (destination as u8);
+        msg.msg[0] = (initiator << 4) | destination;
 
         msg
     }

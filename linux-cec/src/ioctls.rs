@@ -3,7 +3,6 @@ use linux_cec_macros::BitfieldSpecifier;
 use linux_cec_sys::constants;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::message::{Message, Opcode};
 use crate::{FollowerMode, InitiatorMode};
 
 pub use linux_cec_sys::Timestamp;
