@@ -4,14 +4,31 @@ use std::thread::{spawn, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::ConnectorInfo;
+use crate::device::{ConnectorInfo, Envelope};
 use crate::message::Message;
 use crate::{device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result};
+
+macro_rules! relay {
+    ($self:expr, $message:ident) => {
+        let (tx, rx) = oneshot::channel();
+        $self.tx
+            .send(DeviceCommand::$message(tx))?;
+        rx.await?
+    };
+
+    ($self:expr, $message:ident => $($args:expr),*) => {
+        let (tx, rx) = oneshot::channel();
+        $self.tx
+            .send(DeviceCommand::$message($($args,)* tx))?;
+        rx.await?
+    };
+}
 
 type ResultChannel<T> = oneshot::Sender<Result<T>>;
 
 enum DeviceCommand {
     Drop,
+    SetBlocking(bool, ResultChannel<()>),
     SetInitiator(InitiatorMode, ResultChannel<()>),
     SetFollower(FollowerMode, ResultChannel<()>),
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
@@ -20,6 +37,7 @@ enum DeviceCommand {
     SetLogicalAddresses(Vec<LogicalAddress>, ResultChannel<()>),
     SetLogicalAddress(LogicalAddress, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
+    ReceiveMessage(u32, ResultChannel<Envelope>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
 }
 
@@ -60,62 +78,48 @@ impl Device {
         })
     }
 
+    pub async fn set_blocking(&self, blocking: bool) -> Result<()> {
+        relay!{ self, SetBlocking => blocking }
+    }
+
     pub async fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(DeviceCommand::SetInitiator(mode, tx))?;
-        rx.await?
+        relay!{ self, SetInitiator => mode }
     }
 
     pub async fn set_follower(&self, mode: FollowerMode) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(DeviceCommand::SetFollower(mode, tx))?;
-        rx.await?
+        relay!{ self, SetFollower => mode }
     }
 
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(DeviceCommand::GetPhysicalAddress(tx))?;
-        rx.await?
+        relay!{ self, GetPhysicalAddress }
     }
 
     pub async fn set_physical_address(&self, phys_addr: PhysicalAddress) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(DeviceCommand::SetPhysicalAddress(phys_addr, tx))?;
-        rx.await?
+        relay!{ self, SetPhysicalAddress => phys_addr }
     }
 
     pub async fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(DeviceCommand::GetLogicalAddresses(tx))?;
-        rx.await?
+        relay!{ self, GetLogicalAddresses }
     }
 
     pub async fn set_logical_addresses(&self, log_addrs: &[LogicalAddress]) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(DeviceCommand::SetLogicalAddresses(Vec::from(log_addrs), tx))?;
-        rx.await?
+        relay!{ self, SetLogicalAddresses => Vec::from(log_addrs) }
     }
 
     pub async fn set_logical_address(&self, log_addr: LogicalAddress) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(DeviceCommand::SetLogicalAddress(log_addr, tx))?;
-        rx.await?
+        relay!{ self, SetLogicalAddress => log_addr }
     }
 
     pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(DeviceCommand::TransmitMessage(*message, destination, tx))?;
-        rx.await?
+        relay!{ self, TransmitMessage => *message, destination }
+    }
+
+    pub async fn rx_message(&self, timeout_ms: u32) -> Result<Envelope> {
+        relay!{ self, ReceiveMessage => timeout_ms }
     }
 
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(DeviceCommand::GetConnectorInfo(tx))?;
-        rx.await?
+        relay!{ self, GetConnectorInfo }
     }
 
     pub async fn close(mut self) -> Result<()> {
@@ -152,6 +156,9 @@ impl DeviceThread {
         loop {
             match self.rx.recv()? {
                 DeviceCommand::Drop => break,
+                DeviceCommand::SetBlocking(block, rx) => {
+                    let _ = rx.send(self.device.set_blocking(block));
+                }
                 DeviceCommand::SetInitiator(mode, rx) => {
                     let _ = rx.send(self.device.set_initiator(mode));
                 }
@@ -175,6 +182,9 @@ impl DeviceThread {
                 }
                 DeviceCommand::TransmitMessage(message, dest, rx) => {
                     let _ = rx.send(self.device.tx_message(&message, dest));
+                }
+                DeviceCommand::ReceiveMessage(timeout_ms, rx) => {
+                    let _ = rx.send(self.device.rx_message(timeout_ms));
                 }
                 DeviceCommand::GetConnectorInfo(rx) => {
                     let _ = rx.send(self.device.get_connector_info());
