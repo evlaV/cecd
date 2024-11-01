@@ -286,7 +286,7 @@ pub struct cec_log_addrs {
     /// How many logical addresses should be claimed. Set by the caller.
     pub num_log_addrs: u8,
     /// The vendor ID of the device. Set by the caller.
-    pub vendor_id: u32,
+    pub vendor_id: VendorId,
     /// Flags.
     pub flags: CEC_LOG_ADDRS_FL,
     /// The OSD name of the device. Set by the caller.
@@ -466,5 +466,16 @@ impl Default for cec_event {
             flags: CEC_EVENT_FL::default(),
             data: cec_event_union { raw: [0; 16] },
         }
+    }
+}
+
+/// Convenience type for the non-zero null vendor ID
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct VendorId(u32);
+
+impl Default for VendorId {
+    fn default() -> Self {
+        VendorId(CEC_VENDOR_ID_NONE)
     }
 }

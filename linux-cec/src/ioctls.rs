@@ -7,16 +7,6 @@ use crate::{FollowerMode, InitiatorMode};
 
 pub use linux_cec_sys::Timestamp;
 
-#[repr(transparent)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct CecVendorId(u32);
-
-impl Default for CecVendorId {
-    fn default() -> Self {
-        CecVendorId(constants::CEC_VENDOR_ID_NONE)
-    }
-}
-
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
 pub enum CecEventType {
