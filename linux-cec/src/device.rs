@@ -5,7 +5,9 @@ use linux_cec_sys::ioctls::{
 };
 use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
+    CEC_RX_STATUS,
 };
+use linux_cec_sys::Timestamp;
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
@@ -26,6 +28,13 @@ pub struct Device {
     file: File,
     tx_logical_address: LogicalAddress,
     internal_log_addrs: cec_log_addrs,
+}
+
+pub struct Envelope {
+    message: Message,
+    initiator: LogicalAddress,
+    destination: LogicalAddress,
+    timestamp: Timestamp,
 }
 
 #[derive(Debug)]
@@ -139,6 +148,24 @@ impl Device {
             transmit_message(self.file.as_raw_fd(), message)?;
         }
         Ok(())
+    }
+
+    pub fn rx_message(&self, timeout_ms: u32) -> Result<Envelope> {
+        let message = self.rx_raw_message(timeout_ms)?;
+        if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
+            return Err(Error::Timeout);
+        }
+        if message.len > 15 {
+            return Err(Error::InvalidData);
+        }
+        let bytes = &message.msg[1..message.len as usize - 1];
+
+        Ok(Envelope {
+            message: Message::try_from_bytes(bytes)?,
+            initiator: LogicalAddress::try_from_primitive(message.msg[0] >> 4)?,
+            destination: LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?,
+            timestamp: message.rx_ts,
+        })
     }
 
     pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<cec_msg> {

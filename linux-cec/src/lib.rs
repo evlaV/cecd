@@ -142,6 +142,8 @@ pub enum Error {
     InvalidValueForType { ty: String, value: String },
     #[error("The provided data was not valid")]
     InvalidData,
+    #[error("A timeout occurred")]
+    Timeout,
     #[error("Errno {0}")]
     Errno(#[from] Errno),
     #[error("Unknown error: {0}")]
