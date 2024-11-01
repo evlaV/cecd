@@ -6,6 +6,7 @@ use linux_cec_sys::ioctls::{
 use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
 };
+use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
@@ -51,6 +52,14 @@ impl Device {
             .create(false)
             .open(path)?;
         Device::try_from(file)
+    }
+
+    pub fn set_blocking(&self, blocking: bool) -> Result<()> {
+        let rawfd = self.file.as_raw_fd();
+        let mut flags = OFlag::from_bits_retain(fcntl(rawfd, FcntlArg::F_GETFL)?);
+        flags.set(OFlag::O_NONBLOCK, !blocking);
+        fcntl(rawfd, FcntlArg::F_SETFL(flags))?;
+        Ok(())
     }
 
     pub fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
