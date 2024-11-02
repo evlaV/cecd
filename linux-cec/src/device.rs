@@ -9,9 +9,10 @@ use linux_cec_sys::structs::{
 };
 use linux_cec_sys::Timestamp;
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
-use std::os::fd::AsRawFd;
+use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::path::Path;
 
 use crate::constants::{
@@ -35,6 +36,10 @@ pub struct Envelope {
     initiator: LogicalAddress,
     destination: LogicalAddress,
     timestamp: Timestamp,
+}
+
+pub struct DevicePoller {
+    fd: OwnedFd,
 }
 
 #[derive(Debug)]
@@ -61,6 +66,12 @@ impl Device {
             .create(false)
             .open(path)?;
         Device::try_from(file)
+    }
+
+    pub fn get_poller(&self) -> Result<DevicePoller> {
+        Ok(DevicePoller {
+            fd: self.file.as_fd().try_clone_to_owned()?,
+        })
     }
 
     pub fn set_blocking(&self, blocking: bool) -> Result<()> {
@@ -243,5 +254,26 @@ impl TryFrom<File> for Device {
             tx_logical_address,
             internal_log_addrs,
         })
+    }
+}
+
+impl DevicePoller {
+    pub fn poll_events(&self, timeout: PollTimeout) -> Result<()> {
+        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI);
+        DevicePoller::do_poll(pollfd, timeout)
+    }
+
+    pub fn poll_messages(&self, timeout: PollTimeout) -> Result<()> {
+        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLIN);
+        DevicePoller::do_poll(pollfd, timeout)
+    }
+
+    fn do_poll(pollfd: PollFd, timeout: PollTimeout) -> Result<()> {
+        let done = poll(&mut [pollfd], timeout)?;
+
+        if done == 0 {
+            return Err(Error::Timeout);
+        }
+        Ok(())
     }
 }

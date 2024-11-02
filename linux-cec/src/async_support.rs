@@ -1,6 +1,7 @@
+use nix::poll::PollTimeout;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
-use std::thread::{spawn, JoinHandle};
+use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
@@ -28,6 +29,7 @@ type ResultChannel<T> = oneshot::Sender<Result<T>>;
 
 enum DeviceCommand {
     Drop,
+    GetPoller(ResultChannel<DevicePoller>),
     SetBlocking(bool, ResultChannel<()>),
     SetInitiator(InitiatorMode, ResultChannel<()>),
     SetFollower(FollowerMode, ResultChannel<()>),
@@ -44,6 +46,17 @@ enum DeviceCommand {
 pub struct Device {
     thread: Option<JoinHandle<Result<()>>>,
     tx: Sender<DeviceCommand>,
+}
+
+pub struct DevicePoller {
+    thread: Option<JoinHandle<Result<()>>>,
+    tx: Sender<PollerCommand>,
+}
+
+enum PollerCommand {
+    Drop,
+    PollEvents(PollTimeout, ResultChannel<()>),
+    PollMessages(PollTimeout, ResultChannel<()>),
 }
 
 struct DeviceThread {
@@ -64,7 +77,7 @@ impl Device {
         let (start_tx, start_rx) = oneshot::channel();
         let file = file.into_std().await;
 
-        let thread = spawn(move || {
+        let thread = thread::spawn(move || {
             let device = device::Device::try_from(file)?;
             let mut thread = DeviceThread { device, rx };
             let _ = start_tx.send(());
@@ -79,47 +92,51 @@ impl Device {
     }
 
     pub async fn set_blocking(&self, blocking: bool) -> Result<()> {
-        relay!{ self, SetBlocking => blocking }
+        relay! { self, SetBlocking => blocking }
+    }
+
+    pub async fn get_poller(&self) -> Result<DevicePoller> {
+        relay! { self, GetPoller }
     }
 
     pub async fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
-        relay!{ self, SetInitiator => mode }
+        relay! { self, SetInitiator => mode }
     }
 
     pub async fn set_follower(&self, mode: FollowerMode) -> Result<()> {
-        relay!{ self, SetFollower => mode }
+        relay! { self, SetFollower => mode }
     }
 
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
-        relay!{ self, GetPhysicalAddress }
+        relay! { self, GetPhysicalAddress }
     }
 
     pub async fn set_physical_address(&self, phys_addr: PhysicalAddress) -> Result<()> {
-        relay!{ self, SetPhysicalAddress => phys_addr }
+        relay! { self, SetPhysicalAddress => phys_addr }
     }
 
     pub async fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>> {
-        relay!{ self, GetLogicalAddresses }
+        relay! { self, GetLogicalAddresses }
     }
 
     pub async fn set_logical_addresses(&self, log_addrs: &[LogicalAddress]) -> Result<()> {
-        relay!{ self, SetLogicalAddresses => Vec::from(log_addrs) }
+        relay! { self, SetLogicalAddresses => Vec::from(log_addrs) }
     }
 
     pub async fn set_logical_address(&self, log_addr: LogicalAddress) -> Result<()> {
-        relay!{ self, SetLogicalAddress => log_addr }
+        relay! { self, SetLogicalAddress => log_addr }
     }
 
     pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
-        relay!{ self, TransmitMessage => *message, destination }
+        relay! { self, TransmitMessage => *message, destination }
     }
 
     pub async fn rx_message(&self, timeout_ms: u32) -> Result<Envelope> {
-        relay!{ self, ReceiveMessage => timeout_ms }
+        relay! { self, ReceiveMessage => timeout_ms }
     }
 
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
-        relay!{ self, GetConnectorInfo }
+        relay! { self, GetConnectorInfo }
     }
 
     pub async fn close(mut self) -> Result<()> {
@@ -136,7 +153,7 @@ impl From<device::Device> for Device {
         let (tx, rx) = channel();
         let mut thread = DeviceThread { device, rx };
 
-        let thread = spawn(move || thread.run());
+        let thread = thread::spawn(move || thread.run());
         Device {
             thread: Some(thread),
             tx,
@@ -156,38 +173,41 @@ impl DeviceThread {
         loop {
             match self.rx.recv()? {
                 DeviceCommand::Drop => break,
-                DeviceCommand::SetBlocking(block, rx) => {
-                    let _ = rx.send(self.device.set_blocking(block));
+                DeviceCommand::GetPoller(tx) => {
+                    let _ = tx.send(self.device.get_poller().map(DevicePoller::from));
                 }
-                DeviceCommand::SetInitiator(mode, rx) => {
-                    let _ = rx.send(self.device.set_initiator(mode));
+                DeviceCommand::SetBlocking(block, tx) => {
+                    let _ = tx.send(self.device.set_blocking(block));
                 }
-                DeviceCommand::SetFollower(mode, rx) => {
-                    let _ = rx.send(self.device.set_follower(mode));
+                DeviceCommand::SetInitiator(mode, tx) => {
+                    let _ = tx.send(self.device.set_initiator(mode));
                 }
-                DeviceCommand::GetPhysicalAddress(rx) => {
-                    let _ = rx.send(self.device.get_physical_address());
+                DeviceCommand::SetFollower(mode, tx) => {
+                    let _ = tx.send(self.device.set_follower(mode));
                 }
-                DeviceCommand::SetPhysicalAddress(phys_addr, rx) => {
-                    let _ = rx.send(self.device.set_physical_address(phys_addr));
+                DeviceCommand::GetPhysicalAddress(tx) => {
+                    let _ = tx.send(self.device.get_physical_address());
                 }
-                DeviceCommand::GetLogicalAddresses(rx) => {
-                    let _ = rx.send(self.device.get_logical_addresses());
+                DeviceCommand::SetPhysicalAddress(phys_addr, tx) => {
+                    let _ = tx.send(self.device.set_physical_address(phys_addr));
                 }
-                DeviceCommand::SetLogicalAddresses(log_addrs, rx) => {
-                    let _ = rx.send(self.device.set_logical_addresses(&log_addrs));
+                DeviceCommand::GetLogicalAddresses(tx) => {
+                    let _ = tx.send(self.device.get_logical_addresses());
                 }
-                DeviceCommand::SetLogicalAddress(log_addr, rx) => {
-                    let _ = rx.send(self.device.set_logical_address(log_addr));
+                DeviceCommand::SetLogicalAddresses(log_addrs, tx) => {
+                    let _ = tx.send(self.device.set_logical_addresses(&log_addrs));
                 }
-                DeviceCommand::TransmitMessage(message, dest, rx) => {
-                    let _ = rx.send(self.device.tx_message(&message, dest));
+                DeviceCommand::SetLogicalAddress(log_addr, tx) => {
+                    let _ = tx.send(self.device.set_logical_address(log_addr));
                 }
-                DeviceCommand::ReceiveMessage(timeout_ms, rx) => {
-                    let _ = rx.send(self.device.rx_message(timeout_ms));
+                DeviceCommand::TransmitMessage(message, dest, tx) => {
+                    let _ = tx.send(self.device.tx_message(&message, dest));
                 }
-                DeviceCommand::GetConnectorInfo(rx) => {
-                    let _ = rx.send(self.device.get_connector_info());
+                DeviceCommand::ReceiveMessage(timeout_ms, tx) => {
+                    let _ = tx.send(self.device.rx_message(timeout_ms));
+                }
+                DeviceCommand::GetConnectorInfo(tx) => {
+                    let _ = tx.send(self.device.get_connector_info());
                 }
             }
         }
@@ -210,5 +230,51 @@ impl<T> From<SendError<T>> for Error {
 impl From<oneshot::error::RecvError> for Error {
     fn from(error: oneshot::error::RecvError) -> Error {
         Error::UnknownError(error.to_string())
+    }
+}
+
+impl From<device::DevicePoller> for DevicePoller {
+    fn from(poller: device::DevicePoller) -> DevicePoller {
+        let (tx, rx) = channel();
+
+        let thread = thread::spawn(move || {
+            loop {
+                match rx.recv()? {
+                    PollerCommand::Drop => break,
+                    PollerCommand::PollEvents(timeout, tx) => {
+                        let _ = tx.send(poller.poll_events(timeout));
+                    }
+                    PollerCommand::PollMessages(timeout, tx) => {
+                        let _ = tx.send(poller.poll_messages(timeout));
+                    }
+                }
+            }
+            Ok(())
+        });
+        DevicePoller {
+            thread: Some(thread),
+            tx,
+        }
+    }
+}
+
+impl DevicePoller {
+    pub async fn poll_events(&self, timeout: PollTimeout) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx.send(PollerCommand::PollEvents(timeout, tx))?;
+        rx.await?
+    }
+
+    pub async fn poll_messages(&self, timeout: PollTimeout) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx.send(PollerCommand::PollMessages(timeout, tx))?;
+        rx.await?
+    }
+}
+
+impl Drop for DevicePoller {
+    fn drop(&mut self) {
+        let _ = self.tx.send(PollerCommand::Drop);
+        let _ = self.thread.take().unwrap().join();
     }
 }
