@@ -5,6 +5,7 @@ use std::fmt::{self, Display, Formatter};
 use std::io;
 use std::ops::Add;
 use std::string::ToString;
+use std::time::Duration;
 use thiserror::Error;
 
 pub mod ioctls;
@@ -182,6 +183,41 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
         Error::InvalidValueForType {
             ty: T::NAME.to_string(),
             value: format!("{:?}", val.number),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct Timeout(u32);
+
+impl Timeout {
+    pub fn as_ms(&self) -> u32 {
+        self.0
+    }
+
+    pub fn from_ms(millis: u32) -> Timeout {
+        Timeout(millis)
+    }
+}
+
+impl TryFrom<&Duration> for Timeout {
+    type Error = Error;
+
+    fn try_from(duration: &Duration) -> Result<Timeout> {
+        let millis = duration.as_millis();
+        if let Ok(millis) = u32::try_from(millis) {
+            Ok(Timeout(millis))
+        } else {
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(0xFFFFFFFF),
+                got: if let Ok(millis) = usize::try_from(millis) {
+                    millis
+                } else {
+                    usize::MAX
+                },
+                quantity: String::from("milliseconds"),
+            })
         }
     }
 }

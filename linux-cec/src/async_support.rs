@@ -5,9 +5,11 @@ use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::{ConnectorInfo, Envelope};
+use crate::device::{ConnectorInfo, Envelope, PollResult};
 use crate::message::Message;
-use crate::{device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result};
+use crate::{
+    device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result, Timeout,
+};
 
 macro_rules! relay {
     ($self:expr, $message:ident) => {
@@ -39,7 +41,7 @@ enum DeviceCommand {
     SetLogicalAddresses(Vec<LogicalAddress>, ResultChannel<()>),
     SetLogicalAddress(LogicalAddress, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
-    ReceiveMessage(u32, ResultChannel<Envelope>),
+    ReceiveMessage(Timeout, ResultChannel<Envelope>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
 }
 
@@ -55,8 +57,7 @@ pub struct DevicePoller {
 
 enum PollerCommand {
     Drop,
-    PollEvents(PollTimeout, ResultChannel<()>),
-    PollMessages(PollTimeout, ResultChannel<()>),
+    Poll(PollTimeout, ResultChannel<PollResult>),
 }
 
 struct DeviceThread {
@@ -131,8 +132,8 @@ impl Device {
         relay! { self, TransmitMessage => *message, destination }
     }
 
-    pub async fn rx_message(&self, timeout_ms: u32) -> Result<Envelope> {
-        relay! { self, ReceiveMessage => timeout_ms }
+    pub async fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
+        relay! { self, ReceiveMessage => timeout }
     }
 
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
@@ -203,8 +204,8 @@ impl DeviceThread {
                 DeviceCommand::TransmitMessage(message, dest, tx) => {
                     let _ = tx.send(self.device.tx_message(&message, dest));
                 }
-                DeviceCommand::ReceiveMessage(timeout_ms, tx) => {
-                    let _ = tx.send(self.device.rx_message(timeout_ms));
+                DeviceCommand::ReceiveMessage(timeout, tx) => {
+                    let _ = tx.send(self.device.rx_message(timeout));
                 }
                 DeviceCommand::GetConnectorInfo(tx) => {
                     let _ = tx.send(self.device.get_connector_info());
@@ -241,11 +242,8 @@ impl From<device::DevicePoller> for DevicePoller {
             loop {
                 match rx.recv()? {
                     PollerCommand::Drop => break,
-                    PollerCommand::PollEvents(timeout, tx) => {
-                        let _ = tx.send(poller.poll_events(timeout));
-                    }
-                    PollerCommand::PollMessages(timeout, tx) => {
-                        let _ = tx.send(poller.poll_messages(timeout));
+                    PollerCommand::Poll(timeout, tx) => {
+                        let _ = tx.send(poller.poll(timeout));
                     }
                 }
             }
@@ -259,15 +257,9 @@ impl From<device::DevicePoller> for DevicePoller {
 }
 
 impl DevicePoller {
-    pub async fn poll_events(&self, timeout: PollTimeout) -> Result<()> {
+    pub async fn poll(&self, timeout: PollTimeout) -> Result<PollResult> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(PollerCommand::PollEvents(timeout, tx))?;
-        rx.await?
-    }
-
-    pub async fn poll_messages(&self, timeout: PollTimeout) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send(PollerCommand::PollMessages(timeout, tx))?;
+        self.tx.send(PollerCommand::Poll(timeout, tx))?;
         rx.await?
     }
 }

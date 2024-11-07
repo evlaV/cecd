@@ -9,28 +9,34 @@ use linux_cec_sys::structs::{
 };
 use linux_cec_sys::Timestamp;
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
-use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
+use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::path::Path;
+
+pub use nix::poll::PollTimeout;
 
 use crate::constants::{
     CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS,
 };
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
-use crate::{Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result};
+use crate::{
+    Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result, Timeout,
+};
 
 #[cfg(feature = "async")]
 pub use crate::async_support::Device as AsyncDevice;
 
+#[derive(Debug)]
 pub struct Device {
     file: File,
     tx_logical_address: LogicalAddress,
     internal_log_addrs: cec_log_addrs,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Envelope {
     pub message: Message,
     pub initiator: LogicalAddress,
@@ -40,6 +46,14 @@ pub struct Envelope {
 
 pub struct DevicePoller {
     fd: OwnedFd,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum PollResult {
+    Nothing,
+    GotEvent,
+    GotMessage,
+    GotAll,
 }
 
 #[derive(Debug)]
@@ -161,8 +175,8 @@ impl Device {
         Ok(())
     }
 
-    pub fn rx_message(&self, timeout_ms: u32) -> Result<Envelope> {
-        let message = self.rx_raw_message(timeout_ms)?;
+    pub fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
+        let message = self.rx_raw_message(timeout.as_ms())?;
         if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
             return Err(Error::Timeout);
         }
@@ -258,22 +272,42 @@ impl TryFrom<File> for Device {
 }
 
 impl DevicePoller {
-    pub fn poll_events(&self, timeout: PollTimeout) -> Result<()> {
-        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI);
-        DevicePoller::do_poll(pollfd, timeout)
-    }
-
-    pub fn poll_messages(&self, timeout: PollTimeout) -> Result<()> {
-        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLIN);
-        DevicePoller::do_poll(pollfd, timeout)
-    }
-
-    fn do_poll(pollfd: PollFd, timeout: PollTimeout) -> Result<()> {
+    pub fn poll(&self, timeout: PollTimeout) -> Result<PollResult> {
+        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI | PollFlags::POLLIN);
         let done = poll(&mut [pollfd], timeout)?;
 
         if done == 0 {
             return Err(Error::Timeout);
         }
-        Ok(())
+
+        match pollfd.revents() {
+            None => Ok(PollResult::Nothing),
+            Some(flags) if flags.contains(PollFlags::POLLIN | PollFlags::POLLPRI) => {
+                Ok(PollResult::GotAll)
+            }
+            Some(flags) if flags.contains(PollFlags::POLLIN) => Ok(PollResult::GotMessage),
+            Some(flags) if flags.contains(PollFlags::POLLPRI) => Ok(PollResult::GotEvent),
+            Some(_) => Err(Error::UnknownError(String::from(
+                "Polling error encountered",
+            ))),
+        }
+    }
+}
+
+impl PollResult {
+    pub fn got_message(&self) -> bool {
+        match self {
+            PollResult::GotMessage => true,
+            PollResult::GotAll => true,
+            _ => false,
+        }
+    }
+
+    pub fn got_event(&self) -> bool {
+        match self {
+            PollResult::GotEvent => true,
+            PollResult::GotAll => true,
+            _ => false,
+        }
     }
 }
