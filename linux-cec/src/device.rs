@@ -32,10 +32,10 @@ pub struct Device {
 }
 
 pub struct Envelope {
-    message: Message,
-    initiator: LogicalAddress,
-    destination: LogicalAddress,
-    timestamp: Timestamp,
+    pub message: Message,
+    pub initiator: LogicalAddress,
+    pub destination: LogicalAddress,
+    pub timestamp: Timestamp,
 }
 
 pub struct DevicePoller {
