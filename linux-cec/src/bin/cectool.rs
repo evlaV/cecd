@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
-use linux_cec::message::{self, MessageEncodable};
-use linux_cec::operand::UiCommand;
+use linux_cec::message::Message;
+use linux_cec::operand::{BufferOperand, UiCommand};
 use linux_cec::{InitiatorMode, LogicalAddress, Result};
 use num_enum::TryFromPrimitive;
 use std::str::FromStr;
@@ -52,25 +52,27 @@ fn main() -> Result<()> {
         }
         Command::SetOsdName { name } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = message::SetOsdName::from_str(&name)?;
-            dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+            let message = Message::SetOsdName {
+                name: BufferOperand::from_str(&name)?,
+            };
+            dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::SetActive => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = message::RequestActiveSource {};
-            dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+            let message = Message::RequestActiveSource {};
+            dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::Standby => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = message::Standby {};
-            dev.tx_message(&message.to_message(), LogicalAddress::Tv)?;
+            let message = Message::Standby {};
+            dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::SendKey { key } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = message::UserControlPressed { ui_command: key };
-            dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;
-            let message = message::UserControlReleased {};
-            dev.tx_message(&message.to_message(), LogicalAddress::BROADCAST)?;
+            let message = Message::UserControlPressed { ui_command: key };
+            dev.tx_message(&message, LogicalAddress::BROADCAST)?;
+            let message = Message::UserControlReleased {};
+            dev.tx_message(&message, LogicalAddress::BROADCAST)?;
         }
     }
     Ok(())

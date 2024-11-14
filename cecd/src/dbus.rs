@@ -1,6 +1,6 @@
 use anyhow::Result;
 use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
-use linux_cec::message::{self, Message};
+use linux_cec::message::Message;
 use linux_cec::operand::Version;
 use linux_cec::Timeout;
 use std::path::{Path, PathBuf};
@@ -108,22 +108,23 @@ impl PollTask {
             )
             .await?;
 
-        let reply =
-            match envelope.message {
-                Message::GetCecVersion(_) => Some(Message::CecVersion(message::CecVersion {
-                    version: Version::V2_0,
-                })),
-                Message::GiveDeviceVendorId(_) => self.system.vendor_id().await.map(|vendor_id| {
-                    Message::DeviceVendorId(message::DeviceVendorId { vendor_id })
-                }),
-                Message::GiveOsdName(_) => Some(Message::SetOsdName(message::SetOsdName {
-                    name: self.system.osd_name().await,
-                })),
-                Message::GivePhysicalAddr(_) => todo!(),
-                Message::UserControlPressed(_) => todo!(),
-                Message::UserControlReleased(_) => todo!(),
-                _ => None,
-            };
+        let reply = match envelope.message {
+            Message::GetCecVersion => Some(Message::CecVersion {
+                version: Version::V2_0,
+            }),
+            Message::GiveDeviceVendorId => self
+                .system
+                .vendor_id()
+                .await
+                .map(|vendor_id| Message::DeviceVendorId { vendor_id }),
+            Message::GiveOsdName => Some(Message::SetOsdName {
+                name: self.system.osd_name().await,
+            }),
+            Message::GivePhysicalAddr => todo!(),
+            Message::UserControlPressed { .. } => todo!(),
+            Message::UserControlReleased => todo!(),
+            _ => None,
+        };
 
         todo!();
     }

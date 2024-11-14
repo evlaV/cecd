@@ -1,34 +1,288 @@
-use linux_cec_macros::{Message, MessageEnum, Operand};
+use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::str::FromStr;
 
 use crate::operand::OperandEncodable;
+use crate::{constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
-use crate::Range;
-use crate::{constants, operand, Error, PhysicalAddress, Result};
+use crate::{Error, Range};
 
-pub trait MessageEncodable: Sized {
-    const OPCODE: Opcode;
-
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut raw = vec![Self::OPCODE as u8];
-        raw.extend(self.parameters());
-        raw
-    }
-
-    fn to_message(&self) -> Message;
-    fn into_message(self) -> Message;
-    fn parameters(&self) -> Vec<u8>;
-    fn try_from_parameters(params: &[u8]) -> Result<Self>;
-    fn len(&self) -> usize;
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+#[derive(Debug, Copy, Clone, PartialEq, Eq, MessageEnum)]
+#[repr(u8)]
+pub enum Message {
+    ActiveSource {
+        address: PhysicalAddress,
+    } = constants::CEC_MSG_ACTIVE_SOURCE,
+    ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,
+    TextViewOn = constants::CEC_MSG_TEXT_VIEW_ON,
+    InactiveSource {
+        address: PhysicalAddress,
+    } = constants::CEC_MSG_INACTIVE_SOURCE,
+    RequestActiveSource = constants::CEC_MSG_REQUEST_ACTIVE_SOURCE,
+    RoutingChange {
+        original_address: PhysicalAddress,
+        new_address: PhysicalAddress,
+    } = constants::CEC_MSG_ROUTING_CHANGE,
+    RoutingInformation {
+        address: PhysicalAddress,
+    } = constants::CEC_MSG_ROUTING_INFORMATION,
+    SetStreamPath {
+        address: PhysicalAddress,
+    } = constants::CEC_MSG_SET_STREAM_PATH,
+    Standby = constants::CEC_MSG_STANDBY,
+    RecordOff = constants::CEC_MSG_RECORD_OFF,
+    RecordOn {
+        source: operand::RecordSource,
+    } = constants::CEC_MSG_RECORD_ON,
+    RecordStatus {
+        status: operand::RecordStatusInfo,
+    } = constants::CEC_MSG_RECORD_STATUS,
+    RecordTvScreen = constants::CEC_MSG_RECORD_TV_SCREEN,
+    // TODO: Unit tests
+    ClearAnalogueTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        service_id: operand::AnalogueServiceId,
+    } = constants::CEC_MSG_CLEAR_ANALOGUE_TIMER,
+    // TODO: Unit tests
+    ClearDigitalTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        service_id: operand::DigitalServiceId,
+    } = constants::CEC_MSG_CLEAR_DIGITAL_TIMER,
+    // TODO: Unit tests
+    ClearExtTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        external_source: operand::ExternalSource,
+    } = constants::CEC_MSG_CLEAR_EXT_TIMER,
+    // TODO: Unit tests
+    SetAnalogueTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        service_id: operand::AnalogueServiceId,
+    } = constants::CEC_MSG_SET_ANALOGUE_TIMER,
+    // TODO: Unit tests
+    SetDigitalTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        service_id: operand::DigitalServiceId,
+    } = constants::CEC_MSG_SET_DIGITAL_TIMER,
+    // TODO: Unit tests
+    SetExtTimer {
+        day_of_month: operand::DayOfMonth,
+        month_of_year: operand::MonthOfYear,
+        start_time: operand::Time,
+        duration: operand::Duration,
+        recording_sequence: operand::RecordingSequence,
+        external_source: operand::ExternalSource,
+    } = constants::CEC_MSG_SET_EXT_TIMER,
+    // TODO: Unit tests
+    SetTimerProgramTitle {
+        title: operand::BufferOperand,
+    } = constants::CEC_MSG_SET_TIMER_PROGRAM_TITLE,
+    // TODO: Unit tests
+    TimerClearedStatus {
+        timer_cleared_status: operand::TimerClearedStatusData,
+    } = constants::CEC_MSG_TIMER_CLEARED_STATUS,
+    // TODO: Unit tests
+    TimerStatus {
+        data: operand::TimerStatusData,
+    } = constants::CEC_MSG_TIMER_STATUS,
+    // TODO: Unit tests
+    CecVersion {
+        version: operand::Version,
+    } = constants::CEC_MSG_CEC_VERSION,
+    GetCecVersion = constants::CEC_MSG_GET_CEC_VERSION,
+    GivePhysicalAddr = constants::CEC_MSG_GIVE_PHYSICAL_ADDR,
+    GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
+    // TODO: Unit tests
+    ReportPhysicalAddr {
+        physical_address: PhysicalAddress,
+        device_type: operand::PrimaryDeviceType,
+    } = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
+    // TODO: Unit tests
+    SetMenuLanguage {
+        language: [u8; 3],
+    } = constants::CEC_MSG_SET_MENU_LANGUAGE,
+    // TODO: Unit tests
+    DeckControl {
+        mode: operand::DeckControlMode,
+    } = constants::CEC_MSG_DECK_CONTROL,
+    // TODO: Unit tests
+    DeckStatus {
+        info: operand::DeckInfo,
+    } = constants::CEC_MSG_DECK_STATUS,
+    // TODO: Unit tests
+    GiveDeckStatus {
+        request: operand::StatusRequest,
+    } = constants::CEC_MSG_GIVE_DECK_STATUS,
+    // TODO: Unit tests
+    Play {
+        mode: operand::PlayMode,
+    } = constants::CEC_MSG_PLAY,
+    // TODO: Unit tests
+    GiveTunerDeviceStatus {
+        request: operand::StatusRequest,
+    } = constants::CEC_MSG_GIVE_TUNER_DEVICE_STATUS,
+    // TODO: Unit tests
+    SelectAnalogueService {
+        service_id: operand::AnalogueServiceId,
+    } = constants::CEC_MSG_SELECT_ANALOGUE_SERVICE,
+    // TODO: Unit tests
+    SelectDigitalService {
+        service_id: operand::DigitalServiceId,
+    } = constants::CEC_MSG_SELECT_DIGITAL_SERVICE,
+    // TODO: Unit tests
+    TunerDeviceStatus {
+        info: operand::TunerDeviceInfo,
+    } = constants::CEC_MSG_TUNER_DEVICE_STATUS,
+    TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
+    TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
+    // TODO: Unit tests
+    DeviceVendorId {
+        vendor_id: operand::VendorId,
+    } = constants::CEC_MSG_DEVICE_VENDOR_ID,
+    GiveDeviceVendorId = constants::CEC_MSG_GIVE_DEVICE_VENDOR_ID,
+    // TODO: Unit tests
+    VendorCommand {
+        command: operand::BufferOperand,
+    } = constants::CEC_MSG_VENDOR_COMMAND,
+    // TODO: Unit tests
+    VendorCommandWithId {
+        vendor_id: operand::VendorId,
+        vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
+    } = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
+    // TODO: Unit tests
+    VendorRemoteButtonDown {
+        rc_code: operand::BufferOperand,
+    } = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_DOWN,
+    VendorRemoteButtonUp = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_UP,
+    // TODO: Unit tests
+    SetOsdString {
+        display_control: operand::DisplayControl,
+        osd_string: operand::BoundedBufferOperand<13, u8>,
+    } = constants::CEC_MSG_SET_OSD_STRING,
+    GiveOsdName = constants::CEC_MSG_GIVE_OSD_NAME,
+    // TODO: Unit tests
+    SetOsdName {
+        name: operand::BufferOperand,
+    } = constants::CEC_MSG_SET_OSD_NAME,
+    // TODO: Unit tests
+    MenuRequest {
+        request_type: operand::MenuRequestType,
+    } = constants::CEC_MSG_MENU_REQUEST,
+    // TODO: Unit tests
+    MenuStatus {
+        state: operand::MenuState,
+    } = constants::CEC_MSG_MENU_STATUS,
+    // TODO: Unit tests
+    UserControlPressed {
+        ui_command: operand::UiCommand,
+    } = constants::CEC_MSG_USER_CONTROL_PRESSED,
+    UserControlReleased = constants::CEC_MSG_USER_CONTROL_RELEASED,
+    GiveDevicePowerStatus = constants::CEC_MSG_GIVE_DEVICE_POWER_STATUS,
+    // TODO: Unit tests
+    ReportPowerStatus {
+        status: operand::PowerStatus,
+    } = constants::CEC_MSG_REPORT_POWER_STATUS,
+    // TODO: Unit tests
+    FeatureAbort {
+        opcode: Opcode,
+        abort_reason: operand::AbortReason,
+    } = constants::CEC_MSG_FEATURE_ABORT,
+    Abort = constants::CEC_MSG_ABORT,
+    GiveAudioStatus = constants::CEC_MSG_GIVE_AUDIO_STATUS,
+    GiveSystemAudioModeStatus = constants::CEC_MSG_GIVE_SYSTEM_AUDIO_MODE_STATUS,
+    // TODO: Unit tests
+    ReportAudioStatus {
+        status: operand::AudioStatus,
+    } = constants::CEC_MSG_REPORT_AUDIO_STATUS,
+    // TODO: Unit tests
+    ReportShortAudioDescriptor {
+        descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
+    } = constants::CEC_MSG_REPORT_SHORT_AUDIO_DESCRIPTOR,
+    // TODO: Unit tests
+    RequestShortAudioDescriptor {
+        descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
+    } = constants::CEC_MSG_REQUEST_SHORT_AUDIO_DESCRIPTOR,
+    // TODO: Unit tests
+    SetSystemAudioMode {
+        status: bool,
+    } = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
+    // TODO: Unit tests
+    SystemAudioModeRequest {
+        physical_address: PhysicalAddress,
+    } = constants::CEC_MSG_SYSTEM_AUDIO_MODE_REQUEST,
+    // TODO: Unit tests
+    SystemAudioModeStatus {
+        system_audio_status: bool,
+    } = constants::CEC_MSG_SYSTEM_AUDIO_MODE_STATUS,
+    // TODO: Unit tests
+    SetAudioRate {
+        audio_rate: operand::AudioRate,
+    } = constants::CEC_MSG_SET_AUDIO_RATE,
+    /* HDMI 1.4b */
+    InitiateArc = constants::CEC_MSG_INITIATE_ARC,
+    ReportArcInitiated = constants::CEC_MSG_REPORT_ARC_INITIATED,
+    ReportArcTerminated = constants::CEC_MSG_REPORT_ARC_TERMINATED,
+    RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
+    RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
+    TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
+    // TODO: Unit tests
+    CdcMessage {
+        initiator: PhysicalAddress,
+        opcode: CdcOpcode,
+        params: operand::BoundedBufferOperand<11, u8>, // TODO
+    } = constants::CEC_MSG_CDC_MESSAGE,
+    /* HDMI 2.0 */
+    // TODO: Unit tests
+    ReportFeatures {
+        version: operand::Version,
+        device_types: operand::AllDeviceTypes,
+        rc_profile: operand::RcProfile,
+        dev_features: operand::DeviceFeatures,
+    } = constants::CEC_MSG_REPORT_FEATURES,
+    GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
+    // TODO: Unit tests
+    RequestCurrentLatency {
+        physical_address: PhysicalAddress,
+    } = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
+    // TODO: Unit tests
+    ReportCurrentLatency {
+        physical_address: PhysicalAddress,
+        video_latency: operand::Delay,
+        flags: operand::LatencyFlags,
+        audio_output_delay: Option<operand::Delay>,
+    } = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ActiveSource {
-    pub address: PhysicalAddress,
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+pub enum CdcOpcode {
+    HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
+    HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
+    HecSetStateAdjacent = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
+    HecSetState = constants::CEC_MSG_CDC_HEC_SET_STATE,
+    HecRequestDeactivation = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
+    HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
+    HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
+    HpdSetState = constants::CEC_MSG_CDC_HPD_SET_STATE,
+    HpdReportState = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
 }
 
 #[cfg(test)]
@@ -37,13 +291,13 @@ mod test_active_source {
 
     #[test]
     fn test_len() {
-        assert_eq!(ActiveSource { address: 0 }.len(), 3);
+        assert_eq!(Message::ActiveSource { address: 0 }.len(), 3);
     }
 
     #[test]
     fn test_encoding() {
         assert_eq!(
-            &ActiveSource { address: 0x1234 }.to_bytes(),
+            &Message::ActiveSource { address: 0x1234 }.to_bytes(),
             &[Opcode::ActiveSource as u8, 0x12, 0x34]
         );
     }
@@ -52,7 +306,7 @@ mod test_active_source {
     fn test_decoding() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12, 0x34]),
-            Ok(Message::ActiveSource(ActiveSource { address: 0x1234 }))
+            Ok(Message::ActiveSource { address: 0x1234 })
         );
     }
 
@@ -81,30 +335,19 @@ mod test_active_source {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ImageViewOn;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TextViewOn;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct InactiveSource {
-    pub address: PhysicalAddress,
-}
-
 #[cfg(test)]
 mod test_inactive_source {
     use super::*;
 
     #[test]
     fn test_len() {
-        assert_eq!(InactiveSource { address: 0 }.len(), 3);
+        assert_eq!(Message::InactiveSource { address: 0 }.len(), 3);
     }
 
     #[test]
     fn test_encoding() {
         assert_eq!(
-            &InactiveSource { address: 0x1234 }.to_bytes(),
+            &Message::InactiveSource { address: 0x1234 }.to_bytes(),
             &[Opcode::InactiveSource as u8, 0x12, 0x34]
         );
     }
@@ -113,7 +356,7 @@ mod test_inactive_source {
     fn test_decoding() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12, 0x34]),
-            Ok(Message::InactiveSource(InactiveSource { address: 0x1234 }))
+            Ok(Message::InactiveSource { address: 0x1234 })
         );
     }
 
@@ -142,15 +385,6 @@ mod test_inactive_source {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RequestActiveSource;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RoutingChange {
-    pub original_address: PhysicalAddress,
-    pub new_address: PhysicalAddress,
-}
-
 #[cfg(test)]
 mod test_routing_change {
     use super::*;
@@ -158,7 +392,7 @@ mod test_routing_change {
     #[test]
     fn test_len() {
         assert_eq!(
-            RoutingChange {
+            Message::RoutingChange {
                 original_address: 0,
                 new_address: 0
             }
@@ -170,7 +404,7 @@ mod test_routing_change {
     #[test]
     fn test_encoding() {
         assert_eq!(
-            &RoutingChange {
+            &Message::RoutingChange {
                 original_address: 0x1234,
                 new_address: 0x5678
             }
@@ -183,10 +417,10 @@ mod test_routing_change {
     fn test_decoding() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56, 0x78]),
-            Ok(Message::RoutingChange(RoutingChange {
+            Ok(Message::RoutingChange {
                 original_address: 0x1234,
                 new_address: 0x5678
-            }))
+            })
         );
     }
 
@@ -239,24 +473,19 @@ mod test_routing_change {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RoutingInformation {
-    pub address: PhysicalAddress,
-}
-
 #[cfg(test)]
 mod test_routing_information {
     use super::*;
 
     #[test]
     fn test_len() {
-        assert_eq!(RoutingInformation { address: 0 }.len(), 3);
+        assert_eq!(Message::RoutingInformation { address: 0 }.len(), 3);
     }
 
     #[test]
     fn test_encoding() {
         assert_eq!(
-            &RoutingInformation { address: 0x1234 }.to_bytes(),
+            &Message::RoutingInformation { address: 0x1234 }.to_bytes(),
             &[Opcode::RoutingInformation as u8, 0x12, 0x34]
         );
     }
@@ -265,9 +494,7 @@ mod test_routing_information {
     fn test_decoding() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12, 0x34]),
-            Ok(Message::RoutingInformation(RoutingInformation {
-                address: 0x1234
-            }))
+            Ok(Message::RoutingInformation { address: 0x1234 })
         );
     }
 
@@ -296,24 +523,19 @@ mod test_routing_information {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetStreamPath {
-    pub address: PhysicalAddress,
-}
-
 #[cfg(test)]
 mod test_set_stream_path {
     use super::*;
 
     #[test]
     fn test_len() {
-        assert_eq!(SetStreamPath { address: 0 }.len(), 3);
+        assert_eq!(Message::SetStreamPath { address: 0 }.len(), 3);
     }
 
     #[test]
     fn test_encoding() {
         assert_eq!(
-            &SetStreamPath { address: 0x1234 }.to_bytes(),
+            &Message::SetStreamPath { address: 0x1234 }.to_bytes(),
             &[Opcode::SetStreamPath as u8, 0x12, 0x34]
         );
     }
@@ -322,7 +544,7 @@ mod test_set_stream_path {
     fn test_decoding() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12, 0x34]),
-            Ok(Message::SetStreamPath(SetStreamPath { address: 0x1234 }))
+            Ok(Message::SetStreamPath { address: 0x1234 })
         );
     }
 
@@ -351,17 +573,6 @@ mod test_set_stream_path {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Standby;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RecordOff;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RecordOn {
-    pub source: operand::RecordSource,
-}
-
 #[cfg(test)]
 mod test_record_on {
     use super::*;
@@ -381,7 +592,7 @@ mod test_record_on {
     #[test]
     fn test_own_len() {
         assert_eq!(
-            RecordOn {
+            Message::RecordOn {
                 source: operand::RecordSource::Own
             }
             .len(),
@@ -392,7 +603,7 @@ mod test_record_on {
     #[test]
     fn test_own_encoding() {
         assert_eq!(
-            &RecordOn {
+            &Message::RecordOn {
                 source: operand::RecordSource::Own
             }
             .to_bytes(),
@@ -407,16 +618,16 @@ mod test_record_on {
                 Opcode::RecordOn as u8,
                 operand::RecordSourceType::Own as u8
             ]),
-            Ok(Message::RecordOn(RecordOn {
+            Ok(Message::RecordOn {
                 source: operand::RecordSource::Own
-            }))
+            })
         );
     }
 
     #[test]
     fn test_digital_len() {
         assert_eq!(
-            RecordOn {
+            Message::RecordOn {
                 source: operand::RecordSource::DigitalService(
                     operand::DigitalServiceId::AribGeneric(operand::AribData {
                         transport_stream_id: 0,
@@ -433,7 +644,7 @@ mod test_record_on {
     #[test]
     fn test_digital_encoding() {
         assert_eq!(
-            &RecordOn {
+            &Message::RecordOn {
                 source: operand::RecordSource::DigitalService(
                     operand::DigitalServiceId::AribGeneric(operand::AribData {
                         transport_stream_id: 0x1234,
@@ -471,7 +682,7 @@ mod test_record_on {
                 0x9A,
                 0xBC
             ]),
-            Ok(Message::RecordOn(RecordOn {
+            Ok(Message::RecordOn {
                 source: operand::RecordSource::DigitalService(
                     operand::DigitalServiceId::AribGeneric(operand::AribData {
                         transport_stream_id: 0x1234,
@@ -479,7 +690,7 @@ mod test_record_on {
                         original_network_id: 0x9ABC,
                     })
                 ),
-            }))
+            })
         );
     }
 
@@ -612,7 +823,7 @@ mod test_record_on {
     #[test]
     fn test_analogue_len() {
         assert_eq!(
-            RecordOn {
+            Message::RecordOn {
                 source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
                     broadcast_type: operand::AnalogueBroadcastType::Cable,
                     frequency: 1,
@@ -627,7 +838,7 @@ mod test_record_on {
     #[test]
     fn test_analogue_encoding() {
         assert_eq!(
-            &RecordOn {
+            &Message::RecordOn {
                 source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
                     broadcast_type: operand::AnalogueBroadcastType::Satellite,
                     frequency: 0x1234,
@@ -657,13 +868,13 @@ mod test_record_on {
                 0x34,
                 operand::BroadcastSystem::SecamL as u8
             ]),
-            Ok(Message::RecordOn(RecordOn {
+            Ok(Message::RecordOn {
                 source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
                     broadcast_type: operand::AnalogueBroadcastType::Satellite,
                     frequency: 0x1234,
                     broadcast_system: operand::BroadcastSystem::SecamL,
                 }),
-            }))
+            })
         );
     }
 
@@ -736,7 +947,7 @@ mod test_record_on {
     #[test]
     fn test_external_plug_len() {
         assert_eq!(
-            RecordOn {
+            Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::Plug(0))
             }
             .len(),
@@ -747,7 +958,7 @@ mod test_record_on {
     #[test]
     fn test_external_plug_encoding() {
         assert_eq!(
-            &RecordOn {
+            &Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
             }
             .to_bytes(),
@@ -767,9 +978,9 @@ mod test_record_on {
                 operand::RecordSourceType::ExternalPlug as u8,
                 0x56,
             ]),
-            Ok(Message::RecordOn(RecordOn {
+            Ok(Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
-            }))
+            })
         );
     }
 
@@ -791,7 +1002,7 @@ mod test_record_on {
     #[test]
     fn test_external_phys_addr_len() {
         assert_eq!(
-            RecordOn {
+            Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
                     0
                 ))
@@ -804,7 +1015,7 @@ mod test_record_on {
     #[test]
     fn test_external_phys_addr_encoding() {
         assert_eq!(
-            &RecordOn {
+            &Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
                     0x1234
                 ))
@@ -828,11 +1039,11 @@ mod test_record_on {
                 0x12,
                 0x34
             ]),
-            Ok(Message::RecordOn(RecordOn {
+            Ok(Message::RecordOn {
                 source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
                     0x1234
                 ))
-            }))
+            })
         );
     }
 
@@ -879,11 +1090,6 @@ mod test_record_on {
     }
 }
 
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RecordStatus {
-    pub status: operand::RecordStatusInfo,
-}
-
 #[cfg(test)]
 mod test_record_status {
     use super::*;
@@ -891,7 +1097,7 @@ mod test_record_status {
     #[test]
     fn test_len() {
         assert_eq!(
-            RecordStatus {
+            Message::RecordStatus {
                 status: operand::RecordStatusInfo::CurrentSource
             }
             .len(),
@@ -902,7 +1108,7 @@ mod test_record_status {
     #[test]
     fn test_encode() {
         assert_eq!(
-            RecordStatus {
+            Message::RecordStatus {
                 status: operand::RecordStatusInfo::CurrentSource
             }
             .to_bytes(),
@@ -920,9 +1126,9 @@ mod test_record_status {
                 Opcode::RecordStatus as u8,
                 operand::RecordStatusInfo::CurrentSource as u8
             ]),
-            Ok(Message::RecordStatus(RecordStatus {
+            Ok(Message::RecordStatus {
                 status: operand::RecordStatusInfo::CurrentSource
-            }))
+            })
         );
     }
 
@@ -948,485 +1154,4 @@ mod test_record_status {
             })
         );
     }
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RecordTvScreen;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ClearAnalogueTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub service_id: operand::AnalogueServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ClearDigitalTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub service_id: operand::DigitalServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ClearExtTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub external_source: operand::ExternalSource,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetAnalogueTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub service_id: operand::AnalogueServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetDigitalTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub service_id: operand::DigitalServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetExtTimer {
-    pub day_of_month: operand::DayOfMonth,
-    pub month_of_year: operand::MonthOfYear,
-    pub start_time: operand::Time,
-    pub duration: operand::Duration,
-    pub recording_sequence: operand::RecordingSequence,
-    pub external_source: operand::ExternalSource,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetTimerProgramTitle {
-    pub title: operand::BufferOperand,
-}
-
-impl FromStr for SetTimerProgramTitle {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        Ok(SetTimerProgramTitle {
-            title: operand::BufferOperand::from_str(s)?,
-        })
-    }
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TimerClearedStatus {
-    pub timer_cleared_status: operand::TimerClearedStatusData,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TimerStatus {
-    data: operand::TimerStatusData,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CecVersion {
-    pub version: operand::Version,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GetCecVersion;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GivePhysicalAddr;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GetMenuLanguage;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportPhysicalAddr {
-    pub physical_address: PhysicalAddress,
-    pub device_type: operand::PrimaryDeviceType,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetMenuLanguage {
-    pub language: [u8; 3],
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct DeckControl {
-    pub mode: operand::DeckControlMode,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct DeckStatus {
-    pub info: operand::DeckInfo,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveDeckStatus {
-    pub request: operand::StatusRequest,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Play {
-    pub mode: operand::PlayMode,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveTunerDeviceStatus {
-    pub request: operand::StatusRequest,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SelectAnalogueService {
-    pub service_id: operand::AnalogueServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SelectDigitalService {
-    pub service_id: operand::DigitalServiceId,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TunerDeviceStatus {
-    pub info: operand::TunerDeviceInfo,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TunerStepDecrement;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TunerStepIncrement;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct DeviceVendorId {
-    pub vendor_id: operand::VendorId,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveDeviceVendorId;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VendorCommand {
-    pub command: operand::BufferOperand,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VendorCommandWithId {
-    pub vendor_id: operand::VendorId,
-    pub vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VendorRemoteButtonDown {
-    pub rc_code: operand::BufferOperand,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct VendorRemoteButtonUp;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetOsdString {
-    pub display_control: operand::DisplayControl,
-    pub osd_string: operand::BoundedBufferOperand<13, u8>,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveOsdName;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetOsdName {
-    pub name: operand::BufferOperand,
-}
-
-impl FromStr for SetOsdName {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        Ok(SetOsdName {
-            name: operand::BufferOperand::from_str(s)?,
-        })
-    }
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct MenuRequest {
-    pub request_type: operand::MenuRequestType,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct MenuStatus {
-    pub state: operand::MenuState,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct UserControlPressed {
-    pub ui_command: operand::UiCommand,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct UserControlReleased;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveDevicePowerStatus;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportPowerStatus {
-    pub status: operand::PowerStatus,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct FeatureAbort {
-    pub opcode: Opcode,
-    pub abort_reason: operand::AbortReason,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Abort;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveAudioStatus;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveSystemAudioModeStatus;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportAudioStatus {
-    pub status: operand::AudioStatus,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportShortAudioDescriptor {
-    pub descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RequestShortAudioDescriptor {
-    pub descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetSystemAudioMode {
-    pub status: bool,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SystemAudioModeRequest {
-    pub physical_address: PhysicalAddress,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SystemAudioModeStatus {
-    pub system_audio_status: bool,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SetAudioRate {
-    pub audio_rate: operand::AudioRate,
-}
-
-/* HDMI 1.4b */
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct InitiateArc;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportArcInitiated;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportArcTerminated;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RequestArcInitiation;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RequestArcTermination;
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TerminateArc;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CdcMessage {
-    pub initiator: PhysicalAddress,
-    pub opcode: CdcOpcode,
-    pub params: operand::BoundedBufferOperand<11, u8>, // TODO
-}
-
-/* HDMI 2.0 */
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportFeatures {
-    pub version: operand::Version,
-    pub device_types: operand::AllDeviceTypes,
-    pub rc_profile: operand::RcProfile,
-    pub dev_features: operand::DeviceFeatures,
-}
-
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct GiveFeatures;
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RequestCurrentLatency {
-    pub physical_address: PhysicalAddress,
-}
-
-// TODO: Unit tests
-#[derive(Message, Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ReportCurrentLatency {
-    pub physical_address: PhysicalAddress,
-    pub video_latency: operand::Delay,
-    pub flags: operand::LatencyFlags,
-    pub audio_output_delay: Option<operand::Delay>,
-}
-
-#[repr(u8)]
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand, MessageEnum,
-)]
-pub enum Opcode {
-    ActiveSource = constants::CEC_MSG_ACTIVE_SOURCE,
-    ImageViewOn = constants::CEC_MSG_IMAGE_VIEW_ON,
-    TextViewOn = constants::CEC_MSG_TEXT_VIEW_ON,
-    InactiveSource = constants::CEC_MSG_INACTIVE_SOURCE,
-    RequestActiveSource = constants::CEC_MSG_REQUEST_ACTIVE_SOURCE,
-    RoutingChange = constants::CEC_MSG_ROUTING_CHANGE,
-    RoutingInformation = constants::CEC_MSG_ROUTING_INFORMATION,
-    SetStreamPath = constants::CEC_MSG_SET_STREAM_PATH,
-    Standby = constants::CEC_MSG_STANDBY,
-    RecordOff = constants::CEC_MSG_RECORD_OFF,
-    RecordOn = constants::CEC_MSG_RECORD_ON,
-    RecordStatus = constants::CEC_MSG_RECORD_STATUS,
-    RecordTvScreen = constants::CEC_MSG_RECORD_TV_SCREEN,
-    ClearAnalogueTimer = constants::CEC_MSG_CLEAR_ANALOGUE_TIMER,
-    ClearDigitalTimer = constants::CEC_MSG_CLEAR_DIGITAL_TIMER,
-    ClearExtTimer = constants::CEC_MSG_CLEAR_EXT_TIMER,
-    SetAnalogueTimer = constants::CEC_MSG_SET_ANALOGUE_TIMER,
-    SetDigitalTimer = constants::CEC_MSG_SET_DIGITAL_TIMER,
-    SetExtTimer = constants::CEC_MSG_SET_EXT_TIMER,
-    SetTimerProgramTitle = constants::CEC_MSG_SET_TIMER_PROGRAM_TITLE,
-    TimerClearedStatus = constants::CEC_MSG_TIMER_CLEARED_STATUS,
-    TimerStatus = constants::CEC_MSG_TIMER_STATUS,
-    CecVersion = constants::CEC_MSG_CEC_VERSION,
-    GetCecVersion = constants::CEC_MSG_GET_CEC_VERSION,
-    GivePhysicalAddr = constants::CEC_MSG_GIVE_PHYSICAL_ADDR,
-    GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
-    ReportPhysicalAddr = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
-    SetMenuLanguage = constants::CEC_MSG_SET_MENU_LANGUAGE,
-    DeckControl = constants::CEC_MSG_DECK_CONTROL,
-    DeckStatus = constants::CEC_MSG_DECK_STATUS,
-    GiveDeckStatus = constants::CEC_MSG_GIVE_DECK_STATUS,
-    Play = constants::CEC_MSG_PLAY,
-    GiveTunerDeviceStatus = constants::CEC_MSG_GIVE_TUNER_DEVICE_STATUS,
-    SelectAnalogueService = constants::CEC_MSG_SELECT_ANALOGUE_SERVICE,
-    SelectDigitalService = constants::CEC_MSG_SELECT_DIGITAL_SERVICE,
-    TunerDeviceStatus = constants::CEC_MSG_TUNER_DEVICE_STATUS,
-    TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
-    TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
-    DeviceVendorId = constants::CEC_MSG_DEVICE_VENDOR_ID,
-    GiveDeviceVendorId = constants::CEC_MSG_GIVE_DEVICE_VENDOR_ID,
-    VendorCommand = constants::CEC_MSG_VENDOR_COMMAND,
-    VendorCommandWithId = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
-    VendorRemoteButtonDown = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_DOWN,
-    VendorRemoteButtonUp = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_UP,
-    SetOsdString = constants::CEC_MSG_SET_OSD_STRING,
-    GiveOsdName = constants::CEC_MSG_GIVE_OSD_NAME,
-    SetOsdName = constants::CEC_MSG_SET_OSD_NAME,
-    MenuRequest = constants::CEC_MSG_MENU_REQUEST,
-    MenuStatus = constants::CEC_MSG_MENU_STATUS,
-    UserControlPressed = constants::CEC_MSG_USER_CONTROL_PRESSED,
-    UserControlReleased = constants::CEC_MSG_USER_CONTROL_RELEASED,
-    GiveDevicePowerStatus = constants::CEC_MSG_GIVE_DEVICE_POWER_STATUS,
-    ReportPowerStatus = constants::CEC_MSG_REPORT_POWER_STATUS,
-    FeatureAbort = constants::CEC_MSG_FEATURE_ABORT,
-    Abort = constants::CEC_MSG_ABORT,
-    GiveAudioStatus = constants::CEC_MSG_GIVE_AUDIO_STATUS,
-    GiveSystemAudioModeStatus = constants::CEC_MSG_GIVE_SYSTEM_AUDIO_MODE_STATUS,
-    ReportAudioStatus = constants::CEC_MSG_REPORT_AUDIO_STATUS,
-    ReportShortAudioDescriptor = constants::CEC_MSG_REPORT_SHORT_AUDIO_DESCRIPTOR,
-    RequestShortAudioDescriptor = constants::CEC_MSG_REQUEST_SHORT_AUDIO_DESCRIPTOR,
-    SetSystemAudioMode = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
-    SystemAudioModeRequest = constants::CEC_MSG_SYSTEM_AUDIO_MODE_REQUEST,
-    SystemAudioModeStatus = constants::CEC_MSG_SYSTEM_AUDIO_MODE_STATUS,
-    SetAudioRate = constants::CEC_MSG_SET_AUDIO_RATE,
-
-    /* HDMI 1.4b */
-    InitiateArc = constants::CEC_MSG_INITIATE_ARC,
-    ReportArcInitiated = constants::CEC_MSG_REPORT_ARC_INITIATED,
-    ReportArcTerminated = constants::CEC_MSG_REPORT_ARC_TERMINATED,
-    RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
-    RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
-    TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
-    CdcMessage = constants::CEC_MSG_CDC_MESSAGE,
-
-    /* HDMI 2.0 */
-    ReportFeatures = constants::CEC_MSG_REPORT_FEATURES,
-    GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
-    RequestCurrentLatency = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
-    ReportCurrentLatency = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum CdcOpcode {
-    HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
-    HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
-    HecSetStateAdjacent = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
-    HecSetState = constants::CEC_MSG_CDC_HEC_SET_STATE,
-    HecRequestDeactivation = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
-    HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
-    HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
-    HpdSetState = constants::CEC_MSG_CDC_HPD_SET_STATE,
-    HpdReportState = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
 }
