@@ -8,6 +8,7 @@ anyhow = "1"
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
 linux-cec = { path = "../linux-cec", features = ["async"] }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio-util = { version = "0.7", default-features = false }
 tracing = { version = "0.1", default-features = false }
 udev = "0.9"
-zbus = { version = "4", default-features = false, features = ["tokio"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
