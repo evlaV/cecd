@@ -1,7 +1,8 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
 use linux_cec::message::Message;
-use linux_cec::operand::Version;
+use linux_cec::operand::{AbortReason, Version};
+use linux_cec::LogicalAddress;
 use linux_cec::Timeout;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -59,7 +60,19 @@ impl CecDevice {
     }
 
     pub fn dbus_path(&self) -> Result<String> {
-        todo!();
+        let path = self.path.to_str().ok_or(anyhow!("Invalid path supplied"))?;
+        let path = path.strip_prefix("/dev").unwrap_or(path);
+        let path = path
+            .split('/')
+            .filter_map(|node| {
+                // Capitalize the first letter of all path elements, if present
+                let mut chars = node.chars();
+                chars
+                    .next()
+                    .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
+            })
+            .collect::<String>();
+        Ok(format!("{PATH}/{path}"))
     }
 }
 
@@ -126,6 +139,23 @@ impl PollTask {
             _ => None,
         };
 
-        todo!();
+        if let Some(reply) = reply {
+            self.device
+                .lock()
+                .await
+                .tx_message(&reply, envelope.initiator)
+                .await?;
+        } else if envelope.destination != LogicalAddress::BROADCAST {
+            let abort = Message::FeatureAbort {
+                opcode: envelope.message.opcode(),
+                abort_reason: AbortReason::UnrecognizedOp,
+            };
+            self.device
+                .lock()
+                .await
+                .tx_message(&abort, envelope.initiator)
+                .await?;
+        }
+        Ok(())
     }
 }
