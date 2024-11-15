@@ -271,6 +271,13 @@ pub enum Message {
     } = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
 }
 
+impl Message {
+    pub fn opcode(&self) -> Opcode {
+        let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
+        Opcode::try_from_primitive(opcode).unwrap()
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum CdcOpcode {
@@ -292,6 +299,14 @@ mod test_active_source {
     #[test]
     fn test_len() {
         assert_eq!(Message::ActiveSource { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::ActiveSource { address: 0 }.opcode(),
+            Opcode::ActiveSource
+        );
     }
 
     #[test]
@@ -342,6 +357,14 @@ mod test_inactive_source {
     #[test]
     fn test_len() {
         assert_eq!(Message::InactiveSource { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::InactiveSource { address: 0 }.opcode(),
+            Opcode::InactiveSource
+        );
     }
 
     #[test]
@@ -398,6 +421,18 @@ mod test_routing_change {
             }
             .len(),
             5
+        );
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::RoutingChange {
+                original_address: 0x1234,
+                new_address: 0x5678
+            }
+            .opcode(),
+            Opcode::RoutingChange
         );
     }
 
@@ -483,6 +518,14 @@ mod test_routing_information {
     }
 
     #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::RoutingInformation { address: 0 }.opcode(),
+            Opcode::RoutingInformation
+        );
+    }
+
+    #[test]
     fn test_encoding() {
         assert_eq!(
             &Message::RoutingInformation { address: 0x1234 }.to_bytes(),
@@ -530,6 +573,14 @@ mod test_set_stream_path {
     #[test]
     fn test_len() {
         assert_eq!(Message::SetStreamPath { address: 0 }.len(), 3);
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::SetStreamPath { address: 0 }.opcode(),
+            Opcode::SetStreamPath
+        );
     }
 
     #[test]
@@ -586,6 +637,17 @@ mod test_record_on {
                 got: 1,
                 quantity: String::from("bytes"),
             })
+        );
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::RecordOn {
+                source: operand::RecordSource::Own
+            }
+            .opcode(),
+            Opcode::RecordOn
         );
     }
 
@@ -1102,6 +1164,17 @@ mod test_record_status {
             }
             .len(),
             2
+        );
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::RecordStatus {
+                status: operand::RecordStatusInfo::CurrentSource
+            }
+            .opcode(),
+            Opcode::RecordStatus
         );
     }
 

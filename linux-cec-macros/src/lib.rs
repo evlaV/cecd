@@ -93,6 +93,14 @@ fn message(
                     }
 
                     #[test]
+                    fn test_opcode() {
+                        assert_eq!(
+                            Message::#ident {}.opcode(),
+                            Opcode::#ident
+                        );
+                    }
+
+                    #[test]
                     fn test_encoding() {
                         assert_eq!(
                             &Message::#ident {}.to_bytes(),
