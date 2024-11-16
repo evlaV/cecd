@@ -1,3 +1,4 @@
+use linux_cec_sys::VendorId;
 use nix::poll::PollTimeout;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
@@ -40,6 +41,10 @@ enum DeviceCommand {
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
     SetLogicalAddresses(Vec<LogicalAddress>, ResultChannel<()>),
     SetLogicalAddress(LogicalAddress, ResultChannel<()>),
+    GetOsdName(ResultChannel<String>),
+    SetOsdName(String, ResultChannel<()>),
+    GetVendorId(ResultChannel<VendorId>),
+    SetVendorId(VendorId, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
@@ -128,6 +133,22 @@ impl Device {
         relay! { self, SetLogicalAddress => log_addr }
     }
 
+    pub async fn get_osd_name(&self) -> Result<String> {
+        relay! { self, GetOsdName }
+    }
+
+    pub async fn set_osd_name(&self, name: &str) -> Result<()> {
+        relay! { self, SetOsdName => name.to_string() }
+    }
+
+    pub async fn get_vendor_id(&self) -> Result<VendorId> {
+        relay! { self, GetVendorId }
+    }
+
+    pub async fn set_vendor_id(&self, vendor_id: VendorId) -> Result<()> {
+        relay! { self, SetVendorId => vendor_id }
+    }
+
     pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
         relay! { self, TransmitMessage => *message, destination }
     }
@@ -200,6 +221,18 @@ impl DeviceThread {
                 }
                 DeviceCommand::SetLogicalAddress(log_addr, tx) => {
                     let _ = tx.send(self.device.set_logical_address(log_addr));
+                }
+                DeviceCommand::GetOsdName(tx) => {
+                    let _ = tx.send(self.device.get_osd_name());
+                }
+                DeviceCommand::SetOsdName(name, tx) => {
+                    let _ = tx.send(self.device.set_osd_name(&name));
+                }
+                DeviceCommand::GetVendorId(tx) => {
+                    let _ = tx.send(self.device.get_vendor_id());
+                }
+                DeviceCommand::SetVendorId(vendor_id, tx) => {
+                    let _ = tx.send(self.device.set_vendor_id(vendor_id));
                 }
                 DeviceCommand::TransmitMessage(message, dest, tx) => {
                     let _ = tx.send(self.device.tx_message(&message, dest));

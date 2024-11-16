@@ -1,3 +1,6 @@
+use linux_cec_sys::constants::{
+    CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS,
+};
 use linux_cec_sys::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
     adapter_get_physical_address, adapter_set_logical_addresses, adapter_set_physical_address,
@@ -7,7 +10,7 @@ use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
     CEC_RX_STATUS,
 };
-use linux_cec_sys::Timestamp;
+use linux_cec_sys::{Timestamp, VendorId};
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
@@ -17,9 +20,6 @@ use std::path::Path;
 
 pub use nix::poll::PollTimeout;
 
-use crate::constants::{
-    CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS,
-};
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
 use crate::{
@@ -129,15 +129,14 @@ impl Device {
         Ok(())
     }
 
-    pub fn get_logical_addresses(&self) -> Result<Vec<LogicalAddress>> {
-        let mut log_addrs = cec_log_addrs::default();
+    pub fn get_logical_addresses(&mut self) -> Result<Vec<LogicalAddress>> {
         unsafe {
-            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut log_addrs)?;
+            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
 
         let mut vec = Vec::new();
-        for index in 0..log_addrs.num_log_addrs {
-            vec.push(log_addrs.log_addr[index as usize].try_into()?);
+        for index in 0..self.internal_log_addrs.num_log_addrs {
+            vec.push(self.internal_log_addrs.log_addr[index as usize].try_into()?);
         }
         Ok(vec)
     }
@@ -160,17 +159,34 @@ impl Device {
     }
 
     pub fn get_osd_name(&mut self) -> Result<String> {
-        let mut log_addrs = cec_log_addrs::default();
         unsafe {
-            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut log_addrs)?;
+            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
-        Ok(String::from_utf8_lossy(&log_addrs.osd_name).to_string())
+        Ok(String::from_utf8_lossy(&self.internal_log_addrs.osd_name).to_string())
     }
 
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
         let name = name.as_bytes();
         Range::AtMost(14).check(name.len(), "bytes")?;
         self.internal_log_addrs.osd_name[..name.len()].copy_from_slice(name);
+        unsafe {
+            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        Ok(())
+    }
+
+    pub fn get_vendor_id(&mut self) -> Result<VendorId> {
+        unsafe {
+            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        Ok(self.internal_log_addrs.vendor_id)
+    }
+
+    pub fn set_vendor_id(&mut self, vendor_id: VendorId) -> Result<()> {
+        if !vendor_id.is_valid() && !vendor_id.is_none() {
+            return Err(Error::InvalidData);
+        }
+        self.internal_log_addrs.vendor_id = vendor_id;
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
