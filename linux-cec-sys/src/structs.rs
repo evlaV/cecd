@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 
 use bitflags::bitflags;
-use core::ffi::c_char;
+use core::ffi::{c_char, c_uchar};
 
 use crate::constants::*;
 use crate::{LogicalAddress, PhysicalAddress, Timestamp};
@@ -290,7 +290,7 @@ pub struct cec_log_addrs {
     /// Flags.
     pub flags: CEC_LOG_ADDRS_FL,
     /// The OSD name of the device. Set by the caller.
-    pub osd_name: [c_char; 15],
+    pub osd_name: [c_uchar; 15],
     /// The primary device type for each logical address. Set by the caller.
     pub primary_device_type: [u8; CEC_MAX_LOG_ADDRS],
     /// The logical address types. Set by the caller.
