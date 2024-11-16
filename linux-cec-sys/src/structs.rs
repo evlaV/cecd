@@ -479,3 +479,19 @@ impl Default for VendorId {
         VendorId(CEC_VENDOR_ID_NONE)
     }
 }
+
+impl Into<u32> for VendorId {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
+impl VendorId {
+    pub fn is_none(self) -> bool {
+        self.0 == CEC_VENDOR_ID_NONE
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.0 < 0x1_00_00_00
+    }
+}

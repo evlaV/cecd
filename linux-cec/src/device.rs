@@ -159,6 +159,24 @@ impl Device {
         self.set_logical_addresses(&[log_addr])
     }
 
+    pub fn get_osd_name(&mut self) -> Result<String> {
+        let mut log_addrs = cec_log_addrs::default();
+        unsafe {
+            adapter_get_logical_addresses(self.file.as_raw_fd(), &mut log_addrs)?;
+        }
+        Ok(String::from_utf8_lossy(&log_addrs.osd_name).to_string())
+    }
+
+    pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
+        let name = name.as_bytes();
+        Range::AtMost(14).check(name.len(), "bytes")?;
+        self.internal_log_addrs.osd_name[..name.len()].copy_from_slice(name);
+        unsafe {
+            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        Ok(())
+    }
+
     pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
         let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
         let bytes = message.to_bytes();
