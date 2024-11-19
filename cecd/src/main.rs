@@ -1,12 +1,12 @@
 use anyhow::{ensure, Result};
 use clap::Parser;
-use linux_cec::operand::{BufferOperand, VendorId};
+use linux_cec::operand::VendorId;
+use linux_cec::LogicalAddress;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::fs::read_dir;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 use tracing::debug;
 use zbus::connection::{Builder, Connection};
 
@@ -18,6 +18,7 @@ pub(crate) mod dbus;
 struct System {
     osd_name: String,
     vendor_id: Option<VendorId>,
+    log_addr: LogicalAddress,
 
     connection: Connection,
     active: HashSet<PathBuf>,
@@ -28,6 +29,7 @@ impl System {
         System {
             osd_name: String::from("CEC Device"),
             vendor_id: None,
+            log_addr: LogicalAddress::UNREGISTERED,
             connection,
             active: HashSet::new(),
         }
@@ -76,24 +78,23 @@ impl System {
 pub(crate) struct SystemHandle(Arc<Mutex<System>>);
 
 impl SystemHandle {
-    pub(crate) async fn osd_name(&self) -> BufferOperand {
-        let osd_name = &self.0.lock().await.osd_name;
-        let truncated = osd_name
-            .char_indices()
-            .map_while(|(index, ch)| if index <= 14 { Some(ch) } else { None })
-            .collect::<String>();
-        BufferOperand::from_str(truncated.as_str()).unwrap()
+    pub(crate) async fn lock(&self) -> MutexGuard<System> {
+        self.0.lock().await
+    }
+
+    pub(crate) async fn osd_name(&self) -> String {
+        self.lock().await.osd_name.clone()
     }
 
     pub(crate) async fn vendor_id(&self) -> Option<VendorId> {
-        self.0.lock().await.vendor_id
+        self.lock().await.vendor_id
     }
 
     pub(crate) async fn find_devs(&self) -> Result<()> {
         let devs;
         let connection;
         {
-            let mut system = self.0.lock().await;
+            let mut system = self.lock().await;
             devs = system.find_devs().await?;
             connection = system.connection.clone();
         }
@@ -107,7 +108,7 @@ impl SystemHandle {
         let mut dev;
         let connection;
         {
-            let mut system = self.0.lock().await;
+            let mut system = self.lock().await;
             dev = system.find_dev(path).await?;
             connection = system.connection.clone();
         }

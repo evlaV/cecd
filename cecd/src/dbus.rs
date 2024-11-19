@@ -1,9 +1,8 @@
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
 use linux_cec::message::Message;
-use linux_cec::operand::{AbortReason, Version};
-use linux_cec::LogicalAddress;
-use linux_cec::Timeout;
+use linux_cec::operand::AbortReason;
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Timeout};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::canonicalize;
@@ -46,11 +45,29 @@ impl CecDevice {
     }
 
     pub async fn register(&mut self, connection: Connection, system: SystemHandle) -> Result<()> {
+        let device = self.device.clone();
+        let osd_name;
+        let log_addr;
+        let vendor_id;
+        {
+            let system = system.lock().await;
+            osd_name = system.osd_name.clone();
+            log_addr = system.log_addr;
+            vendor_id = system.vendor_id;
+        }
+        {
+            let device = device.lock().await;
+            device.set_osd_name(&osd_name).await?;
+            device.set_logical_address(log_addr).await?;
+            device.set_vendor_id(vendor_id).await?;
+            device.set_follower(FollowerMode::Enabled).await?;
+            device.set_initiator(InitiatorMode::Enabled).await?;
+        }
         let object_server = connection.object_server();
         let path = self.dbus_path()?;
         let interface = object_server.interface(path).await?;
         let poll_task = PollTask {
-            device: self.device.clone(),
+            device,
             token: self.token.clone(),
             interface,
             system,
@@ -122,18 +139,6 @@ impl PollTask {
             .await?;
 
         let reply = match envelope.message {
-            Message::GetCecVersion => Some(Message::CecVersion {
-                version: Version::V2_0,
-            }),
-            Message::GiveDeviceVendorId => self
-                .system
-                .vendor_id()
-                .await
-                .map(|vendor_id| Message::DeviceVendorId { vendor_id }),
-            Message::GiveOsdName => Some(Message::SetOsdName {
-                name: self.system.osd_name().await,
-            }),
-            Message::GivePhysicalAddr => todo!(),
             Message::UserControlPressed { .. } => todo!(),
             Message::UserControlReleased => todo!(),
             _ => None,
