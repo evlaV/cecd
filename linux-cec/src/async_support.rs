@@ -1,4 +1,3 @@
-use linux_cec_sys::VendorId;
 use nix::poll::PollTimeout;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
@@ -8,6 +7,7 @@ use tokio::sync::oneshot;
 
 use crate::device::{ConnectorInfo, Envelope, PollResult};
 use crate::message::Message;
+use crate::operand::VendorId;
 use crate::{
     device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result, Timeout,
 };
@@ -43,8 +43,8 @@ enum DeviceCommand {
     SetLogicalAddress(LogicalAddress, ResultChannel<()>),
     GetOsdName(ResultChannel<String>),
     SetOsdName(String, ResultChannel<()>),
-    GetVendorId(ResultChannel<VendorId>),
-    SetVendorId(VendorId, ResultChannel<()>),
+    GetVendorId(ResultChannel<Option<VendorId>>),
+    SetVendorId(Option<VendorId>, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
@@ -141,11 +141,11 @@ impl Device {
         relay! { self, SetOsdName => name.to_string() }
     }
 
-    pub async fn get_vendor_id(&self) -> Result<VendorId> {
+    pub async fn get_vendor_id(&self) -> Result<Option<VendorId>> {
         relay! { self, GetVendorId }
     }
 
-    pub async fn set_vendor_id(&self, vendor_id: VendorId) -> Result<()> {
+    pub async fn set_vendor_id(&self, vendor_id: Option<VendorId>) -> Result<()> {
         relay! { self, SetVendorId => vendor_id }
     }
 

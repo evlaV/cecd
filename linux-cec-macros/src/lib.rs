@@ -3,6 +3,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
     parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type,
+    TypeArray,
 };
 
 macro_rules! bail {
@@ -276,20 +277,46 @@ pub fn operand(input: TokenStream) -> TokenStream {
                 };
                 q.into()
             }
-            Fields::Unnamed(data) => {
-                if let Some(Field {
+            Fields::Unnamed(data) => match data.unnamed.first() {
+                Some(Field {
                     ty: Type::Path(ty), ..
-                }) = data.unnamed.first()
-                {
+                }) => {
                     if ty.qself.is_some() {
                         bits_u8_encodable(ident)
                     } else {
                         into_u8_encodable(ident)
                     }
-                } else {
-                    todo!();
                 }
-            }
+                Some(Field {
+                    ty: Type::Array(TypeArray { elem, len, .. }),
+                    ..
+                }) => quote! {
+                    impl crate::operand::OperandEncodable for #ident {
+                        fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+                            <[#elem; #len] as crate::operand::OperandEncodable>::to_bytes(&self.0, buf);
+                        }
+
+                        fn try_from_bytes(bytes: &[u8], offset: usize) -> crate::Result<Self> {
+                            if bytes.len() != #len {
+                                Err(crate::Error::OutOfRange {
+                                    expected: crate::Range::Exact(#len),
+                                    got: bytes.len() - offset,
+                                    quantity: String::from("bytes"),
+                                })
+                            } else {
+                                let buf = bytes[offset..offset + #len].first_chunk::<#len>();
+                                Ok(#ident(*buf.unwrap()))
+                            }
+                        }
+
+                        fn len(&self) -> usize {
+                            #len
+                        }
+                    }
+                }
+                .into(),
+                _ => todo!(),
+            },
             Fields::Unit => todo!(),
         },
         _ => todo!(),

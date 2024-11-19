@@ -4,6 +4,7 @@
 use bitfield_struct::bitfield;
 use bitflags::bitflags;
 use linux_cec_macros::{BitfieldSpecifier, Operand};
+use linux_cec_sys::VendorId as SysVendorId;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -17,12 +18,40 @@ pub type DurationHours = BcdByte;
 pub type Hour = BcdByte; // TODO: Limit range
 pub type Minute = BcdByte; // TODO: Limit range
 pub type ShortAudioDescriptor = [u8; 3];
-pub type VendorId = [u8; 3];
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Operand)]
+pub struct VendorId(pub [u8; 3]);
 
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
     fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self>;
     fn len(&self) -> usize;
+}
+
+impl Into<SysVendorId> for VendorId {
+    fn into(self: VendorId) -> SysVendorId {
+        SysVendorId::try_from(
+            ((self.0[0] as u32) << 16) | ((self.0[1] as u32) << 8) | (self.0[2] as u32),
+        )
+        .unwrap()
+    }
+}
+
+impl VendorId {
+    pub fn try_from_sys(vendor_id: SysVendorId) -> Result<Option<VendorId>> {
+        match vendor_id {
+            x if x.is_none() => Ok(None),
+            x if x.is_valid() => {
+                let val: u32 = x.into();
+                Ok(Some(VendorId([
+                    ((val >> 16) & 0xFF).try_into().unwrap(),
+                    ((val >> 8) & 0xFF).try_into().unwrap(),
+                    (val & 0xFF).try_into().unwrap(),
+                ])))
+            }
+            _ => Err(Error::InvalidData),
+        }
+    }
 }
 
 // TODO: Unit tests

@@ -480,6 +480,18 @@ impl Default for VendorId {
     }
 }
 
+impl TryFrom<u32> for VendorId {
+    type Error = ();
+
+    fn try_from(val: u32) -> Result<VendorId, ()> {
+        if val < 0x1_00_00_00 || val == CEC_VENDOR_ID_NONE {
+            Ok(VendorId(val))
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl Into<u32> for VendorId {
     fn into(self) -> u32 {
         self.0

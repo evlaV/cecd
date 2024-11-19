@@ -10,7 +10,7 @@ use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
     CEC_RX_STATUS,
 };
-use linux_cec_sys::{Timestamp, VendorId};
+use linux_cec_sys::{Timestamp, VendorId as SysVendorId};
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
@@ -22,6 +22,7 @@ pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
+use crate::operand::VendorId;
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result, Timeout,
 };
@@ -175,18 +176,19 @@ impl Device {
         Ok(())
     }
 
-    pub fn get_vendor_id(&mut self) -> Result<VendorId> {
+    pub fn get_vendor_id(&mut self) -> Result<Option<VendorId>> {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
-        Ok(self.internal_log_addrs.vendor_id)
+        Ok(VendorId::try_from_sys(self.internal_log_addrs.vendor_id)?)
     }
 
-    pub fn set_vendor_id(&mut self, vendor_id: VendorId) -> Result<()> {
-        if !vendor_id.is_valid() && !vendor_id.is_none() {
-            return Err(Error::InvalidData);
+    pub fn set_vendor_id(&mut self, vendor_id: Option<VendorId>) -> Result<()> {
+        if let Some(vendor_id) = vendor_id {
+            self.internal_log_addrs.vendor_id = vendor_id.into();
+        } else {
+            self.internal_log_addrs.vendor_id = SysVendorId::default();
         }
-        self.internal_log_addrs.vendor_id = vendor_id;
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
