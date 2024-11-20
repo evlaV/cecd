@@ -1,11 +1,12 @@
 use anyhow::{ensure, Result};
 use linux_cec::operand::VendorId;
 use linux_cec::LogicalAddress;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
 use tokio::sync::{Mutex, MutexGuard};
+use tokio_util::sync::CancellationToken;
 use tracing::debug;
 use zbus::connection::Connection;
 
@@ -18,23 +19,25 @@ pub(crate) struct System {
     pub log_addr: LogicalAddress,
 
     connection: Connection,
-    active: HashSet<PathBuf>,
+    token: CancellationToken,
+    active: HashMap<PathBuf, CancellationToken>,
 }
 
 impl System {
-    pub(crate) fn new(connection: Connection) -> System {
+    pub(crate) fn new(connection: Connection, token: CancellationToken) -> System {
         System {
             osd_name: String::from("CEC Device"),
             vendor_id: None,
             log_addr: LogicalAddress::UNREGISTERED,
             connection,
-            active: HashSet::new(),
+            token,
+            active: HashMap::new(),
         }
     }
 
     pub(crate) async fn find_devs(&mut self) -> Result<Vec<CecDevice>> {
         let mut devs = Vec::new();
-        let mut add = HashSet::new();
+        let mut add = HashMap::new();
         let mut dir = read_dir("/dev").await?;
         while let Some(entry) = dir.next_entry().await? {
             let name = entry.file_name();
@@ -43,15 +46,16 @@ impl System {
             }
 
             let path = entry.path();
-            if self.active.contains(&path) {
+            if self.active.contains_key(&path) {
                 continue;
             }
 
             let pathname = path.display();
             debug!("Scanning cec device {pathname}");
 
-            devs.push(CecDevice::open(&path).await?);
-            add.insert(path);
+            let token = self.token.child_token();
+            devs.push(CecDevice::open(&path, token.clone()).await?);
+            add.insert(path, token);
         }
         self.active.extend(add);
         Ok(devs)
@@ -61,12 +65,19 @@ impl System {
         let pathname = path.as_ref().display();
         debug!("Scanning cec device {pathname}");
         ensure!(
-            !self.active.contains(path.as_ref()),
+            !self.active.contains_key(path.as_ref()),
             "Device {pathname} already loaded"
         );
-        let dev = CecDevice::open(&path).await?;
-        self.active.insert(path.as_ref().to_path_buf());
+        let token = self.token.child_token();
+        let dev = CecDevice::open(&path, token.clone()).await?;
+        self.active.insert(path.as_ref().to_path_buf(), token);
         Ok(dev)
+    }
+
+    pub(crate) fn close_dev(&mut self, path: impl AsRef<Path>) {
+        if let Some(token) = self.active.remove(path.as_ref()) {
+            token.cancel();
+        }
     }
 }
 
@@ -110,5 +121,10 @@ impl SystemHandle {
             connection = system.connection.clone();
         }
         dev.register(connection.clone(), self.clone()).await
+    }
+
+    pub(crate) async fn close_dev(&self, path: impl AsRef<Path>) {
+        let mut system = self.lock().await;
+        system.close_dev(path);
     }
 }

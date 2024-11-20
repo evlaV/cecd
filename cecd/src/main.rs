@@ -2,12 +2,16 @@ use anyhow::Result;
 use clap::Parser;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::LocalSet;
+use tokio_util::sync::CancellationToken;
 use zbus::connection::Builder;
 
 use crate::system::{System, SystemHandle};
+use crate::udev::udev_hotplug;
 
 pub(crate) mod dbus;
 pub(crate) mod system;
+pub(crate) mod udev;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -32,7 +36,8 @@ pub async fn main() -> Result<()> {
         .build()
         .await?;
 
-    let system = SystemHandle(Arc::new(Mutex::new(System::new(connection))));
+    let token = CancellationToken::new();
+    let system = SystemHandle(Arc::new(Mutex::new(System::new(connection, token.clone()))));
 
     if let Some(device) = args.device {
         system.find_dev(device).await?;
@@ -40,8 +45,12 @@ pub async fn main() -> Result<()> {
         system.find_devs().await?;
     }
 
+    let local = LocalSet::new();
+
     if args.allow_hotplug {
-        todo!();
+        let system = system.clone();
+        let token = token.clone();
+        local.spawn_local(udev_hotplug(system, token));
     }
 
     todo!();

@@ -32,10 +32,9 @@ struct PollTask {
 }
 
 impl CecDevice {
-    pub async fn open(path: impl AsRef<Path>) -> Result<CecDevice> {
+    pub async fn open(path: impl AsRef<Path>, token: CancellationToken) -> Result<CecDevice> {
         let path = canonicalize(path).await?;
         let device = Arc::new(Mutex::new(AsyncDevice::open(&path).await?));
-        let token = CancellationToken::new();
         Ok(CecDevice {
             device,
             token,
