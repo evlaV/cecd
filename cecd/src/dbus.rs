@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 use zbus::object_server::{InterfaceRef, SignalEmitter};
 use zbus::{interface, Connection};
 
-use crate::SystemHandle;
+use crate::system::SystemHandle;
 
 const PATH: &'static str = "/com/steampowered/CecDaemon1";
 
