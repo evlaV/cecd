@@ -17,12 +17,13 @@ use num_enum::TryFromPrimitive;
 use std::fs::{File, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::path::Path;
+use std::str::FromStr;
 
 pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
-use crate::operand::VendorId;
+use crate::operand::{BufferOperand, VendorId};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result, Timeout,
 };
@@ -167,11 +168,17 @@ impl Device {
     }
 
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
-        let name = name.as_bytes();
-        Range::AtMost(14).check(name.len(), "bytes")?;
-        self.internal_log_addrs.osd_name[..name.len()].copy_from_slice(name);
+        let name = BufferOperand::from_str(name)?;
+        self.internal_log_addrs
+            .osd_name
+            .copy_from_slice(&name.buffer);
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+
+        if self.tx_logical_address != LogicalAddress::UNREGISTERED {
+            let message = Message::SetOsdName { name };
+            self.tx_message(&message, LogicalAddress::Tv)?;
         }
         Ok(())
     }
@@ -282,6 +289,24 @@ impl Device {
                 data: unsafe { conn_info.data.raw },
             }),
         }
+    }
+
+    pub fn activate_source(&self, text_view: bool) -> Result<()> {
+        let address = self.get_physical_address()?;
+        let active_source = Message::ActiveSource { address };
+        self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
+        if text_view {
+            let text_view_on = Message::TextViewOn {};
+            self.tx_message(&text_view_on, LogicalAddress::Tv)
+        } else {
+            let image_view_on = Message::ImageViewOn {};
+            self.tx_message(&image_view_on, LogicalAddress::Tv)
+        }
+    }
+
+    pub fn standby(&self, target: LogicalAddress) -> Result<()> {
+        let standby = Message::Standby {};
+        self.tx_message(&standby, target)
     }
 }
 

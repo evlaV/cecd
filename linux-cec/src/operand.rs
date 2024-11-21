@@ -251,8 +251,8 @@ where
 // TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable + Default + Copy> {
-    buffer: [T; S],
-    len: usize,
+    pub(crate) buffer: [T; S],
+    pub(crate) len: usize,
 }
 
 impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
@@ -297,7 +297,7 @@ impl<const S: usize> FromStr for BoundedBufferOperand<S, u8> {
 
     fn from_str(s: &str) -> Result<Self> {
         let bytes = s.as_bytes();
-        Range::AtMost(S).check(bytes.len(), "characters")?;
+        Range::AtMost(S).check(bytes.len(), "bytes")?;
         let mut buffer = [0; S];
         buffer[..bytes.len()].copy_from_slice(bytes);
         Ok(BoundedBufferOperand::<S, u8> {
@@ -1885,7 +1885,21 @@ mod bounded_buffer_operand {
             Err(Error::OutOfRange {
                 expected: Range::AtMost(2),
                 got: 3,
-                quantity: String::from("characters"),
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_from_string_overfull_utf8() {
+        let s = "💩";
+        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
+        assert_eq!(
+            buffer,
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(2),
+                got: 4,
+                quantity: String::from("bytes"),
             })
         );
     }

@@ -48,6 +48,8 @@ enum DeviceCommand {
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
+    ActivateSource(bool, ResultChannel<()>),
+    Standby(LogicalAddress, ResultChannel<()>),
 }
 
 pub struct Device {
@@ -161,6 +163,14 @@ impl Device {
         relay! { self, GetConnectorInfo }
     }
 
+    pub async fn activate_source(&self, text_view: bool) -> Result<()> {
+        relay! { self, ActivateSource => text_view }
+    }
+
+    pub async fn standby(&self, target: LogicalAddress) -> Result<()> {
+        relay! { self, Standby => target }
+    }
+
     pub async fn close(mut self) -> Result<()> {
         self.tx.send(DeviceCommand::Drop)?;
         let Some(thread) = self.thread.take() else {
@@ -242,6 +252,12 @@ impl DeviceThread {
                 }
                 DeviceCommand::GetConnectorInfo(tx) => {
                     let _ = tx.send(self.device.get_connector_info());
+                }
+                DeviceCommand::ActivateSource(text_view, tx) => {
+                    let _ = tx.send(self.device.activate_source(text_view));
+                }
+                DeviceCommand::Standby(target, tx) => {
+                    let _ = tx.send(self.device.standby(target));
                 }
             }
         }
