@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = "1"
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
 linux-cec = { path = "../linux-cec", features = ["async"] }
+num_enum = "0.7"
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7", default-features = false }
 tracing = { version = "0.1", default-features = false }

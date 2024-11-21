@@ -114,6 +114,7 @@ dependencies = [
  "anyhow",
  "clap",
  "linux-cec",
+ "num_enum",
  "tokio",
  "tokio-util",
  "tracing",

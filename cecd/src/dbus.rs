@@ -3,6 +3,8 @@ use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
 use linux_cec::message::Message;
 use linux_cec::operand::AbortReason;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Timeout};
+use num_enum::TryFromPrimitive;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::canonicalize;
@@ -10,10 +12,15 @@ use tokio::select;
 use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
+use tracing::error;
 use zbus::object_server::{InterfaceRef, SignalEmitter};
-use zbus::{interface, Connection};
+use zbus::{fdo, interface, Connection};
 
 use crate::system::SystemHandle;
+
+fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
+    fdo::Error::Failed(format!("{val}"))
+}
 
 const PATH: &'static str = "/com/steampowered/CecDaemon1";
 
@@ -102,6 +109,25 @@ impl CecDevice {
         timestamp: u64,
         message: &[u8],
     ) -> zbus::Result<()>;
+
+    async fn activate_source(&self, text_view: bool) -> fdo::Result<()> {
+        self.device
+            .lock()
+            .await
+            .activate_source(text_view)
+            .await
+            .map_err(into_fdo_error)
+    }
+
+    async fn standby(&self, target: u8) -> fdo::Result<()> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        self.device
+            .lock()
+            .await
+            .standby(target)
+            .await
+            .map_err(into_fdo_error)
+    }
 }
 
 impl PollTask {
@@ -110,7 +136,9 @@ impl PollTask {
         loop {
             select! {
                 ev = poller.poll(PollTimeout::NONE) => {
-                    self.handle_poll_result(ev?).await?
+                    if let Err(err) = self.handle_poll_result(ev?).await {
+                        error!("Poll handling failed: {err}");
+                    }
                 }
                 _ = self.token.cancelled() => (),
             }
