@@ -6,9 +6,11 @@ use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
 use zbus::connection::Builder;
 
+use crate::config::read_default_config;
 use crate::system::{System, SystemHandle};
 use crate::udev::udev_hotplug;
 
+pub(crate) mod config;
 pub(crate) mod dbus;
 pub(crate) mod system;
 pub(crate) mod udev;
@@ -38,6 +40,7 @@ pub async fn main() -> Result<()> {
 
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(System::new(connection, token.clone()))));
+    system.set_config(read_default_config().await?).await?;
 
     if let Some(device) = args.device {
         system.find_dev(device).await?;

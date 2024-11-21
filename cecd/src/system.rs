@@ -1,6 +1,7 @@
 use anyhow::{ensure, Result};
 use linux_cec::operand::VendorId;
 use linux_cec::LogicalAddress;
+use num_enum::TryFromPrimitive;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -10,6 +11,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::debug;
 use zbus::connection::Connection;
 
+use crate::config::Config;
 use crate::dbus::CecDevice;
 
 #[derive(Debug)]
@@ -79,6 +81,19 @@ impl System {
             token.cancel();
         }
     }
+
+    pub(crate) async fn set_config(&mut self, config: Config) -> Result<()> {
+        if let Some(osd_name) = config.osd_name {
+            self.osd_name = osd_name;
+        }
+        if let Some(vendor_id) = config.vendor_id {
+            self.vendor_id = Some(VendorId(vendor_id));
+        }
+        if let Some(logical_address) = config.logical_address {
+            self.log_addr = LogicalAddress::try_from_primitive(logical_address)?;
+        }
+        todo!();
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -126,5 +141,10 @@ impl SystemHandle {
     pub(crate) async fn close_dev(&self, path: impl AsRef<Path>) {
         let mut system = self.lock().await;
         system.close_dev(path);
+    }
+
+    pub(crate) async fn set_config(&self, config: Config) -> Result<()> {
+        let mut system = self.lock().await;
+        system.set_config(config).await
     }
 }
