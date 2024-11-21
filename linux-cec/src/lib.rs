@@ -17,6 +17,7 @@ pub mod operand;
 #[cfg(feature = "async")]
 mod async_support;
 
+pub use linux_cec_sys as sys;
 pub use linux_cec_sys::PhysicalAddress;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
