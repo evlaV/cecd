@@ -11,7 +11,7 @@ config = { version = "0.14", default-features = false, features = ["async", "tom
 linux-cec = { path = "../linux-cec", features = ["async"] }
 num_enum = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7", default-features = false }
 tracing = { version = "0.1", default-features = false }
 udev = "0.9"

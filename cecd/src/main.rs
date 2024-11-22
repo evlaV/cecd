@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use std::sync::Arc;
+use tokio::signal::ctrl_c;
 use tokio::sync::Mutex;
 use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
@@ -67,7 +68,7 @@ pub async fn main() -> Result<()> {
         local.spawn_local(udev_hotplug(system, token));
     }
 
-    todo!();
+    ctrl_c().await?;
 
     Ok(())
 }
