@@ -1,5 +1,6 @@
 use anyhow::{ensure, Result};
-use linux_cec::operand::VendorId;
+use input_linux::Key;
+use linux_cec::operand::{UiCommand, VendorId};
 use linux_cec::LogicalAddress;
 use num_enum::TryFromPrimitive;
 use std::collections::HashMap;
@@ -19,6 +20,7 @@ pub(crate) struct System {
     pub osd_name: String,
     pub vendor_id: Option<VendorId>,
     pub log_addr: LogicalAddress,
+    pub mappings: HashMap<UiCommand, Key>,
 
     connection: Connection,
     token: CancellationToken,
@@ -31,6 +33,7 @@ impl System {
             osd_name: String::from("CEC Device"),
             vendor_id: None,
             log_addr: LogicalAddress::UNREGISTERED,
+            mappings: HashMap::new(),
             connection,
             token,
             active: HashMap::new(),
@@ -92,7 +95,8 @@ impl System {
         if let Some(logical_address) = config.logical_address {
             self.log_addr = LogicalAddress::try_from_primitive(logical_address)?;
         }
-        todo!();
+        self.mappings = config.mappings;
+        Ok(())
     }
 }
 

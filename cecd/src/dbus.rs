@@ -54,19 +54,23 @@ impl CecDevice {
 
     pub async fn register(&mut self, connection: Connection, system: SystemHandle) -> Result<()> {
         let mut uinput = UInputDevice::new()?;
-        // TODO: create mappings
-        uinput.open()?;
 
         let device = self.device.clone();
         let osd_name;
         let log_addr;
         let vendor_id;
+        let mappings;
         {
             let system = system.lock().await;
             osd_name = system.osd_name.clone();
             log_addr = system.log_addr;
             vendor_id = system.vendor_id;
+            mappings = system.mappings.clone();
         }
+
+        uinput.set_mappings(mappings)?;
+        uinput.set_name(osd_name.clone())?;
+        uinput.open()?;
         {
             let device = device.lock().await;
             device.set_osd_name(&osd_name).await?;
@@ -188,7 +192,7 @@ impl PollTask {
                     self.active_key = None;
                 }
                 None
-            },
+            }
             _ => None,
         };
 
