@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs::{read_dir, read_to_string};
 use tracing::{debug, error, info};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
     pub osd_name: Option<String>,
     pub vendor_id: Option<[u8; 3]>,

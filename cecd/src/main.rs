@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
+use tracing::debug;
 use zbus::connection::Builder;
 
 use crate::config::read_default_config;
@@ -41,6 +42,16 @@ pub async fn main() -> Result<()> {
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(System::new(connection, token.clone()))));
     system.set_config(read_default_config().await?).await?;
+
+    debug!("cecd starting up");
+    debug!("OSD name: {}", system.osd_name().await);
+    debug!(
+        "Vendor ID: {}",
+        match system.vendor_id().await {
+            Some(x) => format!("{x}"),
+            None => String::from("none"),
+        }
+    );
 
     if let Some(device) = args.device {
         system.find_dev(device).await?;

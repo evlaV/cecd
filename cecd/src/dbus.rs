@@ -35,7 +35,6 @@ struct PollTask {
     device: Arc<Mutex<AsyncDevice>>,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
-    system: SystemHandle,
 }
 
 impl CecDevice {
@@ -76,7 +75,6 @@ impl CecDevice {
             device,
             token: self.token.clone(),
             interface,
-            system,
         };
         self.poller = Some(spawn(poll_task.run()));
         Ok(())
