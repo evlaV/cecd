@@ -7,6 +7,7 @@ use linux_cec_macros::{BitfieldSpecifier, Operand};
 use linux_cec_sys::VendorId as SysVendorId;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
+use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 use strum::{Display, EnumString};
 
@@ -34,6 +35,12 @@ impl Into<SysVendorId> for VendorId {
             ((self.0[0] as u32) << 16) | ((self.0[1] as u32) << 8) | (self.0[2] as u32),
         )
         .unwrap()
+    }
+}
+
+impl Display for VendorId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:02x}-{:02x}-{:02x}", self.0[0], self.0[1], self.0[2])
     }
 }
 
