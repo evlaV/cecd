@@ -359,7 +359,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
 
     quote! {
         #[derive(
-            Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand,
+            Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand,
         )]
         #[repr(u8)]
         pub enum Opcode {

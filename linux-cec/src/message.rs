@@ -6,7 +6,7 @@ use crate::{constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
 use crate::{Error, Range};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, MessageEnum)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
 pub enum Message {
     ActiveSource {
@@ -279,7 +279,7 @@ impl Message {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive, Operand)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum CdcOpcode {
     HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
     HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
