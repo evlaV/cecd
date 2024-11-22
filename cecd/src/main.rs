@@ -16,6 +16,7 @@ pub(crate) mod config;
 pub(crate) mod dbus;
 pub(crate) mod system;
 pub(crate) mod udev;
+pub(crate) mod uinput;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

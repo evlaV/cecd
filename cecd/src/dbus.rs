@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
 use linux_cec::message::Message;
-use linux_cec::operand::AbortReason;
+use linux_cec::operand::{AbortReason, UiCommand};
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Timeout};
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
@@ -17,6 +17,7 @@ use zbus::object_server::{InterfaceRef, SignalEmitter};
 use zbus::{fdo, interface, Connection};
 
 use crate::system::SystemHandle;
+use crate::uinput::UInputDevice;
 
 fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
     fdo::Error::Failed(format!("{val}"))
@@ -35,6 +36,8 @@ struct PollTask {
     device: Arc<Mutex<AsyncDevice>>,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
+    uinput: UInputDevice,
+    active_key: Option<UiCommand>,
 }
 
 impl CecDevice {
@@ -50,6 +53,10 @@ impl CecDevice {
     }
 
     pub async fn register(&mut self, connection: Connection, system: SystemHandle) -> Result<()> {
+        let mut uinput = UInputDevice::new()?;
+        // TODO: create mappings
+        uinput.open()?;
+
         let device = self.device.clone();
         let osd_name;
         let log_addr;
@@ -68,6 +75,7 @@ impl CecDevice {
             device.set_follower(FollowerMode::Enabled).await?;
             device.set_initiator(InitiatorMode::Enabled).await?;
         }
+
         let object_server = connection.object_server();
         let path = self.dbus_path()?;
         let interface = object_server.interface(path).await?;
@@ -75,6 +83,8 @@ impl CecDevice {
             device,
             token: self.token.clone(),
             interface,
+            uinput,
+            active_key: None,
         };
         self.poller = Some(spawn(poll_task.run()));
         Ok(())
@@ -129,7 +139,7 @@ impl CecDevice {
 }
 
 impl PollTask {
-    async fn run(self) -> Result<()> {
+    async fn run(mut self) -> Result<()> {
         let poller = self.device.lock().await.get_poller().await?;
         loop {
             select! {
@@ -143,7 +153,7 @@ impl PollTask {
         }
     }
 
-    async fn handle_poll_result(&self, result: PollResult) -> Result<()> {
+    async fn handle_poll_result(&mut self, result: PollResult) -> Result<()> {
         if !result.got_message() {
             return Ok(());
         }
@@ -164,8 +174,21 @@ impl PollTask {
             .await?;
 
         let reply = match envelope.message {
-            Message::UserControlPressed { .. } => todo!(),
-            Message::UserControlReleased => todo!(),
+            Message::UserControlPressed { ui_command } => {
+                if let Some(old_key) = self.active_key {
+                    self.uinput.key_up(old_key)?;
+                }
+                self.uinput.key_down(ui_command)?;
+                self.active_key = Some(ui_command);
+                None
+            }
+            Message::UserControlReleased => {
+                if let Some(old_key) = self.active_key {
+                    self.uinput.key_up(old_key)?;
+                    self.active_key = None;
+                }
+                None
+            },
             _ => None,
         };
 
