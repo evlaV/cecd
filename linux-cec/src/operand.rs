@@ -180,17 +180,16 @@ mod test_option {
     }
 }
 
-// TODO: Unit tests
-impl OperandEncodable for [u8; 3] {
+impl<const S: usize> OperandEncodable for [u8; S] {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend(*self);
     }
 
     fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        match bytes[offset..=offset + 2].try_into() {
+        match bytes[offset..offset + S].try_into() {
             Ok(array) => Ok(array),
             Err(_) => Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(3),
+                expected: crate::Range::AtLeast(S),
                 got: bytes.len() - offset,
                 quantity: String::from("bytes"),
             }),
@@ -198,7 +197,75 @@ impl OperandEncodable for [u8; 3] {
     }
 
     fn len(&self) -> usize {
-        3
+        S
+    }
+}
+
+#[cfg(test)]
+mod test_array {
+    use super::*;
+
+    #[test]
+    fn test_encode_1() {
+        let mut buf = Vec::new();
+        <[u8; 1] as OperandEncodable>::to_bytes(&[0x56], &mut buf);
+
+        assert_eq!(buf, &[0x56]);
+    }
+
+    #[test]
+    fn test_encode_2() {
+        let mut buf = Vec::new();
+        <[u8; 2] as OperandEncodable>::to_bytes(&[0x56, 0x78], &mut buf);
+
+        assert_eq!(buf, &[0x56, 0x78]);
+    }
+
+    #[test]
+    fn test_encode_3() {
+        let mut buf = Vec::new();
+        <[u8; 3] as OperandEncodable>::to_bytes(&[0x56, 0x78, 0x9A], &mut buf);
+
+        assert_eq!(buf, &[0x56, 0x78, 0x9A]);
+    }
+
+    #[test]
+    fn test_decode_1() {
+        assert_eq!(
+            <[u8; 1] as OperandEncodable>::try_from_bytes(&[0x56], 0),
+            Ok([0x56])
+        );
+    }
+
+    #[test]
+    fn test_decode_2() {
+        assert_eq!(
+            <[u8; 2] as OperandEncodable>::try_from_bytes(&[0x56, 0x78], 0),
+            Ok([0x56, 0x78])
+        );
+    }
+
+    #[test]
+    fn test_decode_3() {
+        assert_eq!(
+            <[u8; 3] as OperandEncodable>::try_from_bytes(&[0x56, 0x78, 0x9A], 0),
+            Ok([0x56, 0x78, 0x9A])
+        );
+    }
+
+    #[test]
+    fn test_len_1() {
+        assert_eq!(<[u8; 1] as OperandEncodable>::len(&[0x56]), 1);
+    }
+
+    #[test]
+    fn test_len_2() {
+        assert_eq!(<[u8; 2] as OperandEncodable>::len(&[0x56, 0x78]), 2);
+    }
+
+    #[test]
+    fn test_len_3() {
+        assert_eq!(<[u8; 3] as OperandEncodable>::len(&[0x56, 0x78, 0x9A]), 3);
     }
 }
 
@@ -253,7 +320,6 @@ mod test_u16 {
     }
 }
 
-// TODO: Unit tests
 impl OperandEncodable for bool {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([if *self { 1 } else { 0 }]);
@@ -273,6 +339,56 @@ impl OperandEncodable for bool {
 
     fn len(&self) -> usize {
         1
+    }
+}
+
+#[cfg(test)]
+mod test_bool {
+    use super::*;
+
+    #[test]
+    fn test_encode_true() {
+        let mut buf = Vec::new();
+        <bool as OperandEncodable>::to_bytes(&true, &mut buf);
+
+        assert_eq!(buf, &[0x01]);
+    }
+
+    #[test]
+    fn test_encode_false() {
+        let mut buf = Vec::new();
+        <bool as OperandEncodable>::to_bytes(&false, &mut buf);
+
+        assert_eq!(buf, &[0x00]);
+    }
+
+    #[test]
+    fn test_decode_true() {
+        assert_eq!(
+            <bool as OperandEncodable>::try_from_bytes(&[0x01], 0),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn test_decode_false() {
+        assert_eq!(
+            <bool as OperandEncodable>::try_from_bytes(&[0x00], 0),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn test_decode_nb() {
+        assert_eq!(
+            <bool as OperandEncodable>::try_from_bytes(&[0x02], 0),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn test_len() {
+        assert_eq!(<bool as OperandEncodable>::len(&true), 1);
     }
 }
 
