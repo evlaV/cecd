@@ -109,7 +109,6 @@ mod test_u8 {
     }
 }
 
-// TODO: Unit tests
 impl<T: OperandEncodable> OperandEncodable for Option<T> {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         if let Some(data) = self {
@@ -131,6 +130,53 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
         } else {
             0
         }
+    }
+}
+
+#[cfg(test)]
+mod test_option {
+    use super::*;
+
+    #[test]
+    fn test_encode_none() {
+        let mut buf = Vec::new();
+        <Option<u8> as OperandEncodable>::to_bytes(&None, &mut buf);
+
+        assert_eq!(buf, &[]);
+    }
+
+    #[test]
+    fn test_encode_some() {
+        let mut buf = Vec::new();
+        <Option<u8> as OperandEncodable>::to_bytes(&Some(0x56), &mut buf);
+
+        assert_eq!(buf, &[0x56]);
+    }
+
+    #[test]
+    fn test_decode_none() {
+        assert_eq!(
+            <Option<u8> as OperandEncodable>::try_from_bytes(&[], 0),
+            Ok(None)
+        );
+    }
+
+    #[test]
+    fn test_decode_some() {
+        assert_eq!(
+            <Option<u8> as OperandEncodable>::try_from_bytes(&[0x56], 0),
+            Ok(Some(0x56))
+        );
+    }
+
+    #[test]
+    fn test_len_none() {
+        assert_eq!(<Option<u8> as OperandEncodable>::len(&None), 0);
+    }
+
+    #[test]
+    fn test_len_some() {
+        assert_eq!(<Option<u8> as OperandEncodable>::len(&Some(0x56)), 1);
     }
 }
 
@@ -156,7 +202,6 @@ impl OperandEncodable for [u8; 3] {
     }
 }
 
-// TODO: Unit tests
 impl OperandEncodable for u16 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([
@@ -179,6 +224,32 @@ impl OperandEncodable for u16 {
 
     fn len(&self) -> usize {
         2
+    }
+}
+
+#[cfg(test)]
+mod test_u16 {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        let mut buf = Vec::new();
+        <u16 as OperandEncodable>::to_bytes(&0x5678, &mut buf);
+
+        assert_eq!(buf, &[0x56, 0x78]);
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            <u16 as OperandEncodable>::try_from_bytes(&[0x56, 0x78], 0),
+            Ok(0x5678)
+        );
+    }
+
+    #[test]
+    fn test_len() {
+        assert_eq!(<u16 as OperandEncodable>::len(&0x5678), 2);
     }
 }
 
