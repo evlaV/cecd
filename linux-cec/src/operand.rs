@@ -61,7 +61,6 @@ impl VendorId {
     }
 }
 
-// TODO: Unit tests
 impl OperandEncodable for u8 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([*self]);
@@ -102,6 +101,11 @@ mod test_u8 {
             <u8 as OperandEncodable>::try_from_bytes(&[0x56], 0),
             Ok(0x56)
         );
+    }
+
+    #[test]
+    fn test_len() {
+        assert_eq!(<u8 as OperandEncodable>::len(&0x56), 1);
     }
 }
 
@@ -201,7 +205,6 @@ impl OperandEncodable for bool {
     }
 }
 
-// TODO: Unit tests
 pub trait TaggedLengthBuffer: Sized {
     type FixedParam: Into<u8> + TryFrom<u8> + Copy;
 
@@ -236,22 +239,221 @@ where
     }
 
     fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        let first = T::try_from(bytes[offset])?;
+        Range::AtLeast(1).check(bytes.len(), "bytes")?;
+        let first = T::try_from(bytes[offset] & 0x7F)?;
         let mut extra = Vec::new();
-        let mut offset = offset;
-        while offset < bytes.len() {
-            let byte = bytes[offset];
-            extra.push(byte & 0x7F);
-            if (byte & 0x80) == 0 {
-                break;
+        if bytes[offset] & 0x80 == 0x80 {
+            let mut offset = offset + 1;
+            while offset < bytes.len() {
+                let byte = bytes[offset];
+                extra.push(byte & 0x7F);
+                if (byte & 0x80) == 0 {
+                    break;
+                }
+                offset += 1;
             }
-            offset += 1;
         }
         Self::try_new(first, &extra)
     }
 
     fn len(&self) -> usize {
         size_of::<T>() + self.extra_params().len()
+    }
+}
+
+#[cfg(test)]
+mod test_tagged_length_buffer {
+    use super::*;
+
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    #[repr(transparent)]
+    struct U8(pub u8);
+
+    impl Into<u8> for U8 {
+        fn into(self) -> u8 {
+            self.0
+        }
+    }
+
+    impl TryFrom<u8> for U8 {
+        type Error = Error;
+        fn try_from(val: u8) -> Result<U8> {
+            Range::AtMost(0x7F).check(val, "value")?;
+            Ok(U8(val))
+        }
+    }
+
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    struct U8Buffer {
+        first: U8,
+        rest: [u8; 13],
+        len: usize,
+    }
+
+    impl TaggedLengthBuffer for U8Buffer {
+        type FixedParam = U8;
+
+        fn try_new(first: Self::FixedParam, extra: &[u8]) -> Result<Self> {
+            let len = extra.len();
+            Range::AtMost(13).check(len, "bytes")?;
+            let mut rest = [0; 13];
+            rest[..len].copy_from_slice(&extra[..len]);
+            Ok(U8Buffer { first, rest, len })
+        }
+
+        fn fixed_param(&self) -> Self::FixedParam {
+            self.first
+        }
+
+        fn extra_params(&self) -> &[u8] {
+            &self.rest[..self.len]
+        }
+    }
+
+    #[test]
+    fn test_u8_fixed_param() {
+        assert_eq!(
+            U8Buffer {
+                first: U8(0x56),
+                rest: [0; 13],
+                len: 0,
+            }
+            .fixed_param(),
+            U8(0x56)
+        );
+    }
+
+    #[test]
+    fn test_u8_extra_params() {
+        assert_eq!(
+            U8Buffer {
+                first: U8(0),
+                rest: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                len: 2,
+            }
+            .extra_params(),
+            &[1, 2]
+        );
+    }
+
+    #[test]
+    fn test_u8_try_new() {
+        assert_eq!(
+            Ok(U8Buffer {
+                first: U8(0x56),
+                rest: [0x78, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                len: 1,
+            }),
+            U8Buffer::try_new(U8(0x56), &[0x78])
+        );
+    }
+
+    #[test]
+    fn test_encode_fixed_only() {
+        let mut buf = Vec::new();
+        U8Buffer {
+            first: U8(0x12),
+            rest: [0; 13],
+            len: 0,
+        }
+        .to_bytes(&mut buf);
+        assert_eq!(&buf, &[0x12]);
+    }
+
+    #[test]
+    fn test_encode_fixed_and_one_byte() {
+        let mut buf = Vec::new();
+        U8Buffer {
+            first: U8(0x12),
+            rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            len: 1,
+        }
+        .to_bytes(&mut buf);
+        assert_eq!(&buf, &[0x92, 0x34]);
+    }
+
+    #[test]
+    fn test_encode_fixed_and_two_bytes() {
+        let mut buf = Vec::new();
+        U8Buffer {
+            first: U8(0x12),
+            rest: [0x34, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            len: 2,
+        }
+        .to_bytes(&mut buf);
+        assert_eq!(&buf, &[0x92, 0xB4, 0x56]);
+    }
+
+    #[test]
+    fn test_decode_zero_bytes() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[], 0),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(1),
+                got: 0,
+                quantity: String::from("bytes"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_one_byte() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x12], 0),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0; 13],
+                len: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_one_byte_junk() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x12, 0x34], 0),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0; 13],
+                len: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_two_bytes() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x92, 0x34], 0),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                len: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_two_bytes_junk() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x92, 0x34, 0x56], 0),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                len: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_three_bytes() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x92, 0xB4, 0x56], 0),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0x34, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                len: 2,
+            })
+        );
     }
 }
 
