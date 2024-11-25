@@ -1670,7 +1670,6 @@ pub enum TimerProgrammedInfo {
     NotProgrammed(NotProgrammedErrorInfo),
 }
 
-// TODO: Unit tests
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Hash, Operand)]
 pub struct AudioFormatIdAndCode {
@@ -1680,13 +1679,60 @@ pub struct AudioFormatIdAndCode {
     pub id: AudioFormatId,
 }
 
-// TODO: Unit tests
+#[cfg(test)]
+mod test_audio_format_id_and_code {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        assert_eq!(
+            <AudioFormatIdAndCode as Into<u8>>::into(
+                AudioFormatIdAndCode::new()
+                    .with_code(0x05)
+                    .with_id(AudioFormatId::CEA861Cxt)
+            ),
+            0x45
+        );
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            AudioFormatIdAndCode::from(0x45),
+            AudioFormatIdAndCode::new()
+                .with_code(0x05)
+                .with_id(AudioFormatId::CEA861Cxt)
+        );
+    }
+}
+
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Hash, Operand)]
 pub struct AudioStatus {
     #[bits(7)]
     pub volume: usize,
     pub mute: bool,
+}
+
+#[cfg(test)]
+mod test_audio_status {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        assert_eq!(
+            <AudioStatus as Into<u8>>::into(AudioStatus::new().with_volume(0x09).with_mute(true)),
+            0x89
+        );
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            AudioStatus::from(0x89),
+            AudioStatus::new().with_volume(0x09).with_mute(true)
+        );
+    }
 }
 
 // TODO: Limit range
