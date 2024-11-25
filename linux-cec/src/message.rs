@@ -332,7 +332,7 @@ mod test_active_source {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -344,7 +344,7 @@ mod test_active_source {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -390,7 +390,7 @@ mod test_inactive_source {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -402,7 +402,7 @@ mod test_inactive_source {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -466,7 +466,7 @@ mod test_routing_change {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 4,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -478,7 +478,7 @@ mod test_routing_change {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 3,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -490,7 +490,7 @@ mod test_routing_change {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -502,7 +502,7 @@ mod test_routing_change {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -548,7 +548,7 @@ mod test_routing_information {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -560,7 +560,7 @@ mod test_routing_information {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -606,7 +606,7 @@ mod test_set_stream_path {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -618,7 +618,7 @@ mod test_set_stream_path {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -635,7 +635,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -772,7 +772,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 8,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -792,7 +792,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 7,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -811,7 +811,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 6,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -829,7 +829,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 5,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -846,7 +846,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 4,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -862,7 +862,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 3,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -877,7 +877,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(9),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -953,7 +953,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(6),
                 got: 5,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -970,7 +970,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 4,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -986,7 +986,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 3,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1001,7 +1001,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1056,7 +1056,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1120,7 +1120,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
                 got: 3,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1135,7 +1135,7 @@ mod test_record_on {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
                 got: 2,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1145,7 +1145,7 @@ mod test_record_on {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RecordOn as u8, 0xFE]),
             Err(Error::InvalidValueForType {
-                ty: String::from("RecordSourceType"),
+                ty: "RecordSourceType",
                 value: String::from("254"),
             })
         );
@@ -1212,7 +1212,7 @@ mod test_record_status {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
-                quantity: String::from("bytes")
+                quantity: "bytes"
             })
         );
     }
@@ -1222,7 +1222,7 @@ mod test_record_status {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RecordStatus as u8, 0xFE]),
             Err(Error::InvalidValueForType {
-                ty: String::from("RecordStatusInfo"),
+                ty: "RecordStatusInfo",
                 value: String::from("254"),
             })
         );

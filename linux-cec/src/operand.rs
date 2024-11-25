@@ -71,7 +71,7 @@ impl OperandEncodable for u8 {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         } else {
             Ok(bytes[offset])
@@ -191,7 +191,7 @@ impl<const S: usize> OperandEncodable for [u8; S] {
             Err(_) => Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(S),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             }),
         }
     }
@@ -282,7 +282,7 @@ impl OperandEncodable for u16 {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(2),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         } else {
             Ok((u16::from(bytes[offset]) << 8) | u16::from(bytes[offset + 1]))
@@ -330,7 +330,7 @@ impl OperandEncodable for bool {
             Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         } else {
             Ok(bytes[offset] != 0)
@@ -578,7 +578,7 @@ mod test_tagged_length_buffer {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(1),
                 got: 0,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -1432,7 +1432,7 @@ mod test_analogue_service_id {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
                 got: 3,
-                quantity: String::from("bytes")
+                quantity: "bytes"
             })
         );
     }
@@ -1444,7 +1444,7 @@ mod test_analogue_service_id {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: String::from("bytes")
+                quantity: "bytes"
             })
         );
     }
@@ -1456,7 +1456,7 @@ mod test_analogue_service_id {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
-                quantity: String::from("bytes")
+                quantity: "bytes"
             })
         );
     }
@@ -1468,7 +1468,7 @@ mod test_analogue_service_id {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(1),
                 got: 0,
-                quantity: String::from("bytes")
+                quantity: "bytes"
             })
         );
     }
@@ -1556,7 +1556,7 @@ impl OperandEncodable for DigitalServiceId {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(7),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             });
         }
         let head = bytes[offset];
@@ -1748,7 +1748,7 @@ impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             });
         }
         let byte = bytes[offset];
@@ -1812,7 +1812,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 0,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1821,7 +1821,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 9,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1834,7 +1834,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 21,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1843,7 +1843,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 30,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
     }
@@ -1855,7 +1855,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 0,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1864,7 +1864,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 9,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1873,7 +1873,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 0, max: 9 },
                 got: 10,
-                quantity: String::from("low bits"),
+                quantity: "low bits",
             })
         );
 
@@ -1882,7 +1882,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 0, max: 9 },
                 got: 10,
-                quantity: String::from("high bits"),
+                quantity: "high bits",
             })
         );
 
@@ -1895,7 +1895,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 21,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
 
@@ -1904,7 +1904,7 @@ mod test_bcd_byte {
             Err(Error::OutOfRange {
                 expected: Range::Interval { min: 10, max: 20 },
                 got: 30,
-                quantity: String::from("value"),
+                quantity: "value",
             })
         );
     }
@@ -1954,7 +1954,7 @@ impl OperandEncodable for ChannelId {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(4),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             });
         }
         let major = <u16 as OperandEncodable>::try_from_bytes(bytes, offset)?;
@@ -2170,7 +2170,7 @@ impl OperandEncodable for TimerStatusData {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             });
         }
         let byte = bytes[offset];
@@ -2198,7 +2198,7 @@ impl OperandEncodable for TimerStatusData {
                 constants::CEC_OP_PROG_INFO_NONE_AVAILABLE => ProgrammedInfo::NoneAvailable,
                 v => {
                     return Err(Error::InvalidValueForType {
-                        ty: String::from("ProgrammedInfo"),
+                        ty: "ProgrammedInfo",
                         value: v.to_string(),
                     })
                 }
@@ -2237,7 +2237,7 @@ impl OperandEncodable for TimerStatusData {
                 }
                 v => {
                     return Err(Error::InvalidValueForType {
-                        ty: String::from("ProgrammedInfo"),
+                        ty: "ProgrammedInfo",
                         value: v.to_string(),
                     })
                 }
@@ -2322,7 +2322,7 @@ impl OperandEncodable for TunerDeviceInfo {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(5),
                 got: bytes.len() - offset,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             });
         }
         let head = bytes[offset];
@@ -2342,7 +2342,7 @@ impl OperandEncodable for TunerDeviceInfo {
             l => Err(Error::OutOfRange {
                 got: l,
                 expected: Range::Only(vec![5, 8]),
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             }),
         }
     }
@@ -2378,7 +2378,7 @@ impl OperandEncodable for ExternalSource {
             l => Err(Error::OutOfRange {
                 got: l,
                 expected: crate::Range::Only(vec![1, 2]),
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             }),
         }
     }
@@ -2440,7 +2440,7 @@ impl OperandEncodable for RecordSource {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(2),
                         got: bytes.len() - offset,
-                        quantity: String::from("bytes"),
+                        quantity: "bytes",
                     })
                 } else {
                     Ok(RecordSource::External(ExternalSource::Plug(
@@ -2498,7 +2498,7 @@ mod bounded_buffer_operand {
             Err(Error::OutOfRange {
                 expected: Range::AtMost(2),
                 got: 3,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }
@@ -2512,7 +2512,7 @@ mod bounded_buffer_operand {
             Err(Error::OutOfRange {
                 expected: Range::AtMost(2),
                 got: 4,
-                quantity: String::from("bytes"),
+                quantity: "bytes",
             })
         );
     }

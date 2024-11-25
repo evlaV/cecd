@@ -152,7 +152,7 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
-                        quantity: String::from("bytes"),
+                        quantity: "bytes",
                     })
                 } else {
                     Ok(#ident::from_bits_retain(bytes[offset]))
@@ -180,7 +180,7 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
-                        quantity: String::from("bytes"),
+                        quantity: "bytes",
                     })
                 } else {
                     Ok(#ident::try_from(bytes[offset])?)
@@ -208,7 +208,7 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
                     Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
                         got: bytes.len() - offset,
-                        quantity: String::from("bytes"),
+                        quantity: "bytes",
                     })
                 } else {
                     Ok(#ident::from(bytes[offset]))
@@ -301,7 +301,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                                 Err(crate::Error::OutOfRange {
                                     expected: crate::Range::Exact(#len),
                                     got: bytes.len() - offset,
-                                    quantity: String::from("bytes"),
+                                    quantity: "bytes",
                                 })
                             } else {
                                 let buf = bytes[offset..offset + #len].first_chunk::<#len>();
@@ -372,7 +372,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
                     return Err(crate::Error::OutOfRange {
                         expected: crate::Range::AtLeast(1),
                         got: 0,
-                        quantity: String::from("bytes"),
+                        quantity: "bytes",
                     })
                 }
                 Ok(match Opcode::try_from_primitive(bytes[0])? {

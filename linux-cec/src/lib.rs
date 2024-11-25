@@ -74,7 +74,7 @@ pub enum Range<T: PartialOrd + Display> {
 }
 
 impl Range<usize> {
-    pub fn check(self, val: impl Into<usize>, quantity: &(impl ToString + ?Sized)) -> Result<()> {
+    pub fn check(self, val: impl Into<usize>, quantity: &'static str) -> Result<()> {
         let val: usize = val.into();
         match self {
             Range::AtMost(max) if val <= max => Ok(()),
@@ -85,7 +85,7 @@ impl Range<usize> {
             _ => Err(Error::OutOfRange {
                 got: val,
                 expected: self,
-                quantity: quantity.to_string(),
+                quantity,
             }),
         }
     }
@@ -138,10 +138,10 @@ pub enum Error {
     OutOfRange {
         expected: Range<usize>,
         got: usize,
-        quantity: String,
+        quantity: &'static str,
     },
     #[error("Invalid value {value} for type {ty}")]
-    InvalidValueForType { ty: String, value: String },
+    InvalidValueForType { ty: &'static str, value: String },
     #[error("The provided data was not valid")]
     InvalidData,
     #[error("A timeout occurred")]
@@ -182,7 +182,7 @@ impl From<io::Error> for Error {
 impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
     fn from(val: TryFromPrimitiveError<T>) -> Error {
         Error::InvalidValueForType {
-            ty: T::NAME.to_string(),
+            ty: T::NAME,
             value: format!("{:?}", val.number),
         }
     }
@@ -217,7 +217,7 @@ impl TryFrom<&Duration> for Timeout {
                 } else {
                     usize::MAX
                 },
-                quantity: String::from("milliseconds"),
+                quantity: "milliseconds",
             })
         }
     }
