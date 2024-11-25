@@ -16,8 +16,8 @@ use crate::{constants, Error, PhysicalAddress, Range, Result};
 pub type AnalogueFrequency = u16; // TODO: Limit range
 pub type Delay = u8; // TODO: Limit range
 pub type DurationHours = BcdByte;
-pub type Hour = BcdByte; // TODO: Limit range
-pub type Minute = BcdByte; // TODO: Limit range
+pub type Hour = BcdByte<0, 23>;
+pub type Minute = BcdByte<0, 59>;
 pub type ShortAudioDescriptor = [u8; 3];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
@@ -1735,22 +1735,15 @@ mod test_audio_status {
     }
 }
 
-// TODO: Limit range
-#[bitfield(u8)]
-#[derive(PartialEq, Eq, PartialOrd, Hash)]
-pub struct BcdByte {
-    #[bits(4)]
-    pub ones: usize,
-    #[bits(4)]
-    pub tens: usize,
-}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct BcdByte<const MIN: u8 = 0, const MAX: u8 = 99>(u8);
 
-impl OperandEncodable for BcdByte {
+impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        buf.extend([u8::from(*self)]);
+        buf.extend([self.0]);
     }
 
-    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte> {
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<BcdByte<MIN, MAX>> {
         if bytes.len() < 1 + offset {
             return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(1),
@@ -1759,13 +1752,161 @@ impl OperandEncodable for BcdByte {
             });
         }
         let byte = bytes[offset];
-        Range::Interval { min: 0, max: 10 }.check(byte & 0xF, "bytes")?;
-        Range::Interval { min: 0, max: 100 }.check(byte, "bytes")?;
-        Ok(BcdByte::from(byte))
+        Range::Interval { min: 0, max: 9 }.check(byte & 0xF, "low bits")?;
+        Range::Interval { min: 0, max: 9 }.check(byte >> 4, "high bits")?;
+        Range::Interval {
+            min: MIN as usize,
+            max: MAX as usize,
+        }
+        .check((byte >> 4) * 10 + (byte & 0xF), "value")?;
+        Ok(BcdByte(byte))
     }
 
     fn len(&self) -> usize {
         1
+    }
+}
+
+impl<const MIN: u8, const MAX: u8> From<BcdByte<MIN, MAX>> for u8 {
+    fn from(bcd: BcdByte<MIN, MAX>) -> u8 {
+        (bcd.0 >> 4) * 10 + (bcd.0 & 0xF)
+    }
+}
+
+impl<const MIN: u8, const MAX: u8> TryFrom<u8> for BcdByte<MIN, MAX> {
+    type Error = Error;
+
+    fn try_from(byte: u8) -> Result<BcdByte<MIN, MAX>> {
+        Range::Interval {
+            min: MIN as usize,
+            max: MAX as usize,
+        }
+        .check(byte, "value")?;
+        Ok(BcdByte((byte / 10 << 4) + (byte % 10)))
+    }
+}
+
+#[cfg(test)]
+mod test_bcd_byte {
+    use super::*;
+
+    #[test]
+    fn test_encode() {
+        let mut byte = Vec::new();
+        BcdByte::<0, 99>::try_from(12).unwrap().to_bytes(&mut byte);
+        assert_eq!(byte, &[0x12]);
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            BcdByte::<0, 99>::try_from_bytes(&[0x12], 0),
+            BcdByte::try_from(12)
+        );
+    }
+
+    #[test]
+    fn test_create_range() {
+        assert_eq!(
+            BcdByte::<10, 20>::try_from(0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 0,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from(9),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 9,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert!(BcdByte::<10, 20>::try_from(10).is_ok());
+
+        assert!(BcdByte::<10, 20>::try_from(20).is_ok());
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from(21),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 21,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from(30),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 30,
+                quantity: String::from("value"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_range() {
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[0], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 0,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[9], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 9,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[0xA], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: String::from("low bits"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[0xA0], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: String::from("high bits"),
+            })
+        );
+
+        assert!(BcdByte::<10, 20>::try_from_bytes(&[0x10], 0).is_ok());
+
+        assert!(BcdByte::<10, 20>::try_from_bytes(&[0x20], 0).is_ok());
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[0x21], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 21,
+                quantity: String::from("value"),
+            })
+        );
+
+        assert_eq!(
+            BcdByte::<10, 20>::try_from_bytes(&[0x30], 0),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 10, max: 20 },
+                got: 30,
+                quantity: String::from("value"),
+            })
+        );
     }
 }
 
