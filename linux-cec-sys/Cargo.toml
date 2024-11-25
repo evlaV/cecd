@@ -2,6 +2,8 @@
 name = "linux-cec-sys"
 version = "0.1.0"
 edition = "2021"
+authors = ["Vicki Pfau <vi@endrift.com>"]
+license = "BSD-3-Clause"
 
 [features]
 default = ["std"]

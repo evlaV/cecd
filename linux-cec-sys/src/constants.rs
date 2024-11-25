@@ -1,3 +1,11 @@
+/*
+ * Copyright © 2024 Valve Software
+ *
+ * Based in part on linux/cec.h
+ * Copyright 2016 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #![allow(clippy::identity_op)]
 
 pub const CEC_MAX_MSG_SIZE: usize = 16;

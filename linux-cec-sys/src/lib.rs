@@ -1,3 +1,11 @@
+/*
+ * Copyright © 2024 Valve Software
+ *
+ * Based in part on linux/cec.h
+ * Copyright 2016 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod constants;

@@ -1,3 +1,11 @@
+/*
+ * Copyright © 2024 Valve Software
+ *
+ * Based in part on linux/cec.h
+ * Copyright 2016 Cisco Systems, Inc. and/or its affiliates. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 
 use crate::structs::*;
