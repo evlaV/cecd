@@ -663,14 +663,16 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
     fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
         let mut buf = Vec::new();
         let mut offset = offset;
+        let mut len = 0;
         while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
             buf.push(T::try_from_bytes(bytes, offset)?);
             offset += size_of::<T>();
+            len += 1;
         }
         buf.resize(S, T::default());
         Ok(Self {
             buffer: *buf.first_chunk().unwrap(),
-            len: buf.len(),
+            len,
         })
     }
 
@@ -704,6 +706,91 @@ impl<const S: usize> FromStr for BoundedBufferOperand<S, u8> {
 }
 
 pub type BufferOperand = BoundedBufferOperand<14, u8>;
+
+#[cfg(test)]
+mod test_buffer_operand {
+    use super::*;
+
+    #[test]
+    fn test_encode_empty() {
+        let mut buf = Vec::new();
+
+        BoundedBufferOperand::<2, u8> {
+            buffer: [0; 2],
+            len: 0,
+        }
+        .to_bytes(&mut buf);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            BoundedBufferOperand::<2, u8>::try_from_bytes(&[], 0).unwrap(),
+            BoundedBufferOperand::<2, u8> {
+                buffer: [0; 2],
+                len: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn test_encode_underfull() {
+        let mut buf = Vec::new();
+
+        BoundedBufferOperand::<2, u8> {
+            buffer: [0x12, 0x34],
+            len: 1,
+        }
+        .to_bytes(&mut buf);
+        assert_eq!(&buf, &[0x12]);
+    }
+
+    #[test]
+    fn test_decode_underfull() {
+        assert_eq!(
+            BoundedBufferOperand::<2, u8>::try_from_bytes(&[0x12], 0).unwrap(),
+            BoundedBufferOperand::<2, u8> {
+                buffer: [0x12, 0],
+                len: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn test_encode_full() {
+        let mut buf = Vec::new();
+
+        BoundedBufferOperand::<2, u8> {
+            buffer: [0x12, 0x34],
+            len: 2,
+        }
+        .to_bytes(&mut buf);
+        assert_eq!(&buf, &[0x12, 0x34]);
+    }
+
+    #[test]
+    fn test_decode_full() {
+        assert_eq!(
+            BoundedBufferOperand::<2, u8>::try_from_bytes(&[0x12, 0x34], 0).unwrap(),
+            BoundedBufferOperand::<2, u8> {
+                buffer: [0x12, 0x34],
+                len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn test_decode_overfull() {
+        assert_eq!(
+            BoundedBufferOperand::<2, u8>::try_from_bytes(&[0x12, 0x34, 0x56], 0).unwrap(),
+            BoundedBufferOperand::<2, u8> {
+                buffer: [0x12, 0x34],
+                len: 2,
+            }
+        );
+    }
+}
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
