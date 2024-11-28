@@ -644,7 +644,6 @@ mod test_tagged_length_buffer {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BoundedBufferOperand<const S: usize, T: OperandEncodable + Default + Copy> {
     pub(crate) buffer: [T; S],
