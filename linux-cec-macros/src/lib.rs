@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, Field, Fields, Ident, Meta,
-    Type, TypeArray,
+    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, Field, Fields, FieldsUnnamed,
+    Ident, Meta, Type, TypeArray,
 };
 
 macro_rules! bail {
@@ -87,6 +87,19 @@ impl MessageEnum {
                         out_params
                     }
                 });
+
+                self.from_bytes.push(quote! {
+                    #opcode::#ident => {
+                        let offset = 1;
+
+                        #(#from_params)*
+
+                        #message::#ident {
+                            #(#names),*
+                        }
+                    }
+                });
+
                 self.len.push(quote! {
                     #message::#ident { #(#names,)* } => {
                         #(let _ = #names;)*
@@ -94,12 +107,60 @@ impl MessageEnum {
                     }
                 });
             }
-            Fields::Unnamed(_) => {
-                return Err(format!("Variant {ident} cannot have unnamed fields"));
+            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                if unnamed.len() > 1 {
+                    return Err(format!(
+                        "Variant {ident} cannot have more than one unnamed fields"
+                    ));
+                }
+                let field = unnamed.first().unwrap();
+                let typename = &field.ty;
+                let size;
+                match typename {
+                    Type::Path(ref path) if path.path.get_ident().is_none() => {
+                        size = quote!(x.len());
+                    }
+                    _ => size = quote!(::core::mem::size_of::<#typename>()),
+                }
+
+                self.to_bytes.push(quote! {
+                    #message::#ident(ref x) => {
+                        let mut out_params = vec![#opcode::#ident as u8];
+                        crate::operand::OperandEncodable::to_bytes(x, &mut out_params);
+                        out_params
+                    }
+                });
+
+                self.from_bytes.push(quote! {
+                    #opcode::#ident => {
+                        let x = <#typename as OperandEncodable>::try_from_bytes(bytes, 1)
+                        .map_err(crate::Error::add_offset(1))?;
+                        #message::#ident(x)
+                    }
+                });
+
+                self.len.push(quote! {
+                    #message::#ident(ref x) => {
+                        1 + #size
+                    }
+                });
             }
             Fields::Unit => {
                 self.to_bytes
                     .push(quote!(#message::#ident => vec![#opcode::#ident as u8]));
+
+                self.from_bytes.push(quote! {
+                    #opcode::#ident => {
+                        let offset = 1;
+
+                        #(#from_params)*
+
+                        #message::#ident {
+                            #(#names),*
+                        }
+                    }
+                });
+
                 self.len.push(quote!(#message::#ident => 1));
 
                 self.tests.push(quote! {
@@ -144,18 +205,6 @@ impl MessageEnum {
                 });
             }
         }
-
-        self.from_bytes.push(quote! {
-            #opcode::#ident => {
-                let offset = 1;
-
-                #(#from_params)*
-
-                #message::#ident {
-                    #(#names),*
-                }
-            }
-        });
         Ok(())
     }
 
@@ -227,10 +276,11 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as DeriveInput)
     else {
-        bail!("This macro only works on the Message enum");
+        bail!("This macro only works on the Message or CdcMessage enum");
     };
     let opcode: Ident = parse_str(match &message {
         x if x == "Message" => "Opcode",
+        x if x == "CdcMessage" => "CdcOpcode",
         _ => bail!("This macro only works on the Message or CdcMessage enum"),
     })
     .unwrap();

@@ -2,9 +2,9 @@ use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
-use crate::{Error, Range};
+use crate::Range;
+use crate::{cdc, constants, operand, Error, PhysicalAddress, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
@@ -246,8 +246,7 @@ pub enum Message {
     // TODO: Unit tests
     CdcMessage {
         initiator: PhysicalAddress,
-        opcode: CdcOpcode,
-        params: operand::BoundedBufferOperand<11, u8>, // TODO
+        message: CdcMessage,
     } = constants::CEC_MSG_CDC_MESSAGE,
     /* HDMI 2.0 */
     // TODO: Unit tests
@@ -278,18 +277,60 @@ impl Message {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum CdcOpcode {
-    HecInquireState = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
-    HecReportState = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
-    HecSetStateAdjacent = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
-    HecSetState = constants::CEC_MSG_CDC_HEC_SET_STATE,
-    HecRequestDeactivation = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
+pub enum CdcMessage {
+    HecInquireState {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+    } = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
+    HecReportState {
+        physical_address: PhysicalAddress,
+        state: cdc::HecState,
+        support: cdc::HecSupportField,
+        activation: cdc::HecActivationField,
+    } = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
+    HecSetStateAdjacent {
+        terminating_address: PhysicalAddress,
+        set_state: bool,
+    } = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
+    HecSetState {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+        set_state: bool,
+        terminating_addresses: operand::BoundedBufferOperand<3, PhysicalAddress>,
+    } = constants::CEC_MSG_CDC_HEC_SET_STATE,
+    HecRequestDeactivation {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+        terminating_address3: PhysicalAddress,
+    } = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
     HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
     HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
-    HpdSetState = constants::CEC_MSG_CDC_HPD_SET_STATE,
-    HpdReportState = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
+    HpdSetState(cdc::InputPortHpdState) = constants::CEC_MSG_CDC_HPD_SET_STATE,
+    HpdReportState(cdc::HpdStateErrorCode) = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
+}
+
+impl CdcMessage {
+    pub fn opcode(&self) -> CdcOpcode {
+        let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
+        CdcOpcode::try_from_primitive(opcode).unwrap()
+    }
+}
+
+impl OperandEncodable for CdcMessage {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        let bytes = CdcMessage::to_bytes(self);
+        buf.extend(bytes.into_iter());
+    }
+
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
+        CdcMessage::try_from_bytes(&bytes[offset..]).map_err(Error::add_offset(offset))
+    }
+
+    fn len(&self) -> usize {
+        CdcMessage::len(self)
+    }
 }
 
 #[cfg(test)]

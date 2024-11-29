@@ -8,9 +8,9 @@ use std::string::ToString;
 use std::time::Duration;
 use thiserror::Error;
 
-pub mod ioctls;
-
+pub mod cdc;
 pub mod device;
+pub mod ioctls;
 pub mod message;
 pub mod operand;
 
