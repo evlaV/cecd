@@ -2,141 +2,252 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    parse_macro_input, parse_str, Data, DeriveInput, Expr, Field, Fields, Ident, Meta, Type,
-    TypeArray,
+    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, Field, Fields, Ident, Meta,
+    Type, TypeArray,
 };
 
 macro_rules! bail {
-    ($text:literal $(, $args:ident)*) => {
+    ($text:literal) => {
         return quote! {
-            compile_error!($text $(, #$args)*);
+            compile_error!($text);
         }
         .into()
     };
+    ($text:literal $(, $args:ident)*) => {{
+        let err = format!($text $(, $args)*);
+        return quote! {
+            compile_error!(#err);
+        }
+        .into()
+    }};
+    ($text:expr) => {{
+        let err = $text;
+        return quote! {
+            compile_error!(#err);
+        }
+        .into()
+    }};
 }
 
-fn message(
-    ident: Ident,
-    fields: Fields,
-    from_bytes: &mut Vec<TokenStream2>,
-    to_bytes: &mut Vec<TokenStream2>,
-    len: &mut Vec<TokenStream2>,
-    tests: &mut Vec<TokenStream2>,
-) -> Result<(), String> {
-    let mut from_params = Vec::new();
-    let mut names = Vec::new();
+struct MessageEnum {
+    message: Ident,
+    opcode: Ident,
+    from_bytes: Vec<TokenStream2>,
+    to_bytes: Vec<TokenStream2>,
+    len: Vec<TokenStream2>,
+    tests: Vec<TokenStream2>,
+}
 
-    let testname: Ident =
-        parse_str(format!("test_{}", ident.to_string().to_lowercase()).as_str()).unwrap();
+impl MessageEnum {
+    fn add_message(&mut self, ident: Ident, fields: Fields) -> Result<(), String> {
+        let message = &self.message;
+        let opcode = &self.opcode;
+        let mut from_params = Vec::new();
+        let mut names = Vec::new();
 
-    match fields {
-        Fields::Named(_) => {
-            let mut sizes = Vec::new();
-            let mut params = Vec::new();
-            for field in fields {
-                let Some(name) = field.ident else {
-                    return Err(format!("Variant {ident} cannot have unnamed fields"));
-                };
-                let typename = field.ty;
+        let testname: Ident =
+            parse_str(format!("test_{}", ident.to_string().to_lowercase()).as_str()).unwrap();
 
-                match typename {
-                    Type::Path(ref path) if path.path.get_ident().is_none() => {
-                        sizes.push(quote!(#name.len()))
+        match fields {
+            Fields::Named(_) => {
+                let mut sizes = Vec::new();
+                let mut params = Vec::new();
+                for field in fields {
+                    let Some(name) = field.ident else {
+                        return Err(format!("Variant {ident} cannot have unnamed fields"));
+                    };
+                    let typename = field.ty;
+
+                    match typename {
+                        Type::Path(ref path) if path.path.get_ident().is_none() => {
+                            sizes.push(quote!(#name.len()))
+                        }
+                        _ => sizes.push(quote!(::core::mem::size_of::<#typename>())),
                     }
-                    _ => sizes.push(quote!(::core::mem::size_of::<#typename>())),
+
+                    params.push(quote! {
+                        crate::operand::OperandEncodable::to_bytes(#name, &mut out_params);
+                    });
+                    from_params.push(quote! {
+                        let #name = <#typename as OperandEncodable>::try_from_bytes(bytes, offset)
+                        .map_err(crate::Error::add_offset(offset))?;
+
+                        let offset = offset + #name.len();
+                    });
+
+                    names.push(name);
                 }
 
-                params.push(quote! {
-                    crate::operand::OperandEncodable::to_bytes(#name, &mut out_params);
-                });
-                from_params.push(quote! {
-                    let #name = <#typename as OperandEncodable>::try_from_bytes(bytes, offset)
-                    .map_err(crate::Error::add_offset(offset))?;
+                self.to_bytes.push(quote! {
+                    #message::#ident { #(#names,)* } => {
+                        let mut out_params = vec![#opcode::#ident as u8];
 
-                    let offset = offset + #name.len();
-                });
+                        #(#params)*
 
-                names.push(name);
+                        out_params
+                    }
+                });
+                self.len.push(quote! {
+                    #message::#ident { #(#names,)* } => {
+                        #(let _ = #names;)*
+                        1#( + #sizes)*
+                    }
+                });
             }
+            Fields::Unnamed(_) => {
+                return Err(format!("Variant {ident} cannot have unnamed fields"));
+            }
+            Fields::Unit => {
+                self.to_bytes
+                    .push(quote!(#message::#ident => vec![#opcode::#ident as u8]));
+                self.len.push(quote!(#message::#ident => 1));
 
-            to_bytes.push(quote! {
-                Message::#ident { #(#names,)* } => {
-                    let mut out_params = vec![Opcode::#ident as u8];
+                self.tests.push(quote! {
+                    #[cfg(test)]
+                    mod #testname {
+                        use crate::Error;
+                        use super::*;
 
-                    #(#params)*
+                        #[test]
+                        fn test_len() {
+                            assert_eq!(#message::#ident {}.len(), 1);
+                        }
 
-                    out_params
-                }
-            });
-            len.push(quote! {
-                Message::#ident { #(#names,)* } => {
-                    #(let _ = #names;)*
-                    1#( + #sizes)*
-                }
-            });
+                        #[test]
+                        fn test_opcode() {
+                            assert_eq!(
+                                #message::#ident {}.opcode(),
+                                #opcode::#ident
+                            );
+                        }
+
+                        #[test]
+                        fn test_encoding() {
+                            assert_eq!(
+                                &#message::#ident {}.to_bytes(),
+                                &[#opcode::#ident as u8]
+                            );
+                        }
+
+                        #[test]
+                        fn test_decoding() {
+                            assert_eq!(
+                                #message::try_from_bytes(&[#opcode::#ident as u8]),
+                                Ok(#message::#ident {})
+                            );
+                            assert_eq!(
+                                #message::try_from_bytes(&[#opcode::#ident as u8, 0x12]),
+                                Ok(#message::#ident {})
+                            );
+                        }
+                    }
+                });
+            }
         }
-        Fields::Unnamed(_) => {
-            return Err(format!("Variant {ident} cannot have unnamed fields"));
-        }
-        Fields::Unit => {
-            to_bytes.push(quote!(Message::#ident => vec![Opcode::#ident as u8]));
-            len.push(quote!(Message::#ident => 1));
 
-            tests.push(quote! {
-                #[cfg(test)]
-                mod #testname {
-                    use crate::Error;
-                    use super::*;
+        self.from_bytes.push(quote! {
+            #opcode::#ident => {
+                let offset = 1;
 
-                    #[test]
-                    fn test_len() {
-                        assert_eq!(Message::#ident {}.len(), 1);
-                    }
+                #(#from_params)*
 
-                    #[test]
-                    fn test_opcode() {
-                        assert_eq!(
-                            Message::#ident {}.opcode(),
-                            Opcode::#ident
-                        );
-                    }
-
-                    #[test]
-                    fn test_encoding() {
-                        assert_eq!(
-                            &Message::#ident {}.to_bytes(),
-                            &[Opcode::#ident as u8]
-                        );
-                    }
-
-                    #[test]
-                    fn test_decoding() {
-                        assert_eq!(
-                            Message::try_from_bytes(&[Opcode::#ident as u8]),
-                            Ok(Message::#ident {})
-                        );
-                        assert_eq!(
-                            Message::try_from_bytes(&[Opcode::#ident as u8, 0x12]),
-                            Ok(Message::#ident {})
-                        );
-                    }
+                #message::#ident {
+                    #(#names),*
                 }
-            });
-        }
+            }
+        });
+        Ok(())
     }
 
-    from_bytes.push(quote! {
-        Opcode::#ident => {
-            let offset = 1;
+    fn process(mut self, data: DataEnum) -> Result<TokenStream2, String> {
+        let mut opcodes = Vec::new();
+        for variant in data.variants {
+            let ident = variant.ident;
+            let Some((_, discriminant)) = variant.discriminant else {
+                return Err(format!("Variant {} missing discriminant", ident));
+            };
+            opcodes.push(quote!(#ident = #discriminant));
 
-            #(#from_params)*
-
-            Message::#ident {
-                #(#names),*
-            }
+            self.add_message(ident, variant.fields)?;
         }
-    });
-    Ok(())
+
+        let message = self.message;
+        let opcode = self.opcode;
+        let from_bytes = self.from_bytes;
+        let to_bytes = self.to_bytes;
+        let len = self.len;
+        let tests = self.tests;
+
+        Ok(quote! {
+            #[derive(
+                Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand,
+            )]
+            #[repr(u8)]
+            pub enum #opcode {
+                #(#opcodes,)*
+            }
+
+            impl #message {
+                pub fn try_from_bytes(bytes: &[u8]) -> Result<#message> {
+                    if bytes.is_empty() {
+                        return Err(crate::Error::OutOfRange {
+                            expected: crate::Range::AtLeast(1),
+                            got: 0,
+                            quantity: "bytes",
+                        })
+                    }
+                    Ok(match #opcode::try_from_primitive(bytes[0])? {
+                        #(#from_bytes)*
+                    })
+                }
+
+                pub fn to_bytes(&self) -> Vec<u8> {
+                    match self {
+                        #(#to_bytes,)*
+                    }
+                }
+
+                pub fn len(&self) -> usize {
+                    match self {
+                        #(#len,)*
+                    }
+                }
+            }
+
+            #(#tests)*
+        })
+    }
+}
+
+#[proc_macro_derive(MessageEnum)]
+pub fn message_enum(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        ident: message,
+        data: Data::Enum(data),
+        ..
+    } = parse_macro_input!(input as DeriveInput)
+    else {
+        bail!("This macro only works on the Message enum");
+    };
+    let opcode: Ident = parse_str(match &message {
+        x if x == "Message" => "Opcode",
+        _ => bail!("This macro only works on the Message or CdcMessage enum"),
+    })
+    .unwrap();
+
+    let work = MessageEnum {
+        message,
+        opcode,
+        from_bytes: Vec::new(),
+        to_bytes: Vec::new(),
+        len: Vec::new(),
+        tests: Vec::new(),
+    };
+
+    match work.process(data) {
+        Ok(tokens) => tokens.into(),
+        Err(error) => bail!(error),
+    }
 }
 
 fn bits_u8_encodable(ident: Ident) -> TokenStream {
@@ -321,81 +432,6 @@ pub fn operand(input: TokenStream) -> TokenStream {
         },
         _ => todo!(),
     }
-}
-
-#[proc_macro_derive(MessageEnum)]
-pub fn message_enum(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        data: Data::Enum(data),
-        ..
-    } = parse_macro_input!(input as DeriveInput)
-    else {
-        bail!("This macro only works on the Message enum");
-    };
-    let mut opcodes = Vec::new();
-    let mut from_bytes = Vec::new();
-    let mut to_bytes = Vec::new();
-    let mut len = Vec::new();
-    let mut tests = Vec::new();
-
-    for variant in data.variants {
-        let ident = variant.ident;
-        let Some((_, discriminant)) = variant.discriminant else {
-            bail!("Variant {} missing discriminant", ident);
-        };
-        opcodes.push(quote!(#ident = #discriminant));
-
-        if let Err(error) = message(
-            ident,
-            variant.fields,
-            &mut from_bytes,
-            &mut to_bytes,
-            &mut len,
-            &mut tests,
-        ) {
-            bail!("{}", error);
-        }
-    }
-
-    quote! {
-        #[derive(
-            Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand,
-        )]
-        #[repr(u8)]
-        pub enum Opcode {
-            #(#opcodes,)*
-        }
-
-        impl Message {
-            pub fn try_from_bytes(bytes: &[u8]) -> Result<Message> {
-                if bytes.is_empty() {
-                    return Err(crate::Error::OutOfRange {
-                        expected: crate::Range::AtLeast(1),
-                        got: 0,
-                        quantity: "bytes",
-                    })
-                }
-                Ok(match Opcode::try_from_primitive(bytes[0])? {
-                    #(#from_bytes)*
-                })
-            }
-
-            pub fn to_bytes(&self) -> Vec<u8> {
-                match self {
-                    #(#to_bytes,)*
-                }
-            }
-
-            pub fn len(&self) -> usize {
-                match self {
-                    #(#len,)*
-                }
-            }
-        }
-
-        #(#tests)*
-    }
-    .into()
 }
 
 #[proc_macro_derive(BitfieldSpecifier, attributes(bits, default))]
