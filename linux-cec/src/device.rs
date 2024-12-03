@@ -1,5 +1,7 @@
 use linux_cec_sys::constants::{
-    CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_MAX_LOG_ADDRS,
+    CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_EVENT_LOST_MSGS,
+    CEC_EVENT_PIN_5V_HIGH, CEC_EVENT_PIN_5V_LOW, CEC_EVENT_PIN_CEC_HIGH, CEC_EVENT_PIN_CEC_LOW,
+    CEC_EVENT_PIN_HPD_HIGH, CEC_EVENT_PIN_HPD_LOW, CEC_EVENT_STATE_CHANGE, CEC_MAX_LOG_ADDRS,
 };
 use linux_cec_sys::ioctls::{
     adapter_get_capabilities, adapter_get_connector_info, adapter_get_logical_addresses,
@@ -38,7 +40,7 @@ pub struct Device {
     internal_log_addrs: cec_log_addrs,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Envelope {
     pub message: Message,
     pub initiator: LogicalAddress,
@@ -46,16 +48,42 @@ pub struct Envelope {
     pub timestamp: Timestamp,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Pin {
+    Cec,
+    HotPlugDetect,
+    Power5V,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum PinState {
+    Low,
+    High,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct PinEvent {
+    pub pin: Pin,
+    pub state: PinState,
+}
+
 pub struct DevicePoller {
     fd: OwnedFd,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum PollResult {
+pub enum PollStatus {
     Nothing,
     GotEvent,
     GotMessage,
     GotAll,
+}
+
+#[derive(Debug, Clone)]
+pub enum PollResult {
+    Message(Envelope),
+    PinEvent(PinEvent),
+    LostMessages(u32),
 }
 
 #[derive(Debug)]
@@ -267,6 +295,50 @@ impl Device {
         Ok(())
     }
 
+    pub fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
+        let mut results = Vec::new();
+        if status.got_event() {
+            let ev = self.dequeue_event()?;
+            match ev.event {
+                CEC_EVENT_STATE_CHANGE => (), // TODO: Should we handle this?
+                CEC_EVENT_LOST_MSGS => results.push(PollResult::LostMessages(unsafe {
+                    ev.data.lost_msgs.lost_msgs
+                })),
+                CEC_EVENT_PIN_CEC_LOW => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::Cec,
+                    state: PinState::Low,
+                })),
+                CEC_EVENT_PIN_CEC_HIGH => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::Cec,
+                    state: PinState::High,
+                })),
+                CEC_EVENT_PIN_HPD_LOW => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::HotPlugDetect,
+                    state: PinState::Low,
+                })),
+                CEC_EVENT_PIN_HPD_HIGH => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::HotPlugDetect,
+                    state: PinState::High,
+                })),
+                CEC_EVENT_PIN_5V_LOW => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::Power5V,
+                    state: PinState::Low,
+                })),
+                CEC_EVENT_PIN_5V_HIGH => results.push(PollResult::PinEvent(PinEvent {
+                    pin: Pin::Power5V,
+                    state: PinState::High,
+                })),
+                _ => return Err(Error::SystemError),
+            }
+        }
+
+        if status.got_message() {
+            results.push(PollResult::Message(self.rx_message(Timeout::from_ms(1))?));
+        }
+
+        Ok(results)
+    }
+
     pub fn get_connector_info(&self) -> Result<ConnectorInfo> {
         let mut conn_info = cec_connector_info::default();
         unsafe {
@@ -333,7 +405,7 @@ impl TryFrom<File> for Device {
 }
 
 impl DevicePoller {
-    pub fn poll(&self, timeout: PollTimeout) -> Result<PollResult> {
+    pub fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
         let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI | PollFlags::POLLIN);
         let done = poll(&mut [pollfd], timeout)?;
 
@@ -342,12 +414,12 @@ impl DevicePoller {
         }
 
         match pollfd.revents() {
-            None => Ok(PollResult::Nothing),
+            None => Ok(PollStatus::Nothing),
             Some(flags) if flags.contains(PollFlags::POLLIN | PollFlags::POLLPRI) => {
-                Ok(PollResult::GotAll)
+                Ok(PollStatus::GotAll)
             }
-            Some(flags) if flags.contains(PollFlags::POLLIN) => Ok(PollResult::GotMessage),
-            Some(flags) if flags.contains(PollFlags::POLLPRI) => Ok(PollResult::GotEvent),
+            Some(flags) if flags.contains(PollFlags::POLLIN) => Ok(PollStatus::GotMessage),
+            Some(flags) if flags.contains(PollFlags::POLLPRI) => Ok(PollStatus::GotEvent),
             Some(_) => Err(Error::UnknownError(String::from(
                 "Polling error encountered",
             ))),
@@ -355,19 +427,19 @@ impl DevicePoller {
     }
 }
 
-impl PollResult {
+impl PollStatus {
     pub fn got_message(&self) -> bool {
         match self {
-            PollResult::GotMessage => true,
-            PollResult::GotAll => true,
+            PollStatus::GotMessage => true,
+            PollStatus::GotAll => true,
             _ => false,
         }
     }
 
     pub fn got_event(&self) -> bool {
         match self {
-            PollResult::GotEvent => true,
-            PollResult::GotAll => true,
+            PollStatus::GotEvent => true,
+            PollStatus::GotAll => true,
             _ => false,
         }
     }

@@ -146,6 +146,8 @@ pub enum Error {
     InvalidData,
     #[error("A timeout occurred")]
     Timeout,
+    #[error("Got unexpected result from system")]
+    SystemError,
     #[error("Errno {0}")]
     Errno(#[from] Errno),
     #[error("Unknown error: {0}")]

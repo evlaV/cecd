@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, UiCommand};
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Timeout};
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -147,9 +147,12 @@ impl PollTask {
         let poller = self.device.lock().await.get_poller().await?;
         loop {
             select! {
-                ev = poller.poll(PollTimeout::NONE) => {
-                    if let Err(err) = self.handle_poll_result(ev?).await {
-                        error!("Poll handling failed: {err}");
+                status = poller.poll(PollTimeout::NONE) => {
+                    let results = self.device.lock().await.handle_status(status?).await?;
+                    for res in results {
+                        if let Err(err) = self.handle_poll_result(res).await {
+                            error!("Poll handling failed: {err}");
+                        }
                     }
                 }
                 _ = self.token.cancelled() => (),
@@ -158,15 +161,9 @@ impl PollTask {
     }
 
     async fn handle_poll_result(&mut self, result: PollResult) -> Result<()> {
-        if !result.got_message() {
+        let PollResult::Message(envelope) = result else {
             return Ok(());
-        }
-        let envelope = self
-            .device
-            .lock()
-            .await
-            .rx_message(Timeout::from_ms(10))
-            .await?;
+        };
 
         self.interface
             .received_message(

@@ -5,7 +5,7 @@ use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::{ConnectorInfo, Envelope, PollResult};
+use crate::device::{ConnectorInfo, Envelope, PollResult, PollStatus};
 use crate::message::Message;
 use crate::operand::VendorId;
 use crate::{
@@ -47,6 +47,7 @@ enum DeviceCommand {
     SetVendorId(Option<VendorId>, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
+    HandleStatus(PollStatus, ResultChannel<Vec<PollResult>>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
     ActivateSource(bool, ResultChannel<()>),
     Standby(LogicalAddress, ResultChannel<()>),
@@ -64,7 +65,7 @@ pub struct DevicePoller {
 
 enum PollerCommand {
     Drop,
-    Poll(PollTimeout, ResultChannel<PollResult>),
+    Poll(PollTimeout, ResultChannel<PollStatus>),
 }
 
 struct DeviceThread {
@@ -159,6 +160,10 @@ impl Device {
         relay! { self, ReceiveMessage => timeout }
     }
 
+    pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
+        relay! { self, HandleStatus => status }
+    }
+
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
         relay! { self, GetConnectorInfo }
     }
@@ -250,6 +255,9 @@ impl DeviceThread {
                 DeviceCommand::ReceiveMessage(timeout, tx) => {
                     let _ = tx.send(self.device.rx_message(timeout));
                 }
+                DeviceCommand::HandleStatus(status, tx) => {
+                    let _ = tx.send(self.device.handle_status(status));
+                }
                 DeviceCommand::GetConnectorInfo(tx) => {
                     let _ = tx.send(self.device.get_connector_info());
                 }
@@ -306,7 +314,7 @@ impl From<device::DevicePoller> for DevicePoller {
 }
 
 impl DevicePoller {
-    pub async fn poll(&self, timeout: PollTimeout) -> Result<PollResult> {
+    pub async fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
         let (tx, rx) = oneshot::channel();
         self.tx.send(PollerCommand::Poll(timeout, tx))?;
         rx.await?
