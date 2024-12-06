@@ -1759,11 +1759,7 @@ mod test_digital_service_id {
         ty: DigitalServiceId,
         instance: DigitalServiceId::Channel {
             broadcast_system: DigitalServiceBroadcastSystem::DvbGeneric,
-            channel_id: ChannelId {
-                number_format: ChannelNumberFormat::Fmt2Part,
-                major_channel: 0x0234,
-                minor_channel: 0x5678,
-            },
+            channel_id: ChannelId::TwoPart(0x0234, 0x5678),
             reserved: 0xABCD,
         },
         bytes: [
@@ -2101,20 +2097,33 @@ mod test_atsc_data {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ChannelId {
-    pub number_format: ChannelNumberFormat,
-    pub major_channel: u16,
-    pub minor_channel: u16,
+pub enum ChannelId {
+    OnePart(u16),
+    TwoPart(u16, u16),
 }
 
 impl OperandEncodable for ChannelId {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        let number_format = (u8::from(self.number_format) as u16) << 10;
-        let major: u16 = number_format | self.major_channel;
-        major.to_bytes(buf);
-        self.minor_channel.to_bytes(buf);
+        let number_format;
+        let high;
+        let low;
+        match self {
+            ChannelId::OnePart(part) => {
+                number_format = ChannelNumberFormat::Fmt1Part;
+                high = 0;
+                low = *part;
+            }
+            ChannelId::TwoPart(major, minor) => {
+                number_format = ChannelNumberFormat::Fmt2Part;
+                high = *major;
+                low = *minor;
+            }
+        }
+        let number_format = (u8::from(number_format) as u16) << 10;
+        let high: u16 = number_format | high;
+        high.to_bytes(buf);
+        low.to_bytes(buf);
     }
 
     fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
@@ -2125,20 +2134,59 @@ impl OperandEncodable for ChannelId {
                 quantity: "bytes",
             });
         }
-        let major = <u16 as OperandEncodable>::try_from_bytes(bytes, offset)?;
-        let minor_channel = <u16 as OperandEncodable>::try_from_bytes(bytes, offset + 2)?;
-        let number_format = u8::try_from(major >> 10).unwrap();
+        let high = <u16 as OperandEncodable>::try_from_bytes(bytes, offset)?;
+        let low = <u16 as OperandEncodable>::try_from_bytes(bytes, offset + 2)?;
+        let number_format = u8::try_from(high >> 10).unwrap();
         let number_format = ChannelNumberFormat::try_from_primitive(number_format)?;
-        let major_channel = major & 0x3FF;
-        Ok(ChannelId {
-            number_format,
-            major_channel,
-            minor_channel,
-        })
+        match number_format {
+            ChannelNumberFormat::Fmt1Part => Ok(ChannelId::OnePart(low)),
+            ChannelNumberFormat::Fmt2Part => Ok(ChannelId::TwoPart(high & 0x3FF, low)),
+        }
     }
 
     fn len(&self) -> usize {
         4
+    }
+}
+
+#[cfg(test)]
+mod test_channel_id {
+    use super::*;
+
+    opcode_test!(
+        name: _1_part,
+        ty: ChannelId,
+        instance: ChannelId::OnePart(0x1234),
+        bytes: [0x04, 0x00, 0x12, 0x34],
+    );
+
+    opcode_test!(
+        name: _2_part,
+        ty: ChannelId,
+        instance: ChannelId::TwoPart(0x0123, 0x4567),
+        bytes: [0x09, 0x23, 0x45, 0x67],
+    );
+
+    #[test]
+    fn test_decode_invalid_format() {
+        assert_eq!(
+            ChannelId::try_from_bytes(&[0x00, 0x00, 0x12, 0x34], 0),
+            Err(Error::InvalidValueForType {
+                ty: "ChannelNumberFormat",
+                value: String::from("0")
+            })
+        )
+    }
+
+    #[test]
+    fn test_decode_ignored_bytes() {
+        assert_eq!(
+            ChannelId::try_from_bytes(
+                &[(ChannelNumberFormat::Fmt1Part as u8) << 2, 0x56, 0x12, 0x34],
+                0
+            ),
+            Ok(ChannelId::OnePart(0x1234))
+        )
     }
 }
 
