@@ -2284,15 +2284,15 @@ impl OperandEncodable for TimerStatusData {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         let mut byte: u8 = 0;
         if self.overlap_warning {
-            byte |= 1;
+            byte |= 0x80;
         }
-        byte |= <_ as Into<u8>>::into(self.media_info) << 1;
+        byte |= <_ as Into<u8>>::into(self.media_info) << 5;
         let mut duration = None;
 
         match self.programmed_info {
             TimerProgrammedInfo::Programmed(programmed) => {
-                byte |= 8;
-                byte |= (match programmed {
+                byte |= 0x10;
+                byte |= match programmed {
                     ProgrammedInfo::EnoughSpace => constants::CEC_OP_PROG_INFO_ENOUGH_SPACE,
                     ProgrammedInfo::NotEnoughSpace { duration_available } => {
                         duration = duration_available;
@@ -2303,10 +2303,10 @@ impl OperandEncodable for TimerStatusData {
                         constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE
                     }
                     ProgrammedInfo::NoneAvailable => constants::CEC_OP_PROG_INFO_NONE_AVAILABLE,
-                }) << 4;
+                };
             }
             TimerProgrammedInfo::NotProgrammed(not_programmed) => {
-                byte |= (match not_programmed {
+                byte |= match not_programmed {
                     NotProgrammedErrorInfo::NoFreeTimer => {
                         constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER
                     }
@@ -2339,7 +2339,7 @@ impl OperandEncodable for TimerStatusData {
                         duration = duration_available;
                         constants::CEC_OP_PROG_ERROR_DUPLICATE
                     }
-                }) << 4;
+                };
             }
         }
 
@@ -2356,10 +2356,10 @@ impl OperandEncodable for TimerStatusData {
             });
         }
         let byte = bytes[offset];
-        let overlap_warning = (byte & 1) == 1;
+        let overlap_warning = (byte & 0x80) == 0x80;
         let media_info = MediaInfo::try_from_primitive((byte >> 1) & 3)?;
-        let programmed_info = if (byte & 8) == 8 {
-            TimerProgrammedInfo::Programmed(match byte >> 4 {
+        let programmed_info = if (byte & 0x10) == 0x10 {
+            TimerProgrammedInfo::Programmed(match byte {
                 constants::CEC_OP_PROG_INFO_ENOUGH_SPACE => ProgrammedInfo::EnoughSpace,
                 constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE => {
                     let duration_available = if bytes.len() < offset + 3 {
@@ -2386,7 +2386,7 @@ impl OperandEncodable for TimerStatusData {
                 }
             })
         } else {
-            TimerProgrammedInfo::NotProgrammed(match byte >> 4 {
+            TimerProgrammedInfo::NotProgrammed(match byte {
                 constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER => NotProgrammedErrorInfo::NoFreeTimer,
                 constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE => {
                     NotProgrammedErrorInfo::DateOutOfRange
@@ -2459,6 +2459,7 @@ impl OperandEncodable for TimerStatusData {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TunerDeviceInfo {
     Analogue {
@@ -2481,9 +2482,9 @@ impl OperandEncodable for TunerDeviceInfo {
                 tuner_display_info,
                 service_id,
             } => {
-                let recording = if *recording { 1u8 } else { 0u8 };
+                let recording = if *recording { 0x80u8 } else { 0u8 };
                 let display_info = u8::from(*tuner_display_info);
-                <u8 as OperandEncodable>::to_bytes(&(recording | (display_info << 1)), buf);
+                <u8 as OperandEncodable>::to_bytes(&(recording | display_info), buf);
                 service_id.to_bytes(buf);
             }
             TunerDeviceInfo::Digital {
@@ -2491,9 +2492,9 @@ impl OperandEncodable for TunerDeviceInfo {
                 tuner_display_info,
                 service_id,
             } => {
-                let recording = if *recording { 1u8 } else { 0u8 };
+                let recording = if *recording { 0x80u8 } else { 0u8 };
                 let display_info = u8::from(*tuner_display_info);
-                <u8 as OperandEncodable>::to_bytes(&(recording | (display_info << 1)), buf);
+                <u8 as OperandEncodable>::to_bytes(&(recording | display_info), buf);
                 service_id.to_bytes(buf);
             }
         }
