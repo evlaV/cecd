@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Punct, TokenStream as TokenStream2};
 use quote::quote;
+use syn::parse::{self, Parse, ParseStream};
 use syn::{
     parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, Field, Fields, FieldsUnnamed,
     Ident, Meta, Type, TypeArray,
@@ -586,6 +587,137 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                     x => #ident::#default(x),
                 }
             }
+        }
+    }
+    .into()
+}
+
+struct OpcodeTest {
+    name: Option<Ident>,
+    ty: Type,
+    instance: Expr,
+    bytes: Expr,
+}
+
+impl Parse for OpcodeTest {
+    fn parse(input: ParseStream<'_>) -> parse::Result<OpcodeTest> {
+        let mut name: Option<Ident> = None;
+        let mut ty: Option<Type> = None;
+        let mut instance: Option<Expr> = None;
+        let mut bytes: Option<Expr> = None;
+
+        let span = input.span();
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+
+            match ident {
+                x if x == "name" => {
+                    if !name.is_none() {
+                        return Err(parse::Error::new(input.span(), "Duplicate field `name`"));
+                    }
+                    if input.parse::<Punct>()?.as_char() != ':' {
+                        return Err(parse::Error::new(input.span(), "Expected `:`"));
+                    }
+                    name = Some(input.parse()?);
+                }
+                x if x == "ty" => {
+                    if !ty.is_none() {
+                        return Err(parse::Error::new(input.span(), "Duplicate field `ty`"));
+                    }
+                    if input.parse::<Punct>()?.as_char() != ':' {
+                        return Err(parse::Error::new(input.span(), "Expected `:`"));
+                    }
+                    ty = Some(input.parse()?);
+                }
+                x if x == "instance" => {
+                    if !instance.is_none() {
+                        return Err(parse::Error::new(
+                            input.span(),
+                            "Duplicate field `instance`",
+                        ));
+                    }
+                    if input.parse::<Punct>()?.as_char() != ':' {
+                        return Err(parse::Error::new(input.span(), "Expected `:`"));
+                    }
+                    instance = Some(input.parse()?);
+                }
+                x if x == "bytes" => {
+                    if !bytes.is_none() {
+                        return Err(parse::Error::new(input.span(), "Duplicate field `bytes`"));
+                    }
+                    if input.parse::<Punct>()?.as_char() != ':' {
+                        return Err(parse::Error::new(input.span(), "Expected `:`"));
+                    }
+                    bytes = Some(input.parse()?);
+                }
+                _ => {
+                    return Err(parse::Error::new(
+                        input.span(),
+                        format!("Invalid field `{ident}`"),
+                    ))
+                }
+            }
+            if input.parse::<Punct>()?.as_char() != ',' {
+                return Err(parse::Error::new(input.span(), "Expected `:`"));
+            }
+        }
+        let Some(ty) = ty else {
+            return Err(parse::Error::new(span, "Missing field `ty`"));
+        };
+        let Some(instance) = instance else {
+            return Err(parse::Error::new(span, "Missing field `instance`"));
+        };
+        let Some(bytes) = bytes else {
+            return Err(parse::Error::new(span, "Missing field `bytes`"));
+        };
+        Ok(OpcodeTest {
+            name,
+            ty,
+            instance,
+            bytes,
+        })
+    }
+}
+
+#[proc_macro]
+pub fn opcode_test(input: TokenStream) -> TokenStream {
+    let OpcodeTest {
+        name,
+        ty,
+        instance,
+        bytes,
+    } = parse_macro_input!(input as OpcodeTest);
+    let encode_name: Ident;
+    let decode_name: Ident;
+    let len_name: Ident;
+
+    if let Some(name) = name {
+        encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
+        decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
+        len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
+    } else {
+        encode_name = parse_str("test_encode").unwrap();
+        decode_name = parse_str("test_decode").unwrap();
+        len_name = parse_str("test_len").unwrap();
+    };
+
+    quote! {
+        #[test]
+        fn #encode_name() {
+            let mut buf = Vec::new();
+            <#ty as OperandEncodable>::to_bytes(&#instance, &mut buf);
+            assert_eq!(buf, #bytes);
+        }
+
+        #[test]
+        fn #decode_name() {
+            assert_eq!(<#ty as OperandEncodable>::try_from_bytes(&#bytes, 0), Ok(#instance));
+        }
+
+        #[test]
+        fn #len_name() {
+            assert_eq!(<#ty as OperandEncodable>::len(&#instance), #bytes.len());
         }
     }
     .into()

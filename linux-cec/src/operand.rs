@@ -3,6 +3,8 @@
 
 use bitfield_struct::bitfield;
 use bitflags::bitflags;
+#[cfg(test)]
+use linux_cec_macros::opcode_test;
 use linux_cec_macros::{BitfieldSpecifier, Operand};
 use linux_cec_sys::VendorId as SysVendorId;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -87,26 +89,11 @@ impl OperandEncodable for u8 {
 mod test_u8 {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        let mut buf = Vec::new();
-        <u8 as OperandEncodable>::to_bytes(&0x56, &mut buf);
-
-        assert_eq!(buf, &[0x56]);
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            <u8 as OperandEncodable>::try_from_bytes(&[0x56], 0),
-            Ok(0x56)
-        );
-    }
-
-    #[test]
-    fn test_len() {
-        assert_eq!(<u8 as OperandEncodable>::len(&0x56), 1);
-    }
+    opcode_test!(
+        ty: u8,
+        instance: 0x56,
+        bytes: [0x56],
+    );
 }
 
 impl<T: OperandEncodable> OperandEncodable for Option<T> {
@@ -137,47 +124,19 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
 mod test_option {
     use super::*;
 
-    #[test]
-    fn test_encode_none() {
-        let mut buf = Vec::new();
-        <Option<u8> as OperandEncodable>::to_bytes(&None, &mut buf);
+    opcode_test!(
+        name: _none,
+        ty: Option<u8>,
+        instance: None,
+        bytes: [],
+    );
 
-        assert_eq!(buf, &[]);
-    }
-
-    #[test]
-    fn test_encode_some() {
-        let mut buf = Vec::new();
-        <Option<u8> as OperandEncodable>::to_bytes(&Some(0x56), &mut buf);
-
-        assert_eq!(buf, &[0x56]);
-    }
-
-    #[test]
-    fn test_decode_none() {
-        assert_eq!(
-            <Option<u8> as OperandEncodable>::try_from_bytes(&[], 0),
-            Ok(None)
-        );
-    }
-
-    #[test]
-    fn test_decode_some() {
-        assert_eq!(
-            <Option<u8> as OperandEncodable>::try_from_bytes(&[0x56], 0),
-            Ok(Some(0x56))
-        );
-    }
-
-    #[test]
-    fn test_len_none() {
-        assert_eq!(<Option<u8> as OperandEncodable>::len(&None), 0);
-    }
-
-    #[test]
-    fn test_len_some() {
-        assert_eq!(<Option<u8> as OperandEncodable>::len(&Some(0x56)), 1);
-    }
+    opcode_test!(
+        name: _some,
+        ty: Option<u8>,
+        instance: Some(0x56),
+        bytes: [0x56],
+    );
 }
 
 impl<const S: usize> OperandEncodable for [u8; S] {
@@ -205,68 +164,26 @@ impl<const S: usize> OperandEncodable for [u8; S] {
 mod test_array {
     use super::*;
 
-    #[test]
-    fn test_encode_1() {
-        let mut buf = Vec::new();
-        <[u8; 1] as OperandEncodable>::to_bytes(&[0x56], &mut buf);
+    opcode_test!(
+        name: _1,
+        ty: [u8; 1],
+        instance: [0x56],
+        bytes: [0x56],
+    );
 
-        assert_eq!(buf, &[0x56]);
-    }
+    opcode_test!(
+        name: _2,
+        ty: [u8; 2],
+        instance: [0x56, 0x78],
+        bytes: [0x56, 0x78],
+    );
 
-    #[test]
-    fn test_encode_2() {
-        let mut buf = Vec::new();
-        <[u8; 2] as OperandEncodable>::to_bytes(&[0x56, 0x78], &mut buf);
-
-        assert_eq!(buf, &[0x56, 0x78]);
-    }
-
-    #[test]
-    fn test_encode_3() {
-        let mut buf = Vec::new();
-        <[u8; 3] as OperandEncodable>::to_bytes(&[0x56, 0x78, 0x9A], &mut buf);
-
-        assert_eq!(buf, &[0x56, 0x78, 0x9A]);
-    }
-
-    #[test]
-    fn test_decode_1() {
-        assert_eq!(
-            <[u8; 1] as OperandEncodable>::try_from_bytes(&[0x56], 0),
-            Ok([0x56])
-        );
-    }
-
-    #[test]
-    fn test_decode_2() {
-        assert_eq!(
-            <[u8; 2] as OperandEncodable>::try_from_bytes(&[0x56, 0x78], 0),
-            Ok([0x56, 0x78])
-        );
-    }
-
-    #[test]
-    fn test_decode_3() {
-        assert_eq!(
-            <[u8; 3] as OperandEncodable>::try_from_bytes(&[0x56, 0x78, 0x9A], 0),
-            Ok([0x56, 0x78, 0x9A])
-        );
-    }
-
-    #[test]
-    fn test_len_1() {
-        assert_eq!(<[u8; 1] as OperandEncodable>::len(&[0x56]), 1);
-    }
-
-    #[test]
-    fn test_len_2() {
-        assert_eq!(<[u8; 2] as OperandEncodable>::len(&[0x56, 0x78]), 2);
-    }
-
-    #[test]
-    fn test_len_3() {
-        assert_eq!(<[u8; 3] as OperandEncodable>::len(&[0x56, 0x78, 0x9A]), 3);
-    }
+    opcode_test!(
+        name: _3,
+        ty: [u8; 3],
+        instance: [0x56, 0x78, 0x9A],
+        bytes: [0x56, 0x78, 0x9A],
+    );
 }
 
 impl OperandEncodable for u16 {
@@ -298,26 +215,11 @@ impl OperandEncodable for u16 {
 mod test_u16 {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        let mut buf = Vec::new();
-        <u16 as OperandEncodable>::to_bytes(&0x5678, &mut buf);
-
-        assert_eq!(buf, &[0x56, 0x78]);
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            <u16 as OperandEncodable>::try_from_bytes(&[0x56, 0x78], 0),
-            Ok(0x5678)
-        );
-    }
-
-    #[test]
-    fn test_len() {
-        assert_eq!(<u16 as OperandEncodable>::len(&0x5678), 2);
-    }
+    opcode_test!(
+        ty: u16,
+        instance: 0x5678,
+        bytes: [0x56, 0x78],
+    );
 }
 
 impl OperandEncodable for bool {
@@ -346,37 +248,19 @@ impl OperandEncodable for bool {
 mod test_bool {
     use super::*;
 
-    #[test]
-    fn test_encode_true() {
-        let mut buf = Vec::new();
-        <bool as OperandEncodable>::to_bytes(&true, &mut buf);
+    opcode_test!(
+        name: _true,
+        ty: bool,
+        instance: true,
+        bytes: [0x01],
+    );
 
-        assert_eq!(buf, &[0x01]);
-    }
-
-    #[test]
-    fn test_encode_false() {
-        let mut buf = Vec::new();
-        <bool as OperandEncodable>::to_bytes(&false, &mut buf);
-
-        assert_eq!(buf, &[0x00]);
-    }
-
-    #[test]
-    fn test_decode_true() {
-        assert_eq!(
-            <bool as OperandEncodable>::try_from_bytes(&[0x01], 0),
-            Ok(true)
-        );
-    }
-
-    #[test]
-    fn test_decode_false() {
-        assert_eq!(
-            <bool as OperandEncodable>::try_from_bytes(&[0x00], 0),
-            Ok(false)
-        );
-    }
+    opcode_test!(
+        name: _false,
+        ty: bool,
+        instance: false,
+        bytes: [0x00],
+    );
 
     #[test]
     fn test_decode_nb() {
@@ -384,11 +268,6 @@ mod test_bool {
             <bool as OperandEncodable>::try_from_bytes(&[0x02], 0),
             Ok(true)
         );
-    }
-
-    #[test]
-    fn test_len() {
-        assert_eq!(<bool as OperandEncodable>::len(&true), 1);
     }
 }
 
@@ -535,41 +414,38 @@ mod test_tagged_length_buffer {
         );
     }
 
-    #[test]
-    fn test_encode_fixed_only() {
-        let mut buf = Vec::new();
-        U8Buffer {
+    opcode_test!(
+        name: _fixed_only,
+        ty: U8Buffer,
+        instance: U8Buffer {
             first: U8(0x12),
             rest: [0; 13],
             len: 0,
-        }
-        .to_bytes(&mut buf);
-        assert_eq!(&buf, &[0x12]);
-    }
+        },
+        bytes: [0x12],
+    );
 
-    #[test]
-    fn test_encode_fixed_and_one_byte() {
-        let mut buf = Vec::new();
-        U8Buffer {
+    opcode_test!(
+        name: _fixed_and_one_byte,
+        ty: U8Buffer,
+        instance: U8Buffer {
             first: U8(0x12),
             rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             len: 1,
-        }
-        .to_bytes(&mut buf);
-        assert_eq!(&buf, &[0x92, 0x34]);
-    }
+        },
+        bytes: [0x92, 0x34],
+    );
 
-    #[test]
-    fn test_encode_fixed_and_two_bytes() {
-        let mut buf = Vec::new();
-        U8Buffer {
+    opcode_test!(
+        name: _fixed_and_two_bytes,
+        ty: U8Buffer,
+        instance: U8Buffer {
             first: U8(0x12),
             rest: [0x34, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             len: 2,
-        }
-        .to_bytes(&mut buf);
-        assert_eq!(&buf, &[0x92, 0xB4, 0x56]);
-    }
+        },
+        bytes: [0x92, 0xB4, 0x56],
+    );
 
     #[test]
     fn test_decode_zero_bytes() {
@@ -579,18 +455,6 @@ mod test_tagged_length_buffer {
                 expected: Range::AtLeast(1),
                 got: 0,
                 quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decode_one_byte() {
-        assert_eq!(
-            U8Buffer::try_from_bytes(&[0x12], 0),
-            Ok(U8Buffer {
-                first: U8(0x12),
-                rest: [0; 13],
-                len: 0,
             })
         );
     }
@@ -608,18 +472,6 @@ mod test_tagged_length_buffer {
     }
 
     #[test]
-    fn test_decode_two_bytes() {
-        assert_eq!(
-            U8Buffer::try_from_bytes(&[0x92, 0x34], 0),
-            Ok(U8Buffer {
-                first: U8(0x12),
-                rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                len: 1,
-            })
-        );
-    }
-
-    #[test]
     fn test_decode_two_bytes_junk() {
         assert_eq!(
             U8Buffer::try_from_bytes(&[0x92, 0x34, 0x56], 0),
@@ -627,18 +479,6 @@ mod test_tagged_length_buffer {
                 first: U8(0x12),
                 rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 len: 1,
-            })
-        );
-    }
-
-    #[test]
-    fn test_decode_three_bytes() {
-        assert_eq!(
-            U8Buffer::try_from_bytes(&[0x92, 0xB4, 0x56], 0),
-            Ok(U8Buffer {
-                first: U8(0x12),
-                rest: [0x34, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                len: 2,
             })
         );
     }
@@ -710,31 +550,38 @@ pub type BufferOperand = BoundedBufferOperand<14, u8>;
 mod test_buffer_operand {
     use super::*;
 
-    #[test]
-    fn test_encode_empty() {
-        let mut buf = Vec::new();
-
-        BoundedBufferOperand::<2, u8> {
+    opcode_test!(
+        name: _empty,
+        ty: BoundedBufferOperand::<2, u8>,
+        instance: BoundedBufferOperand::<2, u8> {
             buffer: [0; 2],
             len: 0,
-        }
-        .to_bytes(&mut buf);
-        assert!(buf.is_empty());
-    }
+        },
+        bytes: [],
+    );
+
+    opcode_test!(
+        name: _underfull,
+        ty: BoundedBufferOperand::<2, u8>,
+        instance: BoundedBufferOperand::<2, u8> {
+            buffer: [0x12, 0],
+            len: 1,
+        },
+        bytes: [0x12],
+    );
+
+    opcode_test!(
+        name: _full,
+        ty: BoundedBufferOperand::<2, u8>,
+        instance: BoundedBufferOperand::<2, u8> {
+            buffer: [0x12, 0x34],
+            len: 2,
+        },
+        bytes: [0x12, 0x34],
+    );
 
     #[test]
-    fn test_decode_empty() {
-        assert_eq!(
-            BoundedBufferOperand::<2, u8>::try_from_bytes(&[], 0).unwrap(),
-            BoundedBufferOperand::<2, u8> {
-                buffer: [0; 2],
-                len: 0,
-            }
-        );
-    }
-
-    #[test]
-    fn test_encode_underfull() {
+    fn test_encode_underfull_with_junk() {
         let mut buf = Vec::new();
 
         BoundedBufferOperand::<2, u8> {
@@ -743,40 +590,6 @@ mod test_buffer_operand {
         }
         .to_bytes(&mut buf);
         assert_eq!(&buf, &[0x12]);
-    }
-
-    #[test]
-    fn test_decode_underfull() {
-        assert_eq!(
-            BoundedBufferOperand::<2, u8>::try_from_bytes(&[0x12], 0).unwrap(),
-            BoundedBufferOperand::<2, u8> {
-                buffer: [0x12, 0],
-                len: 1,
-            }
-        );
-    }
-
-    #[test]
-    fn test_encode_full() {
-        let mut buf = Vec::new();
-
-        BoundedBufferOperand::<2, u8> {
-            buffer: [0x12, 0x34],
-            len: 2,
-        }
-        .to_bytes(&mut buf);
-        assert_eq!(&buf, &[0x12, 0x34]);
-    }
-
-    #[test]
-    fn test_decode_full() {
-        assert_eq!(
-            BoundedBufferOperand::<2, u8>::try_from_bytes(&[0x12, 0x34], 0).unwrap(),
-            BoundedBufferOperand::<2, u8> {
-                buffer: [0x12, 0x34],
-                len: 2,
-            }
-        );
     }
 
     #[test]
@@ -1467,46 +1280,20 @@ pub struct AnalogueServiceId {
 mod test_analogue_service_id {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        let mut buf = Vec::new();
-        AnalogueServiceId {
+    opcode_test!(
+        ty: AnalogueServiceId,
+        instance: AnalogueServiceId {
             broadcast_type: AnalogueBroadcastType::Terrestrial,
             frequency: 0x1234,
             broadcast_system: BroadcastSystem::PalBg,
-        }
-        .to_bytes(&mut buf);
-
-        assert_eq!(
-            buf,
-            &[
-                AnalogueBroadcastType::Terrestrial as u8,
-                0x12,
-                0x34,
-                BroadcastSystem::PalBg as u8
-            ]
-        );
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            AnalogueServiceId::try_from_bytes(
-                &[
-                    AnalogueBroadcastType::Terrestrial as u8,
-                    0x12,
-                    0x34,
-                    BroadcastSystem::PalBg as u8
-                ],
-                0
-            ),
-            Ok(AnalogueServiceId {
-                broadcast_type: AnalogueBroadcastType::Terrestrial,
-                frequency: 0x1234,
-                broadcast_system: BroadcastSystem::PalBg
-            })
-        );
-    }
+        },
+        bytes: [
+            AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            BroadcastSystem::PalBg as u8
+        ],
+    );
 
     #[test]
     fn test_decode_missing_opcodes_1() {
@@ -1769,27 +1556,13 @@ pub struct AudioFormatIdAndCode {
 mod test_audio_format_id_and_code {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        assert_eq!(
-            <AudioFormatIdAndCode as Into<u8>>::into(
-                AudioFormatIdAndCode::new()
-                    .with_code(0x05)
-                    .with_id(AudioFormatId::CEA861Cxt)
-            ),
-            0x45
-        );
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            AudioFormatIdAndCode::from(0x45),
-            AudioFormatIdAndCode::new()
-                .with_code(0x05)
-                .with_id(AudioFormatId::CEA861Cxt)
-        );
-    }
+    opcode_test!(
+        ty: AudioFormatIdAndCode,
+        instance: AudioFormatIdAndCode::new()
+            .with_code(0x05)
+            .with_id(AudioFormatId::CEA861Cxt),
+        bytes: [0x45],
+    );
 }
 
 #[bitfield(u8)]
@@ -1804,21 +1577,11 @@ pub struct AudioStatus {
 mod test_audio_status {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        assert_eq!(
-            <AudioStatus as Into<u8>>::into(AudioStatus::new().with_volume(0x09).with_mute(true)),
-            0x89
-        );
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            AudioStatus::from(0x89),
-            AudioStatus::new().with_volume(0x09).with_mute(true)
-        );
-    }
+    opcode_test!(
+        ty: AudioStatus,
+        instance: AudioStatus::new().with_volume(0x09).with_mute(true),
+        bytes: [0x89],
+    );
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -1876,20 +1639,11 @@ impl<const MIN: u8, const MAX: u8> TryFrom<u8> for BcdByte<MIN, MAX> {
 mod test_bcd_byte {
     use super::*;
 
-    #[test]
-    fn test_encode() {
-        let mut byte = Vec::new();
-        BcdByte::<0, 99>::try_from(12).unwrap().to_bytes(&mut byte);
-        assert_eq!(byte, &[0x12]);
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            BcdByte::<0, 99>::try_from_bytes(&[0x12], 0),
-            BcdByte::try_from(12)
-        );
-    }
+    opcode_test!(
+        ty: BcdByte::<0, 99>,
+        instance: BcdByte::<0, 99>::try_from(12).unwrap(),
+        bytes: [0x12],
+    );
 
     #[test]
     fn test_create_range() {
