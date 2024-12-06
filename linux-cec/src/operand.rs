@@ -1268,7 +1268,6 @@ impl RecordingSequence {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct AnalogueServiceId {
     pub broadcast_type: AnalogueBroadcastType,
@@ -1392,7 +1391,7 @@ impl OperandEncodable for DigitalServiceId {
                 broadcast_system, ..
             } => (*broadcast_system, ServiceIdMethod::ByChannel),
         };
-        buf.extend([((broadcast_system as u8) << 1) | (service_id_method as u8)]);
+        buf.extend([broadcast_system as u8 | ((service_id_method as u8) << 7)]);
         match self {
             Id::AribGeneric(data) | Id::AribBs(data) | Id::AribCs(data) | Id::AribT(data) => {
                 data.to_bytes(buf);
@@ -1433,8 +1432,8 @@ impl OperandEncodable for DigitalServiceId {
             });
         }
         let head = bytes[offset];
-        let service_id_method = ServiceIdMethod::try_from_primitive(head & 1)?;
-        let broadcast_system = System::try_from_primitive(head >> 1)?;
+        let service_id_method = ServiceIdMethod::try_from_primitive(head >> 7)?;
+        let broadcast_system = System::try_from_primitive(head & 0x7F)?;
         if service_id_method == ServiceIdMethod::ByChannel {
             let channel_id = <ChannelId as OperandEncodable>::try_from_bytes(bytes, offset + 1)
                 .map_err(Error::add_offset(1))?;
@@ -1506,6 +1505,277 @@ impl OperandEncodable for DigitalServiceId {
     fn len(&self) -> usize {
         7
     }
+}
+
+#[cfg(test)]
+mod test_digital_service_id {
+    use super::*;
+
+    opcode_test!(
+        name: _arib_generic,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AribGeneric(AribData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AribGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _atsc_generic,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AtscGeneric(AtscData {
+            transport_stream_id: 0x1234,
+            program_number: 0x5678,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AtscGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x00,
+            0x00,
+        ],
+    );
+
+    opcode_test!(
+        name: _dvb_generic,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::DvbGeneric(DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _arib_bs,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AribBs(AribData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AribBs as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _arib_cs,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AribCs(AribData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AribCs as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _arib_t,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AribT(AribData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AribT as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _atsc_cable,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AtscCable(AtscData {
+            transport_stream_id: 0x1234,
+            program_number: 0x5678,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AtscCable as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x00,
+            0x00,
+        ],
+    );
+
+    opcode_test!(
+        name: _atsc_satellite,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AtscSatellite(AtscData {
+            transport_stream_id: 0x1234,
+            program_number: 0x5678,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AtscSatellite as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x00,
+            0x00,
+        ],
+    );
+
+    opcode_test!(
+        name: _atsc_terrestrial,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::AtscTerrestrial(AtscData {
+            transport_stream_id: 0x1234,
+            program_number: 0x5678,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::AtscTerrestrial as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x00,
+            0x00,
+        ],
+    );
+
+    opcode_test!(
+        name: _dvb_c,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::DvbC(DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbC as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _dvb_s,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::DvbS(DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbS as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _dvb_s2,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::DvbS2(DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbS2 as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _dvb_t,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::DvbT(DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        }),
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbT as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
+
+    opcode_test!(
+        name: _channel,
+        ty: DigitalServiceId,
+        instance: DigitalServiceId::Channel {
+            broadcast_system: DigitalServiceBroadcastSystem::DvbGeneric,
+            channel_id: ChannelId {
+                number_format: ChannelNumberFormat::Fmt2Part,
+                major_channel: 0x0234,
+                minor_channel: 0x5678,
+            },
+            reserved: 0xABCD,
+        },
+        bytes: [
+            DigitalServiceBroadcastSystem::DvbGeneric as u8 | 0x80,
+            0x0A,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+    );
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1750,7 +2020,6 @@ mod test_bcd_byte {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct AribData {
     pub transport_stream_id: u16,
@@ -1758,19 +2027,78 @@ pub struct AribData {
     pub original_network_id: u16,
 }
 
-// TODO: Unit tests
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
+#[cfg(test)]
+mod test_arib_data {
+    use super::*;
+
+    opcode_test!(
+        ty: AribData,
+        instance: AribData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
+    );
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct AtscData {
     pub transport_stream_id: u16,
     pub program_number: u16,
-    pub reserved: u16,
 }
 
-// TODO: Unit tests
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
-pub struct ChannelData {
-    pub channel_id: ChannelId,
-    pub reserved: u16,
+impl OperandEncodable for AtscData {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        self.transport_stream_id.to_bytes(buf);
+        self.program_number.to_bytes(buf);
+        <u16 as OperandEncodable>::to_bytes(&0, buf);
+    }
+
+    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<AtscData> {
+        if bytes.len() < 6 + offset {
+            return Err(crate::Error::OutOfRange {
+                expected: crate::Range::AtLeast(6),
+                got: bytes.len() - offset,
+                quantity: "bytes",
+            });
+        }
+        let transport_stream_id = u16::try_from_bytes(bytes, offset)?;
+        let program_number = u16::try_from_bytes(bytes, offset + 2)?;
+        if u16::try_from_bytes(bytes, offset + 4)? != 0 {
+            return Err(Error::InvalidData);
+        }
+        Ok(AtscData {
+            transport_stream_id,
+            program_number,
+        })
+    }
+
+    fn len(&self) -> usize {
+        6
+    }
+}
+
+#[cfg(test)]
+mod test_atsc_data {
+    use super::*;
+
+    opcode_test!(
+        ty: AtscData,
+        instance: AtscData {
+            transport_stream_id: 0x1234,
+            program_number: 0x5678,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x00, 0x00],
+    );
+
+    #[test]
+    fn test_decode_junk() {
+        assert_eq!(
+            AtscData::try_from_bytes(&[0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD], 0),
+            Err(Error::InvalidData)
+        );
+    }
 }
 
 // TODO: Unit tests
@@ -1783,8 +2111,8 @@ pub struct ChannelId {
 
 impl OperandEncodable for ChannelId {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        let number_format = u8::from(self.number_format);
-        let major: u16 = u16::from(number_format) | (self.major_channel << 6);
+        let number_format = (u8::from(self.number_format) as u16) << 10;
+        let major: u16 = number_format | self.major_channel;
         major.to_bytes(buf);
         self.minor_channel.to_bytes(buf);
     }
@@ -1799,9 +2127,9 @@ impl OperandEncodable for ChannelId {
         }
         let major = <u16 as OperandEncodable>::try_from_bytes(bytes, offset)?;
         let minor_channel = <u16 as OperandEncodable>::try_from_bytes(bytes, offset + 2)?;
-        let number_format = u8::try_from(major & 0x3F).unwrap();
+        let number_format = u8::try_from(major >> 10).unwrap();
         let number_format = ChannelNumberFormat::try_from_primitive(number_format)?;
-        let major_channel = major >> 6;
+        let major_channel = major & 0x3FF;
         Ok(ChannelId {
             number_format,
             major_channel,
@@ -1847,12 +2175,26 @@ pub struct Duration {
     pub minutes: Minute,
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct DvbData {
     pub transport_stream_id: u16,
     pub service_id: u16,
     pub original_network_id: u16,
+}
+
+#[cfg(test)]
+mod test_dvb_data {
+    use super::*;
+
+    opcode_test!(
+        ty: DvbData,
+        instance: DvbData {
+            transport_stream_id: 0x1234,
+            service_id: 0x5678,
+            original_network_id: 0xABCD,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
+    );
 }
 
 // TODO: Unit tests
