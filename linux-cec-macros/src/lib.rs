@@ -1,3 +1,4 @@
+use heck::AsSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Punct, TokenStream as TokenStream2};
 use quote::quote;
@@ -47,7 +48,7 @@ impl MessageEnum {
         let mut names = Vec::new();
 
         let testname: Ident =
-            parse_str(format!("test_{}", ident.to_string().to_lowercase()).as_str()).unwrap();
+            parse_str(format!("test_{}", AsSnakeCase(ident.to_string())).as_str()).unwrap();
 
         match fields {
             Fields::Named(_) => {
