@@ -2405,21 +2405,21 @@ impl OperandEncodable for TimerStatusData {
         }
         let byte = bytes[offset];
         let overlap_warning = (byte & 0x80) == 0x80;
-        let media_info = MediaInfo::try_from_primitive((byte >> 1) & 3)?;
+        let media_info = MediaInfo::try_from_primitive((byte >> 5) & 3)?;
         let programmed_info = if (byte & 0x10) == 0x10 {
-            TimerProgrammedInfo::Programmed(match byte {
+            TimerProgrammedInfo::Programmed(match byte & 0xF {
                 constants::CEC_OP_PROG_INFO_ENOUGH_SPACE => ProgrammedInfo::EnoughSpace,
                 constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE => {
-                    let duration_available = if bytes.len() < offset + 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    let duration_available = if bytes.len() >= offset + 3 {
+                        Some(Duration::try_from_bytes(bytes, offset + 1)?)
                     } else {
                         None
                     };
                     ProgrammedInfo::NotEnoughSpace { duration_available }
                 }
                 constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE => {
-                    let duration_available = if bytes.len() < offset + 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    let duration_available = if bytes.len() >= offset + 3 {
+                        Some(Duration::try_from_bytes(bytes, offset + 1)?)
                     } else {
                         None
                     };
@@ -2434,7 +2434,7 @@ impl OperandEncodable for TimerStatusData {
                 }
             })
         } else {
-            TimerProgrammedInfo::NotProgrammed(match byte {
+            TimerProgrammedInfo::NotProgrammed(match byte & 0xF {
                 constants::CEC_OP_PROG_ERROR_NO_FREE_TIMER => NotProgrammedErrorInfo::NoFreeTimer,
                 constants::CEC_OP_PROG_ERROR_DATE_OUT_OF_RANGE => {
                     NotProgrammedErrorInfo::DateOutOfRange
@@ -2458,8 +2458,8 @@ impl OperandEncodable for TimerStatusData {
                 constants::CEC_OP_PROG_ERROR_PARENTAL_LOCK => NotProgrammedErrorInfo::ParentalLock,
                 constants::CEC_OP_PROG_ERROR_CLOCK_FAILURE => NotProgrammedErrorInfo::ClockFailure,
                 constants::CEC_OP_PROG_ERROR_DUPLICATE => {
-                    let duration_available = if bytes.len() < offset + 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..], offset + 1)?)
+                    let duration_available = if bytes.len() >= offset + 3 {
+                        Some(Duration::try_from_bytes(bytes, offset + 1)?)
                     } else {
                         None
                     };
@@ -2505,6 +2505,265 @@ impl OperandEncodable for TimerStatusData {
             },
         }
     }
+}
+
+#[cfg(test)]
+mod test_timer_status_data {
+    use super::*;
+
+    opcode_test!(
+        name: _not_programmed_no_free_timer,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
+        },
+        bytes: [0x01],
+    );
+
+    opcode_test!(
+        name: _overlap_warning,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: true,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
+        },
+        bytes: [0x81],
+    );
+
+    opcode_test!(
+        name: _protected_media,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::ProtectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
+        },
+        bytes: [0x21],
+    );
+
+    opcode_test!(
+        name: _no_media,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::NoMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
+        },
+        bytes: [0x41],
+    );
+
+    opcode_test!(
+        name: _not_programmed_date_out_of_range,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::DateOutOfRange),
+        },
+        bytes: [0x02],
+    );
+
+    opcode_test!(
+        name: _not_programmed_recording_sequence_error,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::RecordingSequenceError),
+        },
+        bytes: [0x03],
+    );
+
+    opcode_test!(
+        name: _not_programmed_invalid_ext_plug,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPlug),
+        },
+        bytes: [0x04],
+    );
+
+    opcode_test!(
+        name: _not_programmed_invalid_ext_phys_addr,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPhysicalAddress),
+        },
+        bytes: [0x05],
+    );
+
+    opcode_test!(
+        name: _not_programmed_ca_unsupported,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::CaUnsupported),
+        },
+        bytes: [0x06],
+    );
+
+    opcode_test!(
+        name: _not_programmed_insufficient_ca_entitlements,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InsufficientCaEntitlements),
+        },
+        bytes: [0x07],
+    );
+
+    opcode_test!(
+        name: _not_programmed_resolution_unsupported,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ResolutionUnsupported),
+        },
+        bytes: [0x08],
+    );
+
+    opcode_test!(
+        name: _not_programmed_parental_lock,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ParentalLock),
+        },
+        bytes: [0x09],
+    );
+
+    opcode_test!(
+        name: _not_programmed_clock_failure,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ClockFailure),
+        },
+        bytes: [0x0A],
+    );
+
+    opcode_test!(
+        name: _not_programmed_duplicate,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::Duplicate {
+                duration_available: None
+            }),
+        },
+        bytes: [0x0E],
+    );
+
+    opcode_test!(
+        name: _not_programmed_duplicate_duration,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::Duplicate {
+                duration_available: Some(Duration {
+                    hours: DurationHours::try_from(23).unwrap(),
+                    minutes: Minute::try_from(59).unwrap(),
+                })
+            }),
+        },
+        bytes: [0x0E, 0x23, 0x59],
+    );
+
+    opcode_test!(
+        name: _programmed_enough_space,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::EnoughSpace),
+        },
+        bytes: [0x18],
+    );
+
+    opcode_test!(
+        name: _programmed_not_enough_space,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::NotEnoughSpace {
+                duration_available: None
+            }),
+        },
+        bytes: [0x19],
+    );
+
+    opcode_test!(
+        name: _programmed_not_enough_space_duration,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::NotEnoughSpace {
+                duration_available: Some(Duration {
+                    hours: DurationHours::try_from(23).unwrap(),
+                    minutes: Minute::try_from(59).unwrap(),
+                })
+            }),
+        },
+        bytes: [0x19, 0x23, 0x59],
+    );
+
+    opcode_test!(
+        name: _programmed_no_media,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::NoneAvailable),
+        },
+        bytes: [0x1A],
+    );
+
+    opcode_test!(
+        name: _programmed_maybe_enough_space,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::MayNotBeEnoughSpace {
+                duration_available: None
+            }),
+        },
+        bytes: [0x1B],
+    );
+
+    opcode_test!(
+        name: _programmed_maybe_enough_space_duration,
+        ty: TimerStatusData,
+        instance: TimerStatusData {
+            overlap_warning: false,
+            media_info: MediaInfo::UnprotectedMedia,
+            programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::MayNotBeEnoughSpace {
+                duration_available: Some(Duration {
+                    hours: DurationHours::try_from(23).unwrap(),
+                    minutes: Minute::try_from(59).unwrap(),
+                })
+            }),
+        },
+        bytes: [0x1B, 0x23, 0x59],
+    );
+
+    // TODO: Junk data tests
 }
 
 // TODO: Unit tests
