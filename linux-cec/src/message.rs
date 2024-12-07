@@ -2,9 +2,9 @@ use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
+use crate::{cdc, constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
-use crate::Range;
-use crate::{cdc, constants, operand, Error, PhysicalAddress, Result};
+use crate::{Error, Range};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
@@ -324,8 +324,8 @@ impl OperandEncodable for CdcMessage {
         buf.extend(bytes.into_iter());
     }
 
-    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        CdcMessage::try_from_bytes(&bytes[offset..]).map_err(Error::add_offset(offset))
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        CdcMessage::try_from_bytes(bytes)
     }
 
     fn len(&self) -> usize {

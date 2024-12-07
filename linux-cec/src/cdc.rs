@@ -117,8 +117,8 @@ impl OperandEncodable for HecField {
         word.to_bytes(buf);
     }
 
-    fn try_from_bytes(bytes: &[u8], offset: usize) -> Result<Self> {
-        let word = u16::try_from_bytes(bytes, offset)?;
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        let word = u16::try_from_bytes(bytes)?;
         let mut input = [false; 14];
         for idx in 0..14 {
             input[idx] = (word >> idx) & 1 == 1;
