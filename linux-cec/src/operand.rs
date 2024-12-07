@@ -609,11 +609,17 @@ mod test_buffer_operand {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AbortReason {
+    /// Unrecognized opcode
     UnrecognizedOp = constants::CEC_OP_ABORT_UNRECOGNIZED_OP,
+    /// Not in correct mode to respond
     IncorrectMode = constants::CEC_OP_ABORT_INCORRECT_MODE,
+    /// Cannot provide source
     NoSource = constants::CEC_OP_ABORT_NO_SOURCE,
+    /// Invalid operand
     InvalidOp = constants::CEC_OP_ABORT_INVALID_OP,
+    /// Refused
     Refused = constants::CEC_OP_ABORT_REFUSED,
+    /// Unable to determine
     Undetermined = constants::CEC_OP_ABORT_UNDETERMINED,
 }
 
@@ -640,12 +646,19 @@ pub enum AudioOutCompensated {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioRate {
+    /// Rate control off
     Off = constants::CEC_OP_AUD_RATE_OFF,
+    /// Standard rate, wide range control (IEEE 1394 compatible)
     WideStandard = constants::CEC_OP_AUD_RATE_WIDE_STD,
+    /// Fast rate, wide range control (IEEE 1394 compatible)
     WideFast = constants::CEC_OP_AUD_RATE_WIDE_FAST,
+    /// Slow rate, wide range control (IEEE 1394 compatible)
     WideSlow = constants::CEC_OP_AUD_RATE_WIDE_SLOW,
+    /// Standard rate, narrow range control (HDMI transparent)
     NarrowStandard = constants::CEC_OP_AUD_RATE_NARROW_STD,
+    /// Fast rate, narrow range control (HDMI transparent)
     NarrowFast = constants::CEC_OP_AUD_RATE_NARROW_FAST,
+    /// Slow rate, narrow range control (HDMI transparent)
     NarrowSlow = constants::CEC_OP_AUD_RATE_NARROW_SLOW,
 }
 
@@ -671,15 +684,15 @@ pub enum AudioOutputCompensated {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum BroadcastSystem {
-    PalBg = constants::CEC_OP_BCAST_SYSTEM_PAL_BG,
+    PalBG = constants::CEC_OP_BCAST_SYSTEM_PAL_BG,
     SecamLq = constants::CEC_OP_BCAST_SYSTEM_SECAM_LQ, /* SECAM L' */
     PalM = constants::CEC_OP_BCAST_SYSTEM_PAL_M,
     NtscM = constants::CEC_OP_BCAST_SYSTEM_NTSC_M,
     PalI = constants::CEC_OP_BCAST_SYSTEM_PAL_I,
-    SecamDk = constants::CEC_OP_BCAST_SYSTEM_SECAM_DK,
-    SecamBg = constants::CEC_OP_BCAST_SYSTEM_SECAM_BG,
+    SecamDK = constants::CEC_OP_BCAST_SYSTEM_SECAM_DK,
+    SecamBG = constants::CEC_OP_BCAST_SYSTEM_SECAM_BG,
     SecamL = constants::CEC_OP_BCAST_SYSTEM_SECAM_L,
-    PalDk = constants::CEC_OP_BCAST_SYSTEM_PAL_DK,
+    PalDK = constants::CEC_OP_BCAST_SYSTEM_PAL_DK,
     Other = constants::CEC_OP_BCAST_SYSTEM_OTHER,
 }
 
@@ -693,8 +706,8 @@ pub enum CdcErrorCode {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum ChannelNumberFormat {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+enum ChannelNumberFormat {
     Fmt1Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_1_PART,
     Fmt2Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_2_PART,
 }
@@ -930,9 +943,13 @@ pub enum PlayMode {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum PowerStatus {
+    /// On
     On = constants::CEC_OP_POWER_STATUS_ON,
+    /// Standby
     Standby = constants::CEC_OP_POWER_STATUS_STANDBY,
+    /// In transition from Standby to On
     ToOn = constants::CEC_OP_POWER_STATUS_TO_ON,
+    /// In transition from On to Standby
     ToStandby = constants::CEC_OP_POWER_STATUS_TO_STANDBY,
 }
 
@@ -963,15 +980,15 @@ pub enum RecordSourceType {
 pub enum RecordStatusInfo {
     CurrentSource = constants::CEC_OP_RECORD_STATUS_CUR_SRC,
     DigitalService = constants::CEC_OP_RECORD_STATUS_DIG_SERVICE,
-    AnalogService = constants::CEC_OP_RECORD_STATUS_ANA_SERVICE,
+    AnalogueService = constants::CEC_OP_RECORD_STATUS_ANA_SERVICE,
     ExternalInput = constants::CEC_OP_RECORD_STATUS_EXT_INPUT,
     NoDigitalService = constants::CEC_OP_RECORD_STATUS_NO_DIG_SERVICE,
     NoAnalogueService = constants::CEC_OP_RECORD_STATUS_NO_ANA_SERVICE,
     NoService = constants::CEC_OP_RECORD_STATUS_NO_SERVICE,
     InvalidExternalPlug = constants::CEC_OP_RECORD_STATUS_INVALID_EXT_PLUG,
     InvalidExternalPhysicalAddress = constants::CEC_OP_RECORD_STATUS_INVALID_EXT_PHYS_ADDR,
-    UnsupportedCaSystem = constants::CEC_OP_RECORD_STATUS_UNSUP_CA,
-    NoCaEntitlements = constants::CEC_OP_RECORD_STATUS_NO_CA_ENTITLEMENTS,
+    CaUnsupported = constants::CEC_OP_RECORD_STATUS_UNSUP_CA,
+    InsufficientCaEntitlements = constants::CEC_OP_RECORD_STATUS_NO_CA_ENTITLEMENTS,
     DisallowedCopySource = constants::CEC_OP_RECORD_STATUS_CANT_COPY_SRC,
     NoFurtherCopies = constants::CEC_OP_RECORD_STATUS_NO_MORE_COPIES,
     NoMedia = constants::CEC_OP_RECORD_STATUS_NO_MEDIA,
@@ -1286,13 +1303,13 @@ mod test_analogue_service_id {
         instance: AnalogueServiceId {
             broadcast_type: AnalogueBroadcastType::Terrestrial,
             frequency: 0x1234,
-            broadcast_system: BroadcastSystem::PalBg,
+            broadcast_system: BroadcastSystem::PalBG,
         },
         bytes: [
             AnalogueBroadcastType::Terrestrial as u8,
             0x12,
             0x34,
-            BroadcastSystem::PalBg as u8
+            BroadcastSystem::PalBG as u8
         ],
     );
 
