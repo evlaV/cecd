@@ -504,7 +504,9 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
         let mut offset = 0;
         let mut len = 0;
         while offset < S * size_of::<T>() && offset + size_of::<T>() <= bytes.len() {
-            buf.push(T::try_from_bytes(&bytes[offset..])?);
+            buf.push(
+                T::try_from_bytes(&bytes[offset..]).map_err(crate::Error::add_offset(offset))?,
+            );
             offset += size_of::<T>();
             len += 1;
         }
@@ -2048,8 +2050,8 @@ impl OperandEncodable for AtscData {
             });
         }
         let transport_stream_id = u16::try_from_bytes(bytes)?;
-        let program_number = u16::try_from_bytes(&bytes[2..])?;
-        if u16::try_from_bytes(&bytes[4..])? != 0 {
+        let program_number = u16::try_from_bytes(&bytes[2..]).map_err(Error::add_offset(2))?;
+        if u16::try_from_bytes(&bytes[4..]).map_err(Error::add_offset(4))? != 0 {
             return Err(Error::InvalidData);
         }
         Ok(AtscData {
@@ -2122,8 +2124,8 @@ impl OperandEncodable for ChannelId {
                 quantity: "bytes",
             });
         }
-        let high = <u16 as OperandEncodable>::try_from_bytes(bytes)?;
-        let low = <u16 as OperandEncodable>::try_from_bytes(&bytes[2..])?;
+        let high = u16::try_from_bytes(bytes)?;
+        let low = u16::try_from_bytes(&bytes[2..]).map_err(Error::add_offset(2))?;
         let number_format = u8::try_from(high >> 10).unwrap();
         let number_format = ChannelNumberFormat::try_from_primitive(number_format)?;
         match number_format {
@@ -2401,7 +2403,10 @@ impl OperandEncodable for TimerStatusData {
                 constants::CEC_OP_PROG_INFO_ENOUGH_SPACE => ProgrammedInfo::EnoughSpace,
                 constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE => {
                     let duration_available = if bytes.len() >= 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..])?)
+                        Some(
+                            Duration::try_from_bytes(&bytes[1..])
+                                .map_err(crate::Error::add_offset(1))?,
+                        )
                     } else {
                         None
                     };
@@ -2409,7 +2414,10 @@ impl OperandEncodable for TimerStatusData {
                 }
                 constants::CEC_OP_PROG_INFO_MIGHT_NOT_BE_ENOUGH_SPACE => {
                     let duration_available = if bytes.len() >= 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..])?)
+                        Some(
+                            Duration::try_from_bytes(&bytes[1..])
+                                .map_err(crate::Error::add_offset(1))?,
+                        )
                     } else {
                         None
                     };
@@ -2449,7 +2457,10 @@ impl OperandEncodable for TimerStatusData {
                 constants::CEC_OP_PROG_ERROR_CLOCK_FAILURE => NotProgrammedErrorInfo::ClockFailure,
                 constants::CEC_OP_PROG_ERROR_DUPLICATE => {
                     let duration_available = if bytes.len() >= 3 {
-                        Some(Duration::try_from_bytes(&bytes[1..])?)
+                        Some(
+                            Duration::try_from_bytes(&bytes[1..])
+                                .map_err(crate::Error::add_offset(1))?,
+                        )
                     } else {
                         None
                     };
