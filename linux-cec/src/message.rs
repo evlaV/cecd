@@ -1009,7 +1009,7 @@ mod test_record_on {
                 0x12,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(6),
                 got: 4,
                 quantity: "bytes",
             })
@@ -1025,7 +1025,7 @@ mod test_record_on {
                 operand::AnalogueBroadcastType::Satellite as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(6),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1040,7 +1040,7 @@ mod test_record_on {
                 operand::RecordSourceType::Analogue as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(6),
                 got: 2,
                 quantity: "bytes",
             })

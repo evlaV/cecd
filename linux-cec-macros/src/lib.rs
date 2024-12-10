@@ -426,6 +426,13 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         }
 
                         fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
+                            if bytes.len() < ::core::mem::size_of::<#ident>() {
+                                return Err(crate::Error::OutOfRange {
+                                    expected: crate::Range::AtLeast(::core::mem::size_of::<#ident>()),
+                                    got: bytes.len(),
+                                    quantity: "bytes",
+                                })
+                            }
                             let mut offset = 0;
                             #(#from)*
                             Ok(Self {

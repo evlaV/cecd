@@ -1334,7 +1334,7 @@ mod test_analogue_service_id {
         assert_eq!(
             AnalogueServiceId::try_from_bytes(&[AnalogueBroadcastType::Terrestrial as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 2,
                 quantity: "bytes"
             })
@@ -1346,7 +1346,7 @@ mod test_analogue_service_id {
         assert_eq!(
             AnalogueServiceId::try_from_bytes(&[AnalogueBroadcastType::Terrestrial as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes"
             })
@@ -1358,7 +1358,7 @@ mod test_analogue_service_id {
         assert_eq!(
             AnalogueServiceId::try_from_bytes(&[]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(1),
+                expected: Range::AtLeast(4),
                 got: 0,
                 quantity: "bytes"
             })
