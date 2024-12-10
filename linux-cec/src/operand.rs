@@ -94,6 +94,18 @@ mod test_u8 {
         instance: 0x56,
         bytes: [0x56],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <u8 as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 impl<T: OperandEncodable> OperandEncodable for Option<T> {
@@ -220,6 +232,30 @@ mod test_u16 {
         instance: 0x5678,
         bytes: [0x56, 0x78],
     );
+
+    #[test]
+    fn test_decode_underfull() {
+        assert_eq!(
+            <u16 as OperandEncodable>::try_from_bytes(&[0x56]),
+            Err(Error::OutOfRange {
+                got: 1,
+                expected: Range::AtLeast(2),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <u16 as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(2),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 impl OperandEncodable for bool {
@@ -267,6 +303,18 @@ mod test_bool {
         assert_eq!(
             <bool as OperandEncodable>::try_from_bytes(&[0x02]),
             Ok(true)
+        );
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <bool as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
         );
     }
 }
@@ -602,6 +650,51 @@ mod test_buffer_operand {
                 buffer: [0x12, 0x34],
                 len: 2,
             }
+        );
+    }
+
+    #[test]
+    fn test_from_string_fit() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<3, u8>::from_str(s).unwrap();
+        assert_eq!(buffer.len, 3);
+        assert_eq!(&buffer.buffer, s.as_bytes());
+    }
+
+    #[test]
+    fn test_from_string_underfull() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<4, u8>::from_str(s).unwrap();
+        assert_eq!(buffer.len, 3);
+        assert_ne!(&buffer.buffer, s.as_bytes());
+        assert_eq!(&buffer.buffer, &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+    }
+
+    #[test]
+    fn test_from_string_overfull() {
+        let s = "abc";
+        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
+        assert_eq!(
+            buffer,
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(2),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_from_string_overfull_utf8() {
+        let s = "💩";
+        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
+        assert_eq!(
+            buffer,
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(2),
+                got: 4,
+                quantity: "bytes",
+            })
         );
     }
 }
@@ -1779,6 +1872,18 @@ mod test_digital_service_id {
             0xCD,
         ],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            DigitalServiceId::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(7),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1836,6 +1941,18 @@ mod test_audio_format_id_and_code {
             .with_id(AudioFormatId::CEA861Cxt),
         bytes: [0x45],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            AudioFormatIdAndCode::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[bitfield(u8)]
@@ -1855,6 +1972,18 @@ mod test_audio_status {
         instance: AudioStatus::new().with_volume(0x09).with_mute(true),
         bytes: [0x89],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            AudioStatus::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
@@ -2021,6 +2150,18 @@ mod test_bcd_byte {
             })
         );
     }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            BcdByte::<0, 99>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
@@ -2043,6 +2184,18 @@ mod test_arib_data {
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            AribData::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(6),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -2100,6 +2253,18 @@ mod test_atsc_data {
         assert_eq!(
             AtscData::try_from_bytes(&[0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD]),
             Err(Error::InvalidData)
+        );
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            AtscData::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(6),
+                quantity: "bytes"
+            })
         );
     }
 }
@@ -2197,6 +2362,18 @@ mod test_channel_id {
             Ok(ChannelId::OnePart(0x1234))
         )
     }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            ChannelId::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(4),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -2289,6 +2466,18 @@ mod test_dvb_data {
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
     );
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            DvbData::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(6),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 // TODO: Unit tests
@@ -2818,6 +3007,18 @@ mod test_timer_status_data {
         bytes: [0x1B, 0x23, 0x59],
     );
 
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            TimerStatusData::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
+
     // TODO: Junk data tests
 }
 
@@ -2900,6 +3101,7 @@ impl OperandEncodable for TunerDeviceInfo {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ExternalSource {
     Plug(u8),
@@ -2936,6 +3138,7 @@ impl OperandEncodable for ExternalSource {
     }
 }
 
+// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RecordSource {
     Own,
@@ -3006,55 +3209,5 @@ impl OperandEncodable for RecordSource {
             RecordSource::External(ref source) => source.len(),
         };
         len + 1
-    }
-}
-
-#[cfg(test)]
-mod bounded_buffer_operand {
-    use super::*;
-
-    #[test]
-    fn test_from_string_fit() {
-        let s = "abc";
-        let buffer = BoundedBufferOperand::<3, u8>::from_str(s).unwrap();
-        assert_eq!(buffer.len, 3);
-        assert_eq!(&buffer.buffer, s.as_bytes());
-    }
-
-    #[test]
-    fn test_from_string_underfull() {
-        let s = "abc";
-        let buffer = BoundedBufferOperand::<4, u8>::from_str(s).unwrap();
-        assert_eq!(buffer.len, 3);
-        assert_ne!(&buffer.buffer, s.as_bytes());
-        assert_eq!(&buffer.buffer, &['a' as u8, 'b' as u8, 'c' as u8, 0]);
-    }
-
-    #[test]
-    fn test_from_string_overfull() {
-        let s = "abc";
-        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
-        assert_eq!(
-            buffer,
-            Err(Error::OutOfRange {
-                expected: Range::AtMost(2),
-                got: 3,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_from_string_overfull_utf8() {
-        let s = "💩";
-        let buffer = BoundedBufferOperand::<2, u8>::from_str(s);
-        assert_eq!(
-            buffer,
-            Err(Error::OutOfRange {
-                expected: Range::AtMost(2),
-                got: 4,
-                quantity: "bytes",
-            })
-        );
     }
 }
