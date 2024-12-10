@@ -4,8 +4,8 @@ use proc_macro2::{Punct, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{self, Parse, ParseStream};
 use syn::{
-    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, Field, Fields, FieldsUnnamed,
-    Ident, Meta, Type, TypeArray,
+    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, ExprArray, Field, Fields,
+    FieldsUnnamed, Ident, Meta, Type, TypeArray,
 };
 
 macro_rules! bail {
@@ -604,15 +604,15 @@ struct OpcodeTest {
     name: Option<Ident>,
     ty: Type,
     instance: Expr,
-    bytes: Expr,
+    bytes: ExprArray,
 }
 
 impl Parse for OpcodeTest {
     fn parse(input: ParseStream<'_>) -> parse::Result<OpcodeTest> {
-        let mut name: Option<Ident> = None;
-        let mut ty: Option<Type> = None;
-        let mut instance: Option<Expr> = None;
-        let mut bytes: Option<Expr> = None;
+        let mut name = None;
+        let mut ty = None;
+        let mut instance = None;
+        let mut bytes = None;
 
         let span = input.span();
 
