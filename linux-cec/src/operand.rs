@@ -2152,6 +2152,11 @@ mod test_bcd_byte {
     }
 
     #[test]
+    fn test_into_u8() {
+        assert_eq!(u8::from(BcdByte::<0, 99>(0x12)), 12u8);
+    }
+
+    #[test]
     fn test_decode_empty() {
         assert_eq!(
             BcdByte::<0, 99>::try_from_bytes(&[]),
