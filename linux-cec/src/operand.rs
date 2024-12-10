@@ -2199,7 +2199,6 @@ mod test_channel_id {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DeviceFeatures {
     pub device_features_1: DeviceFeatures1,
@@ -2223,6 +2222,44 @@ impl TaggedLengthBuffer for DeviceFeatures {
     fn extra_params(&self) -> &[u8] {
         &self.device_features_n.buffer[..self.device_features_n.len]
     }
+}
+
+#[cfg(test)]
+mod test_device_features {
+    use super::*;
+
+    opcode_test!(
+        name: _1_only,
+        ty: DeviceFeatures,
+        instance: DeviceFeatures {
+            device_features_1: DeviceFeatures1::HAS_RECORD_TV_SCREEN |
+                DeviceFeatures1::HAS_SET_OSD_STRING |
+                DeviceFeatures1::HAS_SET_AUDIO_VOLUME_LEVEL,
+            device_features_n: BoundedBufferOperand::try_from_bytes(&[]).unwrap(),
+        },
+        bytes: [0x61],
+    );
+
+    opcode_test!(
+        name: _n,
+        ty: DeviceFeatures,
+        instance: DeviceFeatures {
+            device_features_1: DeviceFeatures1::HAS_RECORD_TV_SCREEN |
+                DeviceFeatures1::HAS_SET_OSD_STRING |
+                DeviceFeatures1::HAS_SET_AUDIO_VOLUME_LEVEL,
+            device_features_n: BoundedBufferOperand::try_from_bytes(&[
+                0x40,
+                0x20,
+                0x10,
+                0x08,
+                0x04,
+                0x02,
+                0x01,
+                0x00
+            ]).unwrap(),
+        },
+        bytes: [0xE1, 0xC0, 0xA0, 0x90, 0x88, 0x84, 0x82, 0x81, 0x00],
+    );
 }
 
 // TODO: Unit tests
