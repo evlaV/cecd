@@ -3160,7 +3160,29 @@ mod test_external_source {
         bytes: [0x56, 0x78],
     }
 
-    // TODO: Junk tests
+    #[test]
+    fn test_decode_overfull() {
+        assert_eq!(
+            ExternalSource::try_from_bytes(&[0x12, 0x34, 0x56]),
+            Err(Error::OutOfRange {
+                got: 3,
+                expected: Range::Only(vec![1, 2]),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            ExternalSource::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::Only(vec![1, 2]),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 // TODO: Unit tests
