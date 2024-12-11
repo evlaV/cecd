@@ -161,7 +161,7 @@ impl Error {
                 got,
                 expected,
                 quantity,
-            } => Error::OutOfRange {
+            } if quantity == "bytes" => Error::OutOfRange {
                 expected: expected + offset,
                 got: got + offset,
                 quantity,
