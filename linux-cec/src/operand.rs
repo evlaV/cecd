@@ -2612,11 +2612,48 @@ impl TryFrom<u8> for RcProfile1 {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct Time {
     pub hour: Hour,
     pub minute: Minute,
+}
+
+#[cfg(test)]
+mod test_time {
+    use super::*;
+
+    opcode_test! {
+        ty: Time,
+        instance: Time {
+            hour: Hour::try_from(4u8).unwrap(),
+            minute: Minute::try_from(20u8).unwrap(),
+        },
+        bytes: [0x04, 0x20],
+    }
+
+    #[test]
+    fn test_invalid_hour() {
+        assert_eq!(
+            Time::try_from_bytes(&[0x24, 0x30]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 23 },
+                got: 24,
+                quantity: "value",
+            })
+        );
+    }
+
+    #[test]
+    fn test_invalid_minute() {
+        assert_eq!(
+            Time::try_from_bytes(&[0x04, 0x69]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 59 },
+                got: 69,
+                quantity: "value",
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
