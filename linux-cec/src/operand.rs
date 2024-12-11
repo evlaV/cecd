@@ -3132,7 +3132,6 @@ mod test_timer_status_data {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TunerDeviceInfo {
     recording: bool,
@@ -3194,6 +3193,7 @@ impl OperandEncodable for TunerDeviceInfo {
         }
     }
 }
+
 #[cfg(test)]
 mod test_tuner_device_info {
     use super::*;
