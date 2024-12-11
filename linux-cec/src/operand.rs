@@ -89,11 +89,11 @@ impl OperandEncodable for u8 {
 mod test_u8 {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: u8,
         instance: 0x56,
         bytes: [0x56],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -136,19 +136,19 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
 mod test_option {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _none,
         ty: Option<u8>,
         instance: None,
         bytes: [],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _some,
         ty: Option<u8>,
         instance: Some(0x56),
         bytes: [0x56],
-    );
+    }
 }
 
 impl<const S: usize> OperandEncodable for [u8; S] {
@@ -176,26 +176,26 @@ impl<const S: usize> OperandEncodable for [u8; S] {
 mod test_array {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _1,
         ty: [u8; 1],
         instance: [0x56],
         bytes: [0x56],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _2,
         ty: [u8; 2],
         instance: [0x56, 0x78],
         bytes: [0x56, 0x78],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _3,
         ty: [u8; 3],
         instance: [0x56, 0x78, 0x9A],
         bytes: [0x56, 0x78, 0x9A],
-    );
+    }
 }
 
 impl OperandEncodable for u16 {
@@ -227,11 +227,11 @@ impl OperandEncodable for u16 {
 mod test_u16 {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: u16,
         instance: 0x5678,
         bytes: [0x56, 0x78],
-    );
+    }
 
     #[test]
     fn test_decode_underfull() {
@@ -284,19 +284,19 @@ impl OperandEncodable for bool {
 mod test_bool {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _true,
         ty: bool,
         instance: true,
         bytes: [0x01],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _false,
         ty: bool,
         instance: false,
         bytes: [0x00],
-    );
+    }
 
     #[test]
     fn test_decode_nb() {
@@ -462,7 +462,7 @@ mod test_tagged_length_buffer {
         );
     }
 
-    opcode_test!(
+    opcode_test! {
         name: _fixed_only,
         ty: U8Buffer,
         instance: U8Buffer {
@@ -471,9 +471,9 @@ mod test_tagged_length_buffer {
             len: 0,
         },
         bytes: [0x12],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _fixed_and_one_byte,
         ty: U8Buffer,
         instance: U8Buffer {
@@ -482,9 +482,9 @@ mod test_tagged_length_buffer {
             len: 1,
         },
         bytes: [0x92, 0x34],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _fixed_and_two_bytes,
         ty: U8Buffer,
         instance: U8Buffer {
@@ -493,7 +493,7 @@ mod test_tagged_length_buffer {
             len: 2,
         },
         bytes: [0x92, 0xB4, 0x56],
-    );
+    }
 
     #[test]
     fn test_decode_zero_bytes() {
@@ -600,7 +600,7 @@ pub type BufferOperand = BoundedBufferOperand<14, u8>;
 mod test_buffer_operand {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _empty,
         ty: BoundedBufferOperand::<2, u8>,
         instance: BoundedBufferOperand::<2, u8> {
@@ -608,9 +608,9 @@ mod test_buffer_operand {
             len: 0,
         },
         bytes: [],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _underfull,
         ty: BoundedBufferOperand::<2, u8>,
         instance: BoundedBufferOperand::<2, u8> {
@@ -618,9 +618,9 @@ mod test_buffer_operand {
             len: 1,
         },
         bytes: [0x12],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _full,
         ty: BoundedBufferOperand::<2, u8>,
         instance: BoundedBufferOperand::<2, u8> {
@@ -628,7 +628,7 @@ mod test_buffer_operand {
             len: 2,
         },
         bytes: [0x12, 0x34],
-    );
+    }
 
     #[test]
     fn test_encode_underfull_with_junk() {
@@ -1391,7 +1391,7 @@ pub struct AnalogueServiceId {
 mod test_analogue_service_id {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: AnalogueServiceId,
         instance: AnalogueServiceId {
             broadcast_type: AnalogueBroadcastType::Terrestrial,
@@ -1404,7 +1404,7 @@ mod test_analogue_service_id {
             0x34,
             BroadcastSystem::PalBG as u8
         ],
-    );
+    }
 
     #[test]
     fn test_decode_missing_opcodes_1() {
@@ -1611,7 +1611,7 @@ impl OperandEncodable for DigitalServiceId {
 mod test_digital_service_id {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _arib_generic,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AribGeneric(AribData {
@@ -1628,9 +1628,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _atsc_generic,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AtscGeneric(AtscData {
@@ -1646,9 +1646,9 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _dvb_generic,
         ty: DigitalServiceId,
         instance: DigitalServiceId::DvbGeneric(DvbData {
@@ -1665,9 +1665,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _arib_bs,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AribBs(AribData {
@@ -1684,9 +1684,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _arib_cs,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AribCs(AribData {
@@ -1703,9 +1703,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _arib_t,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AribT(AribData {
@@ -1722,9 +1722,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _atsc_cable,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AtscCable(AtscData {
@@ -1740,9 +1740,9 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _atsc_satellite,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AtscSatellite(AtscData {
@@ -1758,9 +1758,9 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _atsc_terrestrial,
         ty: DigitalServiceId,
         instance: DigitalServiceId::AtscTerrestrial(AtscData {
@@ -1776,9 +1776,9 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _dvb_c,
         ty: DigitalServiceId,
         instance: DigitalServiceId::DvbC(DvbData {
@@ -1795,9 +1795,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _dvb_s,
         ty: DigitalServiceId,
         instance: DigitalServiceId::DvbS(DvbData {
@@ -1814,9 +1814,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _dvb_s2,
         ty: DigitalServiceId,
         instance: DigitalServiceId::DvbS2(DvbData {
@@ -1833,9 +1833,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _dvb_t,
         ty: DigitalServiceId,
         instance: DigitalServiceId::DvbT(DvbData {
@@ -1852,9 +1852,9 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _channel,
         ty: DigitalServiceId,
         instance: DigitalServiceId::Channel {
@@ -1871,7 +1871,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -1934,13 +1934,13 @@ pub struct AudioFormatIdAndCode {
 mod test_audio_format_id_and_code {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: AudioFormatIdAndCode,
         instance: AudioFormatIdAndCode::new()
             .with_code(0x05)
             .with_id(AudioFormatId::CEA861Cxt),
         bytes: [0x45],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -1967,11 +1967,11 @@ pub struct AudioStatus {
 mod test_audio_status {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: AudioStatus,
         instance: AudioStatus::new().with_volume(0x09).with_mute(true),
         bytes: [0x89],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -2041,11 +2041,11 @@ impl<const MIN: u8, const MAX: u8> TryFrom<u8> for BcdByte<MIN, MAX> {
 mod test_bcd_byte {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: BcdByte::<0, 99>,
         instance: BcdByte::<0, 99>::try_from(12).unwrap(),
         bytes: [0x12],
-    );
+    }
 
     #[test]
     fn test_create_range() {
@@ -2180,7 +2180,7 @@ pub struct AribData {
 mod test_arib_data {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: AribData,
         instance: AribData {
             transport_stream_id: 0x1234,
@@ -2188,7 +2188,7 @@ mod test_arib_data {
             original_network_id: 0xABCD,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -2244,14 +2244,14 @@ impl OperandEncodable for AtscData {
 mod test_atsc_data {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: AtscData,
         instance: AtscData {
             transport_stream_id: 0x1234,
             program_number: 0x5678,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x00, 0x00],
-    );
+    }
 
     #[test]
     fn test_decode_junk() {
@@ -2330,19 +2330,19 @@ impl OperandEncodable for ChannelId {
 mod test_channel_id {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _1_part,
         ty: ChannelId,
         instance: ChannelId::OnePart(0x1234),
         bytes: [0x04, 0x00, 0x12, 0x34],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _2_part,
         ty: ChannelId,
         instance: ChannelId::TwoPart(0x0123, 0x4567),
         bytes: [0x09, 0x23, 0x45, 0x67],
-    );
+    }
 
     #[test]
     fn test_decode_invalid_format() {
@@ -2410,7 +2410,7 @@ impl TaggedLengthBuffer for DeviceFeatures {
 mod test_device_features {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _1_only,
         ty: DeviceFeatures,
         instance: DeviceFeatures {
@@ -2420,9 +2420,9 @@ mod test_device_features {
             device_features_n: BoundedBufferOperand::try_from_bytes(&[]).unwrap(),
         },
         bytes: [0x61],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _n,
         ty: DeviceFeatures,
         instance: DeviceFeatures {
@@ -2441,7 +2441,7 @@ mod test_device_features {
             ]).unwrap(),
         },
         bytes: [0xE1, 0xC0, 0xA0, 0x90, 0x88, 0x84, 0x82, 0x81, 0x00],
-    );
+    }
 }
 
 // TODO: Unit tests
@@ -2462,7 +2462,7 @@ pub struct DvbData {
 mod test_dvb_data {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         ty: DvbData,
         instance: DvbData {
             transport_stream_id: 0x1234,
@@ -2470,7 +2470,7 @@ mod test_dvb_data {
             original_network_id: 0xABCD,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -2760,7 +2760,7 @@ impl OperandEncodable for TimerStatusData {
 mod test_timer_status_data {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_no_free_timer,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2769,9 +2769,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x01],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _overlap_warning,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2780,9 +2780,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x81],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _protected_media,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2791,9 +2791,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x21],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _no_media,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2802,9 +2802,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x41],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_date_out_of_range,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2813,9 +2813,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::DateOutOfRange),
         },
         bytes: [0x02],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_recording_sequence_error,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2824,9 +2824,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::RecordingSequenceError),
         },
         bytes: [0x03],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_invalid_ext_plug,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2835,9 +2835,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPlug),
         },
         bytes: [0x04],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_invalid_ext_phys_addr,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2846,9 +2846,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPhysicalAddress),
         },
         bytes: [0x05],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_ca_unsupported,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2857,9 +2857,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::CaUnsupported),
         },
         bytes: [0x06],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_insufficient_ca_entitlements,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2868,9 +2868,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InsufficientCaEntitlements),
         },
         bytes: [0x07],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_resolution_unsupported,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2879,9 +2879,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ResolutionUnsupported),
         },
         bytes: [0x08],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_parental_lock,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2890,9 +2890,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ParentalLock),
         },
         bytes: [0x09],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_clock_failure,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2901,9 +2901,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ClockFailure),
         },
         bytes: [0x0A],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_duplicate,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2914,9 +2914,9 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x0E],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _not_programmed_duplicate_duration,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2930,9 +2930,9 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x0E, 0x23, 0x59],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_enough_space,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2941,9 +2941,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::EnoughSpace),
         },
         bytes: [0x18],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_not_enough_space,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2954,9 +2954,9 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x19],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_not_enough_space_duration,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2970,9 +2970,9 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x19, 0x23, 0x59],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_no_media,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2981,9 +2981,9 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::NoneAvailable),
         },
         bytes: [0x1A],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_maybe_enough_space,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -2994,9 +2994,9 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x1B],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _programmed_maybe_enough_space_duration,
         ty: TimerStatusData,
         instance: TimerStatusData {
@@ -3010,7 +3010,7 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x1B, 0x23, 0x59],
-    );
+    }
 
     #[test]
     fn test_decode_empty() {
@@ -3146,19 +3146,19 @@ impl OperandEncodable for ExternalSource {
 mod test_external_source {
     use super::*;
 
-    opcode_test!(
+    opcode_test! {
         name: _plug,
         ty: ExternalSource,
         instance: ExternalSource::Plug(0x56),
         bytes: [0x56],
-    );
+    }
 
-    opcode_test!(
+    opcode_test! {
         name: _phys_addr,
         ty: ExternalSource,
         instance: ExternalSource::PhysicalAddress(0x5678),
         bytes: [0x56, 0x78],
-    );
+    }
 
     // TODO: Junk tests
 }
