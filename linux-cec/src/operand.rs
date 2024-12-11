@@ -3106,7 +3106,6 @@ impl OperandEncodable for TunerDeviceInfo {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ExternalSource {
     Plug(u8),
@@ -3141,6 +3140,27 @@ impl OperandEncodable for ExternalSource {
             ExternalSource::PhysicalAddress(_) => 2,
         }
     }
+}
+
+#[cfg(test)]
+mod test_external_source {
+    use super::*;
+
+    opcode_test!(
+        name: _plug,
+        ty: ExternalSource,
+        instance: ExternalSource::Plug(0x56),
+        bytes: [0x56],
+    );
+
+    opcode_test!(
+        name: _phys_addr,
+        ty: ExternalSource,
+        instance: ExternalSource::PhysicalAddress(0x5678),
+        bytes: [0x56, 0x78],
+    );
+
+    // TODO: Junk tests
 }
 
 // TODO: Unit tests
