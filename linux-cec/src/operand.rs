@@ -157,14 +157,14 @@ impl<const S: usize> OperandEncodable for [u8; S] {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        match bytes[..S].try_into() {
-            Ok(array) => Ok(array),
-            Err(_) => Err(crate::Error::OutOfRange {
+        if bytes.len() < S {
+            return Err(crate::Error::OutOfRange {
                 expected: crate::Range::AtLeast(S),
                 got: bytes.len(),
                 quantity: "bytes",
-            }),
+            });
         }
+        Ok(bytes[..S].try_into().unwrap())
     }
 
     fn len(&self) -> usize {
@@ -195,6 +195,18 @@ mod test_array {
         ty: [u8; 3],
         instance: [0x56, 0x78, 0x9A],
         bytes: [0x56, 0x78, 0x9A],
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <[u8; 1] as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
     }
 }
 
@@ -630,6 +642,36 @@ mod test_buffer_operand {
         bytes: [0x12, 0x34],
     }
 
+    opcode_test! {
+        name: _u16_empty,
+        ty: BoundedBufferOperand::<2, u16>,
+        instance: BoundedBufferOperand::<2, u16> {
+            buffer: [0; 2],
+            len: 0,
+        },
+        bytes: [],
+    }
+
+    opcode_test! {
+        name: _u16_underfull,
+        ty: BoundedBufferOperand::<2, u16>,
+        instance: BoundedBufferOperand::<2, u16> {
+            buffer: [0x1234, 0],
+            len: 1,
+        },
+        bytes: [0x12, 0x34],
+    }
+
+    opcode_test! {
+        name: _u16_full,
+        ty: BoundedBufferOperand::<2, u16>,
+        instance: BoundedBufferOperand::<2, u16> {
+            buffer: [0x1234, 0x5678],
+            len: 2,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78],
+    }
+
     #[test]
     fn test_encode_underfull_with_junk() {
         let mut buf = Vec::new();
@@ -649,6 +691,17 @@ mod test_buffer_operand {
             BoundedBufferOperand::<2, u8> {
                 buffer: [0x12, 0x34],
                 len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn test_decode_u16_misaligned() {
+        assert_eq!(
+            BoundedBufferOperand::<2, u16>::try_from_bytes(&[0x12, 0x34, 0x56]).unwrap(),
+            BoundedBufferOperand::<2, u16> {
+                buffer: [0x1234, 0],
+                len: 1,
             }
         );
     }
