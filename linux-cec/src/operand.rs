@@ -2619,7 +2619,6 @@ pub struct Time {
     pub minute: Minute,
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TimerStatusData {
     pub overlap_warning: bool,
@@ -2775,7 +2774,7 @@ impl OperandEncodable for TimerStatusData {
                 }
                 v => {
                     return Err(Error::InvalidValueForType {
-                        ty: "ProgrammedInfo",
+                        ty: "NotProgrammedErrorInfo",
                         value: v.to_string(),
                     })
                 }
@@ -3083,7 +3082,54 @@ mod test_timer_status_data {
         );
     }
 
-    // TODO: Junk data tests
+    #[test]
+    fn test_decode_reserved_not_programmed_error_info() {
+        assert_eq!(
+            TimerStatusData::try_from_bytes(&[0x00]),
+            Err(Error::InvalidValueForType {
+                ty: "NotProgrammedErrorInfo",
+                value: String::from("0")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_reserved_programmed_info() {
+        assert_eq!(
+            TimerStatusData::try_from_bytes(&[0x10]),
+            Err(Error::InvalidValueForType {
+                ty: "ProgrammedInfo",
+                value: String::from("0")
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_reserved_duration_underfull() {
+        assert_eq!(
+            TimerStatusData::try_from_bytes(&[0x0E, 0x01]),
+            Ok(TimerStatusData {
+                overlap_warning: false,
+                media_info: MediaInfo::UnprotectedMedia,
+                programmed_info: TimerProgrammedInfo::NotProgrammed(
+                    NotProgrammedErrorInfo::Duplicate {
+                        duration_available: None
+                    }
+                ),
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_reserved_media_info() {
+        assert_eq!(
+            TimerStatusData::try_from_bytes(&[0x60]),
+            Err(Error::InvalidValueForType {
+                ty: "MediaInfo",
+                value: String::from("3")
+            })
+        );
+    }
 }
 
 // TODO: Unit tests
