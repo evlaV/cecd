@@ -1108,8 +1108,8 @@ pub enum RcProfileId {
 }
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum ServiceIdMethod {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+enum ServiceIdMethod {
     ByDigitalId = constants::CEC_OP_SERVICE_ID_METHOD_BY_DIG_ID,
     ByChannel = constants::CEC_OP_SERVICE_ID_METHOD_BY_CHANNEL,
 }
