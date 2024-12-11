@@ -1114,6 +1114,12 @@ enum ServiceIdMethod {
     ByChannel = constants::CEC_OP_SERVICE_ID_METHOD_BY_CHANNEL,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ServiceId {
+    Digital(DigitalServiceId),
+    Analogue(AnalogueServiceId),
+}
+
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum StatusRequest {
@@ -3029,39 +3035,24 @@ mod test_timer_status_data {
 
 // TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TunerDeviceInfo {
-    Analogue {
-        recording: bool,
-        tuner_display_info: TunerDisplayInfo,
-        service_id: AnalogueServiceId,
-    },
-    Digital {
-        recording: bool,
-        tuner_display_info: TunerDisplayInfo,
-        service_id: DigitalServiceId,
-    },
+pub struct TunerDeviceInfo {
+    recording: bool,
+    tuner_display_info: TunerDisplayInfo,
+    service_id: ServiceId,
 }
 
 impl OperandEncodable for TunerDeviceInfo {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        match self {
-            TunerDeviceInfo::Analogue {
-                recording,
-                tuner_display_info,
-                service_id,
-            } => {
-                let recording = if *recording { 0x80u8 } else { 0u8 };
-                let display_info = u8::from(*tuner_display_info);
+        match self.service_id {
+            ServiceId::Analogue(service_id) => {
+                let recording = if self.recording { 0x80 } else { 0 };
+                let display_info = u8::from(self.tuner_display_info);
                 <u8 as OperandEncodable>::to_bytes(&(recording | display_info), buf);
                 service_id.to_bytes(buf);
             }
-            TunerDeviceInfo::Digital {
-                recording,
-                tuner_display_info,
-                service_id,
-            } => {
-                let recording = if *recording { 0x80u8 } else { 0u8 };
-                let display_info = u8::from(*tuner_display_info);
+            ServiceId::Digital(service_id) => {
+                let recording = if self.recording { 0x80 } else { 0 };
+                let display_info = u8::from(self.tuner_display_info);
                 <u8 as OperandEncodable>::to_bytes(&(recording | display_info), buf);
                 service_id.to_bytes(buf);
             }
@@ -3071,38 +3062,147 @@ impl OperandEncodable for TunerDeviceInfo {
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 5 {
             return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(5),
+                expected: Range::Only(vec![5, 8]),
                 got: bytes.len(),
                 quantity: "bytes",
             });
         }
         let head = bytes[0];
-        let recording = (head & 1) == 1;
-        let tuner_display_info = TunerDisplayInfo::try_from_primitive(head >> 1)?;
-        match bytes.len() {
-            5 => Ok(TunerDeviceInfo::Analogue {
-                recording,
-                tuner_display_info,
-                service_id: AnalogueServiceId::try_from_bytes(bytes)?,
-            }),
-            8 => Ok(TunerDeviceInfo::Digital {
-                recording,
-                tuner_display_info,
-                service_id: DigitalServiceId::try_from_bytes(bytes)?,
-            }),
-            l => Err(Error::OutOfRange {
-                got: l,
-                expected: Range::Only(vec![5, 8]),
-                quantity: "bytes",
-            }),
-        }
+        let recording = (head & 0x80) == 0x80;
+        let tuner_display_info = TunerDisplayInfo::try_from_primitive(head & 0x7F)?;
+        let service_id = match bytes.len() {
+            5 => ServiceId::Analogue(AnalogueServiceId::try_from_bytes(&bytes[1..])?),
+            8 => ServiceId::Digital(DigitalServiceId::try_from_bytes(&bytes[1..])?),
+            l => {
+                return Err(Error::OutOfRange {
+                    got: l,
+                    expected: Range::Only(vec![5, 8]),
+                    quantity: "bytes",
+                })
+            }
+        };
+        Ok(TunerDeviceInfo {
+            recording,
+            tuner_display_info,
+            service_id,
+        })
     }
 
     fn len(&self) -> usize {
-        match self {
-            TunerDeviceInfo::Analogue { .. } => 5,
-            TunerDeviceInfo::Digital { .. } => 8,
+        match self.service_id {
+            ServiceId::Analogue(_) => 5,
+            ServiceId::Digital(_) => 8,
         }
+    }
+}
+#[cfg(test)]
+mod test_tuner_device_info {
+    use super::*;
+
+    opcode_test! {
+        name: _analogue,
+        ty: TunerDeviceInfo,
+        instance: TunerDeviceInfo {
+            recording: true,
+            tuner_display_info: TunerDisplayInfo::Analogue,
+            service_id: ServiceId::Analogue(AnalogueServiceId {
+                broadcast_type: AnalogueBroadcastType::Terrestrial,
+                frequency: 0x1234,
+                broadcast_system: BroadcastSystem::PalBG,
+            })
+        },
+        bytes: [
+            0x82,
+            AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            BroadcastSystem::PalBG as u8
+        ],
+    }
+
+    opcode_test! {
+        name: _digital,
+        ty: TunerDeviceInfo,
+        instance: TunerDeviceInfo {
+            recording: true,
+            tuner_display_info: TunerDisplayInfo::Analogue,
+            service_id: ServiceId::Digital(DigitalServiceId::DvbGeneric(DvbData {
+                transport_stream_id: 0x1234,
+                service_id: 0x5678,
+                original_network_id: 0xABCD,
+            }))
+        },
+        bytes: [
+            0x82,
+            DigitalServiceBroadcastSystem::DvbGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD
+        ],
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            TunerDeviceInfo::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::Only(vec![5, 8]),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_midrange_6() {
+        assert_eq!(
+            TunerDeviceInfo::try_from_bytes(&[0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]),
+            Err(Error::OutOfRange {
+                got: 6,
+                expected: Range::Only(vec![5, 8]),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_midrange_7() {
+        assert_eq!(
+            TunerDeviceInfo::try_from_bytes(&[0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD]),
+            Err(Error::OutOfRange {
+                got: 7,
+                expected: Range::Only(vec![5, 8]),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_overfull() {
+        assert_eq!(
+            TunerDeviceInfo::try_from_bytes(&[
+                0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01
+            ]),
+            Err(Error::OutOfRange {
+                got: 9,
+                expected: Range::Only(vec![5, 8]),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_invalid_tuner_display_info() {
+        assert_eq!(
+            TunerDeviceInfo::try_from_bytes(&[0x09, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF]),
+            Err(Error::InvalidValueForType {
+                ty: "TunerDisplayInfo",
+                value: String::from("9"),
+            })
+        );
     }
 }
 
