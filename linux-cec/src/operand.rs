@@ -383,7 +383,7 @@ where
     }
 
     fn len(&self) -> usize {
-        size_of::<T>() + self.extra_params().len()
+        1 + self.extra_params().len()
     }
 }
 
@@ -2476,7 +2476,7 @@ mod test_device_features {
             device_features_1: DeviceFeatures1::HAS_RECORD_TV_SCREEN |
                 DeviceFeatures1::HAS_SET_OSD_STRING |
                 DeviceFeatures1::HAS_SET_AUDIO_VOLUME_LEVEL,
-            device_features_n: BoundedBufferOperand::try_from_bytes(&[]).unwrap(),
+            device_features_n: BoundedBufferOperand::default(),
         },
         bytes: [0x61],
     }
@@ -2604,7 +2604,6 @@ pub struct LatencyFlags {
     _reserved: usize,
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RcProfile {
     pub rc_profile_1: RcProfile1,
@@ -2632,15 +2631,15 @@ impl TaggedLengthBuffer for RcProfile {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RcProfile1 {
-    RcProfileSource(RcProfileSource),
-    RcProfileId(RcProfileId),
+    Source(RcProfileSource),
+    Tv { id: RcProfileId },
 }
 
 impl From<RcProfile1> for u8 {
     fn from(profile: RcProfile1) -> u8 {
         match profile {
-            RcProfile1::RcProfileSource(profile_source) => profile_source.bits(),
-            RcProfile1::RcProfileId(profile_id) => profile_id.into(),
+            RcProfile1::Source(profile_source) => profile_source.bits(),
+            RcProfile1::Tv { id: profile_id } => profile_id.into(),
         }
     }
 }
@@ -2649,15 +2648,67 @@ impl TryFrom<u8> for RcProfile1 {
     type Error = Error;
 
     fn try_from(flags: u8) -> Result<RcProfile1> {
+        let flags = flags & 0x7F;
         if (flags & 0x40) == 0x40 {
-            Ok(RcProfile1::RcProfileSource(
-                RcProfileSource::from_bits_retain(flags),
-            ))
+            Ok(RcProfile1::Source(RcProfileSource::from_bits_retain(flags)))
         } else {
-            Ok(RcProfile1::RcProfileId(RcProfileId::try_from_primitive(
-                flags,
-            )?))
+            Ok(RcProfile1::Tv {
+                id: RcProfileId::try_from_primitive(flags & 0xF)?,
+            })
         }
+    }
+}
+
+#[cfg(test)]
+mod test_rc_profile {
+    use super::*;
+
+    #[test]
+    fn test_rc_profile_1_tv() {
+        assert_eq!(
+            RcProfile1::try_from(0x02),
+            Ok(RcProfile1::Tv {
+                id: RcProfileId::Profile1
+            })
+        );
+    }
+
+    #[test]
+    fn test_rc_profile_1_source() {
+        assert_eq!(
+            RcProfile1::try_from(0x5F),
+            Ok(RcProfile1::Source(RcProfileSource::all()))
+        );
+    }
+
+    opcode_test! {
+        name: _tv,
+        ty: RcProfile,
+        instance: RcProfile {
+            rc_profile_1: RcProfile1::Tv { id: RcProfileId::Profile1 },
+            rc_profile_n: BoundedBufferOperand::default(),
+        },
+        bytes: [0x02],
+    }
+
+    opcode_test! {
+        name: _source,
+        ty: RcProfile,
+        instance: RcProfile {
+            rc_profile_1: RcProfile1::Source(RcProfileSource::HAS_DEV_ROOT_MENU),
+            rc_profile_n: BoundedBufferOperand::default(),
+        },
+        bytes: [0x40 | RcProfileSource::HAS_DEV_ROOT_MENU.bits()],
+    }
+
+    opcode_test! {
+        name: _extra_bytes,
+        ty: RcProfile,
+        instance: RcProfile {
+            rc_profile_1: RcProfile1::Tv { id: RcProfileId::Profile1 },
+            rc_profile_n: BoundedBufferOperand::try_from_bytes(&[0x40]).unwrap(),
+        },
+        bytes: [0x82, 0x40],
     }
 }
 
