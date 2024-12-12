@@ -542,6 +542,30 @@ mod test_tagged_length_buffer {
             })
         );
     }
+
+    #[test]
+    fn test_decode_missing_byte() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x92]),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0; 13],
+                len: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_byte_2() {
+        assert_eq!(
+            U8Buffer::try_from_bytes(&[0x92, 0xB4]),
+            Ok(U8Buffer {
+                first: U8(0x12),
+                rest: [0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                len: 1,
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
