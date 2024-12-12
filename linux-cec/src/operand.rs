@@ -2503,11 +2503,60 @@ mod test_device_features {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct Duration {
     pub hours: DurationHours,
     pub minutes: Minute,
+}
+
+#[cfg(test)]
+mod test_duration {
+    use super::*;
+
+    opcode_test! {
+        ty: Duration,
+        instance: Duration {
+            hours: DurationHours::try_from(99u8).unwrap(),
+            minutes: Minute::try_from(20u8).unwrap(),
+        },
+        bytes: [0x99, 0x20],
+    }
+
+    #[test]
+    fn test_invalid_minute() {
+        assert_eq!(
+            Duration::try_from_bytes(&[0x04, 0x69]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 59 },
+                got: 69,
+                quantity: "value",
+            })
+        );
+    }
+
+    #[test]
+    fn test_invalid_bcd_hour() {
+        assert_eq!(
+            Duration::try_from_bytes(&[0x0A, 0x20]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: "low bits",
+            })
+        );
+    }
+
+    #[test]
+    fn test_invalid_bcd_minute() {
+        assert_eq!(
+            Duration::try_from_bytes(&[0x04, 0x1A]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: "low bits",
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
@@ -2651,6 +2700,30 @@ mod test_time {
                 expected: Range::Interval { min: 0, max: 59 },
                 got: 69,
                 quantity: "value",
+            })
+        );
+    }
+
+    #[test]
+    fn test_invalid_bcd_hour() {
+        assert_eq!(
+            Time::try_from_bytes(&[0x0A, 0x20]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: "low bits",
+            })
+        );
+    }
+
+    #[test]
+    fn test_invalid_bcd_minute() {
+        assert_eq!(
+            Time::try_from_bytes(&[0x04, 0x1A]),
+            Err(Error::OutOfRange {
+                expected: Range::Interval { min: 0, max: 9 },
+                got: 10,
+                quantity: "low bits",
             })
         );
     }
