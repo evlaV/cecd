@@ -3569,7 +3569,6 @@ mod test_external_source {
     }
 }
 
-// TODO: Unit tests
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RecordSource {
     Own,
@@ -3640,5 +3639,312 @@ impl OperandEncodable for RecordSource {
             RecordSource::External(ref source) => source.len(),
         };
         len + 1
+    }
+}
+
+#[cfg(test)]
+mod test_record_source {
+    use super::*;
+
+    opcode_test! {
+        name: _own,
+        ty: RecordSource,
+        instance: RecordSource::Own,
+        bytes: [RecordSourceType::Own as u8],
+    }
+
+    opcode_test! {
+        name: _digital,
+        ty: RecordSource,
+        instance: RecordSource::DigitalService(
+            DigitalServiceId::AribGeneric(AribData {
+                transport_stream_id: 0x1234,
+                service_id: 0x5678,
+                original_network_id: 0x9ABC,
+            })
+        ),
+        bytes: [
+            RecordSourceType::Digital as u8,
+            DigitalServiceBroadcastSystem::AribGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x9A,
+            0xBC
+        ],
+    }
+
+    opcode_test! {
+        name: _analogue,
+        ty: RecordSource,
+        instance: RecordSource::AnalogueService(AnalogueServiceId {
+            broadcast_type: AnalogueBroadcastType::Satellite,
+            frequency: 0x1234,
+            broadcast_system: BroadcastSystem::SecamL,
+        }),
+        bytes: [
+            RecordSourceType::Analogue as u8,
+            AnalogueBroadcastType::Satellite as u8,
+            0x12,
+            0x34,
+            BroadcastSystem::SecamL as u8
+        ],
+    }
+
+    opcode_test! {
+        name: _external_plug,
+        ty: RecordSource,
+        instance: RecordSource::External(ExternalSource::Plug(0x56)),
+        bytes: [
+            RecordSourceType::ExternalPlug as u8,
+            0x56,
+        ],
+    }
+
+    opcode_test! {
+        name: _external_phys_addr,
+        ty: RecordSource,
+        instance: RecordSource::External(ExternalSource::PhysicalAddress(0x1234)),
+        bytes: [
+            RecordSourceType::ExternalPhysicalAddress as u8,
+            0x12,
+            0x34
+        ],
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_1() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78,
+                0x9A
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_2() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 6,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_3() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34,
+                0x56
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_4() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+                0x34
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_bytes_5() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+                0x12,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_operand_1() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+                DigitalServiceBroadcastSystem::AribGeneric as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_digital_decoding_missing_operand_2() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Digital as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_1() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Analogue as u8,
+                AnalogueBroadcastType::Satellite as u8,
+                0x12,
+                0x34
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_1_and_byte() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Analogue as u8,
+                AnalogueBroadcastType::Satellite as u8,
+                0x12,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_2() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Analogue as u8,
+                AnalogueBroadcastType::Satellite as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_analogue_decoding_missing_operands_3() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::Analogue as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_plug_decoding_missing_operand() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::ExternalPlug as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_decoding_missing_byte() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::ExternalPhysicalAddress as u8,
+                0x12,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_external_phys_addr_decoding_missing_operand() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[
+                RecordSourceType::ExternalPhysicalAddress as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_invalid_operand() {
+        assert_eq!(
+            RecordSource::try_from_bytes(&[0xFE]),
+            Err(Error::InvalidValueForType {
+                ty: "RecordSourceType",
+                value: String::from("254"),
+            })
+        );
     }
 }
