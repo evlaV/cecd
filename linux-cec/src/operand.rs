@@ -3821,9 +3821,7 @@ mod test_record_source {
     #[test]
     fn test_digital_decoding_missing_operand_2() {
         assert_eq!(
-            RecordSource::try_from_bytes(&[
-                RecordSourceType::Digital as u8,
-            ]),
+            RecordSource::try_from_bytes(&[RecordSourceType::Digital as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(8),
                 got: 1,
@@ -3883,9 +3881,7 @@ mod test_record_source {
     #[test]
     fn test_analogue_decoding_missing_operands_3() {
         assert_eq!(
-            RecordSource::try_from_bytes(&[
-                RecordSourceType::Analogue as u8,
-            ]),
+            RecordSource::try_from_bytes(&[RecordSourceType::Analogue as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 1,
@@ -3897,9 +3893,7 @@ mod test_record_source {
     #[test]
     fn test_external_plug_decoding_missing_operand() {
         assert_eq!(
-            RecordSource::try_from_bytes(&[
-                RecordSourceType::ExternalPlug as u8,
-            ]),
+            RecordSource::try_from_bytes(&[RecordSourceType::ExternalPlug as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
@@ -3911,10 +3905,7 @@ mod test_record_source {
     #[test]
     fn test_external_phys_addr_decoding_missing_byte() {
         assert_eq!(
-            RecordSource::try_from_bytes(&[
-                RecordSourceType::ExternalPhysicalAddress as u8,
-                0x12,
-            ]),
+            RecordSource::try_from_bytes(&[RecordSourceType::ExternalPhysicalAddress as u8, 0x12]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
@@ -3926,9 +3917,7 @@ mod test_record_source {
     #[test]
     fn test_external_phys_addr_decoding_missing_operand() {
         assert_eq!(
-            RecordSource::try_from_bytes(&[
-                RecordSourceType::ExternalPhysicalAddress as u8,
-            ]),
+            RecordSource::try_from_bytes(&[RecordSourceType::ExternalPhysicalAddress as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 1,
