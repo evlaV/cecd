@@ -600,15 +600,15 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
     .into()
 }
 
-struct OpcodeTest {
+struct CodecTest {
     name: Option<Ident>,
     ty: Type,
     instance: Expr,
     bytes: ExprArray,
 }
 
-impl Parse for OpcodeTest {
-    fn parse(input: ParseStream<'_>) -> parse::Result<OpcodeTest> {
+impl Parse for CodecTest {
+    fn parse(input: ParseStream<'_>) -> parse::Result<CodecTest> {
         let mut name = None;
         let mut ty = None;
         let mut instance = None;
@@ -679,7 +679,7 @@ impl Parse for OpcodeTest {
         let Some(bytes) = bytes else {
             return Err(parse::Error::new(span, "Missing field `bytes`"));
         };
-        Ok(OpcodeTest {
+        Ok(CodecTest {
             name,
             ty,
             instance,
@@ -690,12 +690,12 @@ impl Parse for OpcodeTest {
 
 #[proc_macro]
 pub fn opcode_test(input: TokenStream) -> TokenStream {
-    let OpcodeTest {
+    let CodecTest {
         name,
         ty,
         instance,
         bytes,
-    } = parse_macro_input!(input as OpcodeTest);
+    } = parse_macro_input!(input as CodecTest);
     let encode_name: Ident;
     let decode_name: Ident;
     let len_name: Ident;
@@ -726,6 +726,61 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         #[test]
         fn #len_name() {
             assert_eq!(<#ty as OperandEncodable>::len(&#instance), #bytes.len());
+        }
+    }
+    .into()
+}
+
+#[proc_macro]
+pub fn message_test(input: TokenStream) -> TokenStream {
+    let CodecTest {
+        name,
+        ty,
+        instance,
+        bytes,
+    } = parse_macro_input!(input as CodecTest);
+    let encode_name: Ident;
+    let decode_name: Ident;
+    let len_name: Ident;
+    let test_opcode;
+
+    if let Some(name) = name {
+        encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
+        decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
+        len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
+        test_opcode = None;
+    } else {
+        encode_name = parse_str("test_encode").unwrap();
+        decode_name = parse_str("test_decode").unwrap();
+        len_name = parse_str("test_len").unwrap();
+        test_opcode = Some(quote! {
+            #[test]
+            fn test_opcode() {
+                assert_eq!(#instance.opcode(), Opcode::#ty);
+            }
+        });
+    };
+
+    quote! {
+        #test_opcode
+
+        #[test]
+        fn #encode_name() {
+            let mut vec = vec![Opcode::#ty as u8];
+            vec.extend(&#bytes);
+            assert_eq!(#instance.to_bytes(), vec);
+        }
+
+        #[test]
+        fn #decode_name() {
+            let mut vec = vec![Opcode::#ty as u8];
+            vec.extend(&#bytes);
+            assert_eq!(Message::try_from_bytes(&vec), Ok(#instance));
+        }
+
+        #[test]
+        fn #len_name() {
+            assert_eq!(#instance.len(), #bytes.len() + 1);
         }
     }
     .into()

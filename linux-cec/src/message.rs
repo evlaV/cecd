@@ -1,3 +1,5 @@
+#[cfg(test)]
+use linux_cec_macros::message_test;
 use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[cfg(test)]
@@ -338,33 +340,12 @@ impl OperandEncodable for CdcMessage {
 mod test_active_source {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(Message::ActiveSource { address: 0 }.len(), 3);
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::ActiveSource { address: 0 }.opcode(),
-            Opcode::ActiveSource
-        );
-    }
-
-    #[test]
-    fn test_encoding() {
-        assert_eq!(
-            &Message::ActiveSource { address: 0x1234 }.to_bytes(),
-            &[Opcode::ActiveSource as u8, 0x12, 0x34]
-        );
-    }
-
-    #[test]
-    fn test_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ActiveSource as u8, 0x12, 0x34]),
-            Ok(Message::ActiveSource { address: 0x1234 })
-        );
+    message_test! {
+        ty: ActiveSource,
+        instance: Message::ActiveSource {
+            address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
     }
 
     #[test]
@@ -396,33 +377,12 @@ mod test_active_source {
 mod test_inactive_source {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(Message::InactiveSource { address: 0 }.len(), 3);
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::InactiveSource { address: 0 }.opcode(),
-            Opcode::InactiveSource
-        );
-    }
-
-    #[test]
-    fn test_encoding() {
-        assert_eq!(
-            &Message::InactiveSource { address: 0x1234 }.to_bytes(),
-            &[Opcode::InactiveSource as u8, 0x12, 0x34]
-        );
-    }
-
-    #[test]
-    fn test_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::InactiveSource as u8, 0x12, 0x34]),
-            Ok(Message::InactiveSource { address: 0x1234 })
-        );
+    message_test! {
+        ty: InactiveSource,
+        instance: Message::InactiveSource {
+            address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
     }
 
     #[test]
@@ -454,51 +414,13 @@ mod test_inactive_source {
 mod test_routing_change {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(
-            Message::RoutingChange {
-                original_address: 0,
-                new_address: 0
-            }
-            .len(),
-            5
-        );
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::RoutingChange {
-                original_address: 0x1234,
-                new_address: 0x5678
-            }
-            .opcode(),
-            Opcode::RoutingChange
-        );
-    }
-
-    #[test]
-    fn test_encoding() {
-        assert_eq!(
-            &Message::RoutingChange {
-                original_address: 0x1234,
-                new_address: 0x5678
-            }
-            .to_bytes(),
-            &[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56, 0x78]
-        );
-    }
-
-    #[test]
-    fn test_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12, 0x34, 0x56, 0x78]),
-            Ok(Message::RoutingChange {
-                original_address: 0x1234,
-                new_address: 0x5678
-            })
-        );
+    message_test! {
+        ty: RoutingChange,
+        instance: Message::RoutingChange {
+            original_address: 0x1234,
+            new_address: 0x5678,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78],
     }
 
     #[test]
@@ -554,33 +476,12 @@ mod test_routing_change {
 mod test_routing_information {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(Message::RoutingInformation { address: 0 }.len(), 3);
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::RoutingInformation { address: 0 }.opcode(),
-            Opcode::RoutingInformation
-        );
-    }
-
-    #[test]
-    fn test_encoding() {
-        assert_eq!(
-            &Message::RoutingInformation { address: 0x1234 }.to_bytes(),
-            &[Opcode::RoutingInformation as u8, 0x12, 0x34]
-        );
-    }
-
-    #[test]
-    fn test_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RoutingInformation as u8, 0x12, 0x34]),
-            Ok(Message::RoutingInformation { address: 0x1234 })
-        );
+    message_test! {
+        ty: RoutingInformation,
+        instance: Message::RoutingInformation {
+            address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
     }
 
     #[test]
@@ -612,33 +513,12 @@ mod test_routing_information {
 mod test_set_stream_path {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(Message::SetStreamPath { address: 0 }.len(), 3);
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::SetStreamPath { address: 0 }.opcode(),
-            Opcode::SetStreamPath
-        );
-    }
-
-    #[test]
-    fn test_encoding() {
-        assert_eq!(
-            &Message::SetStreamPath { address: 0x1234 }.to_bytes(),
-            &[Opcode::SetStreamPath as u8, 0x12, 0x34]
-        );
-    }
-
-    #[test]
-    fn test_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetStreamPath as u8, 0x12, 0x34]),
-            Ok(Message::SetStreamPath { address: 0x1234 })
-        );
+    message_test! {
+        ty: SetStreamPath,
+        instance: Message::SetStreamPath {
+            address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
     }
 
     #[test]
@@ -670,6 +550,58 @@ mod test_set_stream_path {
 mod test_record_on {
     use super::*;
 
+    message_test! {
+        name: _own,
+        ty: RecordOn,
+        instance: Message::RecordOn {
+            source: operand::RecordSource::Own,
+        },
+        bytes: [operand::RecordSourceType::Own as u8],
+    }
+
+    message_test! {
+        name: _digital,
+        ty: RecordOn,
+        instance: Message::RecordOn {
+            source: operand::RecordSource::DigitalService(
+                operand::DigitalServiceId::AribGeneric(operand::AribData {
+                    transport_stream_id: 0x1234,
+                    service_id: 0x5678,
+                    original_network_id: 0x9ABC,
+                })
+            )
+        },
+        bytes: [
+            operand::RecordSourceType::Digital as u8,
+            operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x9A,
+            0xBC
+        ],
+    }
+
+    message_test! {
+        name: _analogue,
+        ty: RecordOn,
+        instance: Message::RecordOn {
+            source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
+                broadcast_type: operand::AnalogueBroadcastType::Satellite,
+                frequency: 0x1234,
+                broadcast_system: operand::BroadcastSystem::SecamL,
+            })
+        },
+        bytes: [
+            operand::RecordSourceType::Analogue as u8,
+            operand::AnalogueBroadcastType::Satellite as u8,
+            0x12,
+            0x34,
+            operand::BroadcastSystem::SecamL as u8
+        ],
+    }
+
     #[test]
     fn test_decode_all_missing() {
         assert_eq!(
@@ -692,559 +624,18 @@ mod test_record_on {
             Opcode::RecordOn
         );
     }
-
-    #[test]
-    fn test_own_len() {
-        assert_eq!(
-            Message::RecordOn {
-                source: operand::RecordSource::Own
-            }
-            .len(),
-            2
-        );
-    }
-
-    #[test]
-    fn test_own_encoding() {
-        assert_eq!(
-            &Message::RecordOn {
-                source: operand::RecordSource::Own
-            }
-            .to_bytes(),
-            &[Opcode::RecordOn as u8, operand::RecordSourceType::Own as u8]
-        );
-    }
-
-    #[test]
-    fn test_own_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Own as u8
-            ]),
-            Ok(Message::RecordOn {
-                source: operand::RecordSource::Own
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_len() {
-        assert_eq!(
-            Message::RecordOn {
-                source: operand::RecordSource::DigitalService(
-                    operand::DigitalServiceId::AribGeneric(operand::AribData {
-                        transport_stream_id: 0,
-                        service_id: 0,
-                        original_network_id: 0,
-                    })
-                ),
-            }
-            .len(),
-            9
-        );
-    }
-
-    #[test]
-    fn test_digital_encoding() {
-        assert_eq!(
-            &Message::RecordOn {
-                source: operand::RecordSource::DigitalService(
-                    operand::DigitalServiceId::AribGeneric(operand::AribData {
-                        transport_stream_id: 0x1234,
-                        service_id: 0x5678,
-                        original_network_id: 0x9ABC,
-                    })
-                ),
-            }
-            .to_bytes(),
-            &[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34,
-                0x56,
-                0x78,
-                0x9A,
-                0xBC
-            ]
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34,
-                0x56,
-                0x78,
-                0x9A,
-                0xBC
-            ]),
-            Ok(Message::RecordOn {
-                source: operand::RecordSource::DigitalService(
-                    operand::DigitalServiceId::AribGeneric(operand::AribData {
-                        transport_stream_id: 0x1234,
-                        service_id: 0x5678,
-                        original_network_id: 0x9ABC,
-                    })
-                ),
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_bytes_1() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34,
-                0x56,
-                0x78,
-                0x9A
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 8,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_bytes_2() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34,
-                0x56,
-                0x78
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 7,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_bytes_3() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34,
-                0x56
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 6,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_bytes_4() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-                0x34
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 5,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_bytes_5() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-                0x12,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 4,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_operand_1() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-                operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 3,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_digital_decoding_missing_operand_2() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Digital as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(9),
-                got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_analogue_len() {
-        assert_eq!(
-            Message::RecordOn {
-                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
-                    broadcast_type: operand::AnalogueBroadcastType::Cable,
-                    frequency: 1,
-                    broadcast_system: operand::BroadcastSystem::NtscM,
-                }),
-            }
-            .len(),
-            6
-        );
-    }
-
-    #[test]
-    fn test_analogue_encoding() {
-        assert_eq!(
-            &Message::RecordOn {
-                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
-                    broadcast_type: operand::AnalogueBroadcastType::Satellite,
-                    frequency: 0x1234,
-                    broadcast_system: operand::BroadcastSystem::SecamL,
-                }),
-            }
-            .to_bytes(),
-            &[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-                operand::AnalogueBroadcastType::Satellite as u8,
-                0x12,
-                0x34,
-                operand::BroadcastSystem::SecamL as u8
-            ]
-        );
-    }
-
-    #[test]
-    fn test_analogue_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-                operand::AnalogueBroadcastType::Satellite as u8,
-                0x12,
-                0x34,
-                operand::BroadcastSystem::SecamL as u8
-            ]),
-            Ok(Message::RecordOn {
-                source: operand::RecordSource::AnalogueService(operand::AnalogueServiceId {
-                    broadcast_type: operand::AnalogueBroadcastType::Satellite,
-                    frequency: 0x1234,
-                    broadcast_system: operand::BroadcastSystem::SecamL,
-                }),
-            })
-        );
-    }
-
-    #[test]
-    fn test_analogue_decoding_missing_operands_1() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-                operand::AnalogueBroadcastType::Satellite as u8,
-                0x12,
-                0x34
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
-                got: 5,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_analogue_decoding_missing_operands_1_and_byte() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-                operand::AnalogueBroadcastType::Satellite as u8,
-                0x12,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
-                got: 4,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_analogue_decoding_missing_operands_2() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-                operand::AnalogueBroadcastType::Satellite as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
-                got: 3,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_analogue_decoding_missing_operands_3() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::Analogue as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
-                got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_external_plug_len() {
-        assert_eq!(
-            Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::Plug(0))
-            }
-            .len(),
-            3
-        );
-    }
-
-    #[test]
-    fn test_external_plug_encoding() {
-        assert_eq!(
-            &Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
-            }
-            .to_bytes(),
-            &[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPlug as u8,
-                0x56,
-            ]
-        );
-    }
-
-    #[test]
-    fn test_external_plug_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPlug as u8,
-                0x56,
-            ]),
-            Ok(Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::Plug(0x56))
-            })
-        );
-    }
-
-    #[test]
-    fn test_external_plug_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPlug as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_external_phys_addr_len() {
-        assert_eq!(
-            Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
-                    0
-                ))
-            }
-            .len(),
-            4
-        );
-    }
-
-    #[test]
-    fn test_external_phys_addr_encoding() {
-        assert_eq!(
-            &Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
-                    0x1234
-                ))
-            }
-            .to_bytes(),
-            &[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPhysicalAddress as u8,
-                0x12,
-                0x34
-            ]
-        );
-    }
-
-    #[test]
-    fn test_external_phys_addr_decoding() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPhysicalAddress as u8,
-                0x12,
-                0x34
-            ]),
-            Ok(Message::RecordOn {
-                source: operand::RecordSource::External(operand::ExternalSource::PhysicalAddress(
-                    0x1234
-                ))
-            })
-        );
-    }
-
-    #[test]
-    fn test_external_phys_addr_decoding_missing_byte() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPhysicalAddress as u8,
-                0x12,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 3,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_external_phys_addr_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordOn as u8,
-                operand::RecordSourceType::ExternalPhysicalAddress as u8,
-            ]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_invalid_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RecordOn as u8, 0xFE]),
-            Err(Error::InvalidValueForType {
-                ty: "RecordSourceType",
-                value: String::from("254"),
-            })
-        );
-    }
 }
 
 #[cfg(test)]
 mod test_record_status {
     use super::*;
 
-    #[test]
-    fn test_len() {
-        assert_eq!(
-            Message::RecordStatus {
-                status: operand::RecordStatusInfo::CurrentSource
-            }
-            .len(),
-            2
-        );
-    }
-
-    #[test]
-    fn test_opcode() {
-        assert_eq!(
-            Message::RecordStatus {
-                status: operand::RecordStatusInfo::CurrentSource
-            }
-            .opcode(),
-            Opcode::RecordStatus
-        );
-    }
-
-    #[test]
-    fn test_encode() {
-        assert_eq!(
-            Message::RecordStatus {
-                status: operand::RecordStatusInfo::CurrentSource
-            }
-            .to_bytes(),
-            &[
-                Opcode::RecordStatus as u8,
-                operand::RecordStatusInfo::CurrentSource as u8
-            ]
-        );
-    }
-
-    #[test]
-    fn test_decode() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::RecordStatus as u8,
-                operand::RecordStatusInfo::CurrentSource as u8
-            ]),
-            Ok(Message::RecordStatus {
-                status: operand::RecordStatusInfo::CurrentSource
-            })
-        );
+    message_test! {
+        ty: RecordStatus,
+        instance: Message::RecordStatus {
+            status: operand::RecordStatusInfo::CurrentSource
+        },
+        bytes: [operand::RecordStatusInfo::CurrentSource as u8],
     }
 
     #[test]
@@ -1275,26 +666,37 @@ mod test_record_status {
 mod test_set_timer_program_title {
     use super::*;
 
-    #[test]
-    fn test_len_empty() {
-        assert_eq!(
-            Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("").unwrap(),
-            }
-            .len(),
-            1
-        );
+    message_test! {
+        name: _empty,
+        ty: SetTimerProgramTitle,
+        instance: Message::SetTimerProgramTitle {
+            title: operand::BufferOperand::from_str("").unwrap(),
+        },
+        bytes: [],
     }
 
-    #[test]
-    fn test_len_full() {
-        assert_eq!(
-            Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
-            }
-            .len(),
-            15
-        );
+    message_test! {
+        name: _full,
+        ty: SetTimerProgramTitle,
+        instance: Message::SetTimerProgramTitle {
+            title: operand::BufferOperand::from_str("12345678901234").unwrap(),
+        },
+        bytes: [
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+            b'2',
+            b'3',
+            b'4'
+        ],
     }
 
     #[test]
@@ -1305,80 +707,6 @@ mod test_set_timer_program_title {
             }
             .opcode(),
             Opcode::SetTimerProgramTitle
-        );
-    }
-
-    #[test]
-    fn test_encode_empty() {
-        assert_eq!(
-            Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("").unwrap(),
-            }
-            .to_bytes(),
-            &[Opcode::SetTimerProgramTitle as u8]
-        );
-    }
-
-    #[test]
-    fn test_decode_empty() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetTimerProgramTitle as u8]),
-            Ok(Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("").unwrap(),
-            })
-        );
-    }
-
-    #[test]
-    fn test_encode_full() {
-        assert_eq!(
-            Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
-            }
-            .to_bytes(),
-            &[
-                Opcode::SetTimerProgramTitle as u8,
-                b'1',
-                b'2',
-                b'3',
-                b'4',
-                b'5',
-                b'6',
-                b'7',
-                b'8',
-                b'9',
-                b'0',
-                b'1',
-                b'2',
-                b'3',
-                b'4'
-            ]
-        );
-    }
-
-    #[test]
-    fn test_decode_full() {
-        assert_eq!(
-            Message::try_from_bytes(&[
-                Opcode::SetTimerProgramTitle as u8,
-                b'1',
-                b'2',
-                b'3',
-                b'4',
-                b'5',
-                b'6',
-                b'7',
-                b'8',
-                b'9',
-                b'0',
-                b'1',
-                b'2',
-                b'3',
-                b'4'
-            ]),
-            Ok(Message::SetTimerProgramTitle {
-                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
-            })
         );
     }
 }
