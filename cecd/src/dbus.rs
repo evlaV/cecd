@@ -122,6 +122,19 @@ impl CecDevice {
         message: &[u8],
     ) -> zbus::Result<()>;
 
+    #[zbus(signal)]
+    async fn user_control_pressed(
+        signal_emitter: &SignalEmitter<'_>,
+        button: u8,
+        initiator: u8,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn user_control_released(
+        signal_emitter: &SignalEmitter<'_>,
+        initiator: u8,
+    ) -> zbus::Result<()>;
+
     async fn activate_source(&self, text_view: bool) -> fdo::Result<()> {
         self.device
             .lock()
@@ -137,6 +150,45 @@ impl CecDevice {
             .lock()
             .await
             .standby(target)
+            .await
+            .map_err(into_fdo_error)
+    }
+
+    async fn volume_up(&self, target: u8) -> fdo::Result<()> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let device = self.device.lock().await;
+        device
+            .press_user_control(UiCommand::VolumeUp, target)
+            .await
+            .map_err(into_fdo_error)?;
+        device
+            .release_user_control(target)
+            .await
+            .map_err(into_fdo_error)
+    }
+
+    async fn volume_down(&self, target: u8) -> fdo::Result<()> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let device = self.device.lock().await;
+        device
+            .press_user_control(UiCommand::VolumeDown, target)
+            .await
+            .map_err(into_fdo_error)?;
+        device
+            .release_user_control(target)
+            .await
+            .map_err(into_fdo_error)
+    }
+
+    async fn mute(&self, target: u8) -> fdo::Result<()> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let device = self.device.lock().await;
+        device
+            .press_user_control(UiCommand::Mute, target)
+            .await
+            .map_err(into_fdo_error)?;
+        device
+            .release_user_control(target)
             .await
             .map_err(into_fdo_error)
     }
@@ -176,6 +228,9 @@ impl PollTask {
 
         let reply = match envelope.message {
             Message::UserControlPressed { ui_command } => {
+                self.interface
+                    .user_control_pressed(ui_command as u8, envelope.initiator.into())
+                    .await?;
                 if let Some(old_key) = self.active_key {
                     self.uinput.key_up(old_key)?;
                 }
@@ -184,6 +239,9 @@ impl PollTask {
                 None
             }
             Message::UserControlReleased => {
+                self.interface
+                    .user_control_released(envelope.initiator.into())
+                    .await?;
                 if let Some(old_key) = self.active_key {
                     self.uinput.key_up(old_key)?;
                     self.active_key = None;
