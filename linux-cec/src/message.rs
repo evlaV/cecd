@@ -98,9 +98,8 @@ pub enum Message {
     SetTimerProgramTitle {
         title: operand::BufferOperand,
     } = constants::CEC_MSG_SET_TIMER_PROGRAM_TITLE,
-    // TODO: Unit tests
     TimerClearedStatus {
-        timer_cleared_status: operand::TimerClearedStatusData,
+        status: operand::TimerClearedStatusData,
     } = constants::CEC_MSG_TIMER_CLEARED_STATUS,
     // TODO: Unit tests
     TimerStatus {
@@ -707,6 +706,31 @@ mod test_set_timer_program_title {
             }
             .opcode(),
             Opcode::SetTimerProgramTitle
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_timer_cleared_status {
+    use super::*;
+
+    message_test! {
+        ty: TimerClearedStatus,
+        instance: Message::TimerClearedStatus {
+            status: operand::TimerClearedStatusData::Cleared,
+        },
+        bytes: [operand::TimerClearedStatusData::Cleared as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::TimerClearedStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
         );
     }
 }
