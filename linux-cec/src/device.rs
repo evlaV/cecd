@@ -25,7 +25,7 @@ pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
-use crate::operand::{BufferOperand, VendorId};
+use crate::operand::{BufferOperand, UiCommand, VendorId};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result, Timeout,
 };
@@ -379,6 +379,16 @@ impl Device {
     pub fn standby(&self, target: LogicalAddress) -> Result<()> {
         let standby = Message::Standby {};
         self.tx_message(&standby, target)
+    }
+
+    pub fn press_user_control(&self, ui_command: UiCommand, target: LogicalAddress) -> Result<()> {
+        let user_control = Message::UserControlPressed { ui_command };
+        self.tx_message(&user_control, target)
+    }
+
+    pub fn release_user_control(&self, target: LogicalAddress) -> Result<()> {
+        let user_control = Message::UserControlReleased {};
+        self.tx_message(&user_control, target)
     }
 }
 

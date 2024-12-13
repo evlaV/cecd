@@ -7,7 +7,7 @@ use tokio::sync::oneshot;
 
 use crate::device::{ConnectorInfo, Envelope, PollResult, PollStatus};
 use crate::message::Message;
-use crate::operand::VendorId;
+use crate::operand::{UiCommand, VendorId};
 use crate::{
     device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result, Timeout,
 };
@@ -51,6 +51,8 @@ enum DeviceCommand {
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
     ActivateSource(bool, ResultChannel<()>),
     Standby(LogicalAddress, ResultChannel<()>),
+    PressUserControl(UiCommand, LogicalAddress, ResultChannel<()>),
+    ReleaseUserControl(LogicalAddress, ResultChannel<()>),
 }
 
 pub struct Device {
@@ -176,6 +178,14 @@ impl Device {
         relay! { self, Standby => target }
     }
 
+    pub async fn press_user_control(&self, ui_command: UiCommand, target: LogicalAddress) -> Result<()> {
+        relay! { self, PressUserControl => ui_command, target }
+    }
+
+    pub async fn release_user_control(&self, target: LogicalAddress) -> Result<()> {
+        relay! { self, ReleaseUserControl => target }
+    }
+
     pub async fn close(mut self) -> Result<()> {
         self.tx.send(DeviceCommand::Drop)?;
         let Some(thread) = self.thread.take() else {
@@ -266,6 +276,12 @@ impl DeviceThread {
                 }
                 DeviceCommand::Standby(target, tx) => {
                     let _ = tx.send(self.device.standby(target));
+                }
+                DeviceCommand::PressUserControl(ui_command, target, tx) => {
+                    let _ = tx.send(self.device.press_user_control(ui_command, target));
+                }
+                DeviceCommand::ReleaseUserControl(target, tx) => {
+                    let _ = tx.send(self.device.release_user_control(target));
                 }
             }
         }
