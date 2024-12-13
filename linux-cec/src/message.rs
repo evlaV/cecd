@@ -1,5 +1,7 @@
 use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+#[cfg(test)]
+use std::str::FromStr;
 
 use crate::operand::OperandEncodable;
 use crate::{cdc, constants, operand, PhysicalAddress, Result};
@@ -91,7 +93,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         external_source: operand::ExternalSource,
     } = constants::CEC_MSG_SET_EXT_TIMER,
-    // TODO: Unit tests
     SetTimerProgramTitle {
         title: operand::BufferOperand,
     } = constants::CEC_MSG_SET_TIMER_PROGRAM_TITLE,
@@ -1265,6 +1266,118 @@ mod test_record_status {
             Err(Error::InvalidValueForType {
                 ty: "RecordStatusInfo",
                 value: String::from("254"),
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_timer_program_title {
+    use super::*;
+
+    #[test]
+    fn test_len_empty() {
+        assert_eq!(
+            Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("").unwrap(),
+            }
+            .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn test_len_full() {
+        assert_eq!(
+            Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .len(),
+            15
+        );
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .opcode(),
+            Opcode::SetTimerProgramTitle
+        );
+    }
+
+    #[test]
+    fn test_encode_empty() {
+        assert_eq!(
+            Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("").unwrap(),
+            }
+            .to_bytes(),
+            &[Opcode::SetTimerProgramTitle as u8]
+        );
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetTimerProgramTitle as u8]),
+            Ok(Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("").unwrap(),
+            })
+        );
+    }
+
+    #[test]
+    fn test_encode_full() {
+        assert_eq!(
+            Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .to_bytes(),
+            &[
+                Opcode::SetTimerProgramTitle as u8,
+                b'1',
+                b'2',
+                b'3',
+                b'4',
+                b'5',
+                b'6',
+                b'7',
+                b'8',
+                b'9',
+                b'0',
+                b'1',
+                b'2',
+                b'3',
+                b'4'
+            ]
+        );
+    }
+
+    #[test]
+    fn test_decode_full() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetTimerProgramTitle as u8,
+                b'1',
+                b'2',
+                b'3',
+                b'4',
+                b'5',
+                b'6',
+                b'7',
+                b'8',
+                b'9',
+                b'0',
+                b'1',
+                b'2',
+                b'3',
+                b'4'
+            ]),
+            Ok(Message::SetTimerProgramTitle {
+                title: operand::BufferOperand::from_str("12345678901234").unwrap(),
             })
         );
     }
