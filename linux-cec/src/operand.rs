@@ -198,6 +198,30 @@ mod test_array {
     }
 
     #[test]
+    fn test_decode_missing_byte() {
+        assert_eq!(
+            <[u8; 2] as OperandEncodable>::try_from_bytes(&[0x12]),
+            Err(Error::OutOfRange {
+                got: 1,
+                expected: Range::AtLeast(2),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
+    fn test_decode_missing_bytes() {
+        assert_eq!(
+            <[u8; 3] as OperandEncodable>::try_from_bytes(&[0x12]),
+            Err(Error::OutOfRange {
+                got: 1,
+                expected: Range::AtLeast(3),
+                quantity: "bytes"
+            })
+        );
+    }
+
+    #[test]
     fn test_decode_empty() {
         assert_eq!(
             <[u8; 1] as OperandEncodable>::try_from_bytes(&[]),
