@@ -101,43 +101,34 @@ pub enum Message {
     TimerClearedStatus {
         status: operand::TimerClearedStatusData,
     } = constants::CEC_MSG_TIMER_CLEARED_STATUS,
-    // TODO: Unit tests
     TimerStatus {
-        data: operand::TimerStatusData,
+        status: operand::TimerStatusData,
     } = constants::CEC_MSG_TIMER_STATUS,
-    // TODO: Unit tests
     CecVersion {
         version: operand::Version,
     } = constants::CEC_MSG_CEC_VERSION,
     GetCecVersion = constants::CEC_MSG_GET_CEC_VERSION,
     GivePhysicalAddr = constants::CEC_MSG_GIVE_PHYSICAL_ADDR,
     GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
-    // TODO: Unit tests
     ReportPhysicalAddr {
         physical_address: PhysicalAddress,
         device_type: operand::PrimaryDeviceType,
     } = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
-    // TODO: Unit tests
     SetMenuLanguage {
         language: [u8; 3],
     } = constants::CEC_MSG_SET_MENU_LANGUAGE,
-    // TODO: Unit tests
     DeckControl {
         mode: operand::DeckControlMode,
     } = constants::CEC_MSG_DECK_CONTROL,
-    // TODO: Unit tests
     DeckStatus {
         info: operand::DeckInfo,
     } = constants::CEC_MSG_DECK_STATUS,
-    // TODO: Unit tests
     GiveDeckStatus {
         request: operand::StatusRequest,
     } = constants::CEC_MSG_GIVE_DECK_STATUS,
-    // TODO: Unit tests
     Play {
         mode: operand::PlayMode,
     } = constants::CEC_MSG_PLAY,
-    // TODO: Unit tests
     GiveTunerDeviceStatus {
         request: operand::StatusRequest,
     } = constants::CEC_MSG_GIVE_TUNER_DEVICE_STATUS,
@@ -726,6 +717,321 @@ mod test_timer_cleared_status {
     fn test_decoding_missing_operand() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::TimerClearedStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_timer_status {
+    use super::*;
+
+    message_test! {
+        ty: TimerStatus,
+        instance: Message::TimerStatus {
+            status: operand::TimerStatusData {
+                overlap_warning: false,
+                media_info: operand::MediaInfo::UnprotectedMedia,
+                programmed_info: operand::TimerProgrammedInfo::Programmed(operand::ProgrammedInfo::EnoughSpace),
+            },
+        },
+        bytes: [(operand::MediaInfo::UnprotectedMedia as u8) | 0x10 | constants::CEC_OP_PROG_INFO_ENOUGH_SPACE],
+    }
+
+    message_test! {
+        name: _no_duration,
+        ty: TimerStatus,
+        instance: Message::TimerStatus {
+            status: operand::TimerStatusData {
+                overlap_warning: false,
+                media_info: operand::MediaInfo::UnprotectedMedia,
+                programmed_info: operand::TimerProgrammedInfo::Programmed(operand::ProgrammedInfo::NotEnoughSpace {
+                    duration_available: None,
+                }),
+            },
+        },
+        bytes: [(operand::MediaInfo::UnprotectedMedia as u8) | 0x10 | constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE],
+    }
+
+    message_test! {
+        name: _duration,
+        ty: TimerStatus,
+        instance: Message::TimerStatus {
+            status: operand::TimerStatusData {
+                overlap_warning: false,
+                media_info: operand::MediaInfo::UnprotectedMedia,
+                programmed_info: operand::TimerProgrammedInfo::Programmed(operand::ProgrammedInfo::NotEnoughSpace {
+                    duration_available: Some(operand::Duration {
+                        hours: operand::DurationHours::try_from(30).unwrap(),
+                        minutes: operand::Minute::try_from(45).unwrap(),
+                    }),
+                }),
+            },
+        },
+        bytes: [
+            (operand::MediaInfo::UnprotectedMedia as u8) | 0x10 | constants::CEC_OP_PROG_INFO_NOT_ENOUGH_SPACE,
+            0x30,
+            0x45
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::TimerStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_cec_version {
+    use super::*;
+
+    message_test! {
+        ty: CecVersion,
+        instance: Message::CecVersion {
+            version: operand::Version::V2_0,
+        },
+        bytes: [operand::Version::V2_0 as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::CecVersion as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_physical_addr {
+    use super::*;
+
+    message_test! {
+        ty: ReportPhysicalAddr,
+        instance: Message::ReportPhysicalAddr {
+            physical_address: 0x1234,
+            device_type: operand::PrimaryDeviceType::Processor,
+        },
+        bytes: [0x12, 0x34, operand::PrimaryDeviceType::Processor as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_menu_language {
+    use super::*;
+
+    message_test! {
+        ty: SetMenuLanguage,
+        instance: Message::SetMenuLanguage {
+            language: [0x12, 0x34, 0x56],
+        },
+        bytes: [0x12, 0x34, 0x56],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetMenuLanguage as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_bytes() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetMenuLanguage as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetMenuLanguage as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_deck_control {
+    use super::*;
+
+    message_test! {
+        ty: DeckControl,
+        instance: Message::DeckControl {
+            mode: operand::DeckControlMode::Stop,
+        },
+        bytes: [operand::DeckControlMode::Stop as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::DeckControl as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_deck_status {
+    use super::*;
+
+    message_test! {
+        ty: DeckStatus,
+        instance: Message::DeckStatus {
+            info: operand::DeckInfo::Record,
+        },
+        bytes: [operand::DeckInfo::Record as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::DeckStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_give_deck_status {
+    use super::*;
+
+    message_test! {
+        ty: GiveDeckStatus,
+        instance: Message::GiveDeckStatus {
+            request: operand::StatusRequest::Once,
+        },
+        bytes: [operand::StatusRequest::Once as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::GiveDeckStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_play {
+    use super::*;
+
+    message_test! {
+        ty: Play,
+        instance: Message::Play {
+            mode: operand::PlayMode::Still,
+        },
+        bytes: [operand::PlayMode::Still as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::Play as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_give_tuner_device_status {
+    use super::*;
+
+    message_test! {
+        ty: GiveTunerDeviceStatus,
+        instance: Message::GiveTunerDeviceStatus {
+            request: operand::StatusRequest::Once,
+        },
+        bytes: [operand::StatusRequest::Once as u8],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::GiveTunerDeviceStatus as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
