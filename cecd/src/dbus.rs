@@ -12,7 +12,7 @@ use tokio::select;
 use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
-use tracing::error;
+use tracing::{debug, error, info, warn};
 use zbus::object_server::{InterfaceRef, SignalEmitter};
 use zbus::{fdo, interface, Connection};
 
@@ -25,6 +25,7 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
 
 const PATH: &'static str = "/com/steampowered/CecDaemon1";
 
+#[derive(Debug)]
 pub struct CecDevice {
     device: Arc<Mutex<AsyncDevice>>,
     token: CancellationToken,
@@ -52,7 +53,8 @@ impl CecDevice {
         })
     }
 
-    pub async fn register(&mut self, connection: Connection, system: SystemHandle) -> Result<()> {
+    pub async fn register(self, connection: Connection, system: SystemHandle) -> Result<()> {
+        debug!("Registering CEC device {} on bus", self.path.display());
         let mut uinput = UInputDevice::new()?;
 
         let device = self.device.clone();
@@ -63,34 +65,45 @@ impl CecDevice {
         {
             let system = system.lock().await;
             osd_name = system.osd_name.clone();
-            log_addr = system.log_addr;
+            if system.log_addr != LogicalAddress::UNREGISTERED {
+                log_addr = system.log_addr;
+            } else {
+                log_addr = LogicalAddress::PlaybackDevice1;
+            }
             vendor_id = system.vendor_id;
             mappings = system.mappings.clone();
         }
+        debug!("OSD name: {osd_name}");
+        debug!("Logical address: {log_addr:?}");
+        debug!("Vendor ID: {vendor_id:?}");
 
         uinput.set_mappings(mappings)?;
         uinput.set_name(osd_name.clone())?;
         uinput.open()?;
         {
             let device = device.lock().await;
-            device.set_osd_name(&osd_name).await?;
-            device.set_logical_address(log_addr).await?;
-            device.set_vendor_id(vendor_id).await?;
-            device.set_follower(FollowerMode::Enabled).await?;
             device.set_initiator(InitiatorMode::Enabled).await?;
+            device.set_osd_name(&osd_name).await?;
+            device.set_vendor_id(vendor_id).await?;
+            device.set_logical_address(log_addr).await?;
+            device.set_follower(FollowerMode::Enabled).await?;
         }
 
+        let token = self.token.clone();
         let object_server = connection.object_server();
         let path = self.dbus_path()?;
-        let interface = object_server.interface(path).await?;
+        object_server.at(path.clone(), self).await?;
+
+        let interface = object_server.interface(path.clone()).await?;
         let poll_task = PollTask {
             device,
-            token: self.token.clone(),
-            interface,
+            token,
+            interface: interface.clone(),
             uinput,
             active_key: None,
         };
-        self.poller = Some(spawn(poll_task.run()));
+        interface.get_mut().await.poller = Some(spawn(poll_task.run()));
+        info!("Device {path} registered");
         Ok(())
     }
 
@@ -200,7 +213,19 @@ impl PollTask {
         loop {
             select! {
                 status = poller.poll(PollTimeout::NONE) => {
-                    let results = self.device.lock().await.handle_status(status?).await?;
+                    let Ok(status) = status else {
+                        continue
+                    };
+                    let Ok(results) = self
+                        .device
+                        .lock()
+                        .await
+                        .handle_status(status)
+                        .await
+                        .inspect_err(|e| warn!("Failed to handle status: {e}"))
+                    else {
+                        continue
+                    };
                     for res in results {
                         if let Err(err) = self.handle_poll_result(res).await {
                             error!("Poll handling failed: {err}");
@@ -217,6 +242,12 @@ impl PollTask {
             return Ok(());
         };
 
+        let initiator: u8 = envelope.initiator.into();
+        let destination: u8 = envelope.destination.into();
+        debug!(
+            "Got message from {initiator} to {destination}: {:?}",
+            envelope.message
+        );
         self.interface
             .received_message(
                 envelope.initiator.into(),

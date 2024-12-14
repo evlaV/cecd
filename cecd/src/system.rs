@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::fs::read_dir;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio_util::sync::CancellationToken;
-use tracing::debug;
+use tracing::{debug, info};
 use zbus::connection::Connection;
 
 use crate::config::Config;
@@ -60,6 +60,7 @@ impl System {
 
             let token = self.token.child_token();
             devs.push(CecDevice::open(&path, token.clone()).await?);
+            info!("Found cec device at {pathname}");
             add.insert(path, token);
         }
         self.active.extend(add);
@@ -75,6 +76,7 @@ impl System {
         );
         let token = self.token.child_token();
         let dev = CecDevice::open(&path, token.clone()).await?;
+        info!("Found cec device at {pathname}");
         self.active.insert(path.as_ref().to_path_buf(), token);
         Ok(dev)
     }
@@ -125,14 +127,14 @@ impl SystemHandle {
             devs = system.find_devs().await?;
             connection = system.connection.clone();
         }
-        for mut dev in devs {
+        for dev in devs {
             dev.register(connection.clone(), self.clone()).await?;
         }
         Ok(())
     }
 
     pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<()> {
-        let mut dev;
+        let dev;
         let connection;
         {
             let mut system = self.lock().await;
