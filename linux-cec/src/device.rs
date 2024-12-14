@@ -197,9 +197,7 @@ impl Device {
 
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
         let name = BufferOperand::from_str(name)?;
-        self.internal_log_addrs
-            .osd_name
-            .copy_from_slice(&name.buffer);
+        self.internal_log_addrs.osd_name[..14].copy_from_slice(&name.buffer);
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
