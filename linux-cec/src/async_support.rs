@@ -41,6 +41,7 @@ enum DeviceCommand {
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
     SetLogicalAddresses(Vec<LogicalAddress>, ResultChannel<()>),
     SetLogicalAddress(LogicalAddress, ResultChannel<()>),
+    ClearLogicalAddresses(ResultChannel<()>),
     GetOsdName(ResultChannel<String>),
     SetOsdName(String, ResultChannel<()>),
     GetVendorId(ResultChannel<Option<VendorId>>),
@@ -55,11 +56,13 @@ enum DeviceCommand {
     ReleaseUserControl(LogicalAddress, ResultChannel<()>),
 }
 
+#[derive(Debug)]
 pub struct Device {
     thread: Option<JoinHandle<Result<()>>>,
     tx: Sender<DeviceCommand>,
 }
 
+#[derive(Debug)]
 pub struct DevicePoller {
     thread: Option<JoinHandle<Result<()>>>,
     tx: Sender<PollerCommand>,
@@ -138,6 +141,10 @@ impl Device {
         relay! { self, SetLogicalAddress => log_addr }
     }
 
+    pub async fn clear_logical_addresses(&self) -> Result<()> {
+        relay! { self, ClearLogicalAddresses }
+    }
+
     pub async fn get_osd_name(&self) -> Result<String> {
         relay! { self, GetOsdName }
     }
@@ -178,7 +185,11 @@ impl Device {
         relay! { self, Standby => target }
     }
 
-    pub async fn press_user_control(&self, ui_command: UiCommand, target: LogicalAddress) -> Result<()> {
+    pub async fn press_user_control(
+        &self,
+        ui_command: UiCommand,
+        target: LogicalAddress,
+    ) -> Result<()> {
         relay! { self, PressUserControl => ui_command, target }
     }
 
@@ -246,6 +257,9 @@ impl DeviceThread {
                 }
                 DeviceCommand::SetLogicalAddress(log_addr, tx) => {
                     let _ = tx.send(self.device.set_logical_address(log_addr));
+                }
+                DeviceCommand::ClearLogicalAddresses(tx) => {
+                    let _ = tx.send(self.device.clear_logical_addresses());
                 }
                 DeviceCommand::GetOsdName(tx) => {
                     let _ = tx.send(self.device.get_osd_name());

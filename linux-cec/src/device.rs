@@ -177,6 +177,12 @@ impl Device {
         for (index, log_addr) in log_addrs.iter().enumerate() {
             self.internal_log_addrs.log_addr[index] = (*log_addr).into();
         }
+
+        if log_addrs.len() > 0 {
+            // Clear old logical addresses first, if present
+            self.clear_logical_addresses()?;
+        }
+
         self.internal_log_addrs.num_log_addrs = log_addrs.len().try_into().unwrap();
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
@@ -186,6 +192,14 @@ impl Device {
 
     pub fn set_logical_address(&mut self, log_addr: LogicalAddress) -> Result<()> {
         self.set_logical_addresses(&[log_addr])
+    }
+
+    pub fn clear_logical_addresses(&mut self) -> Result<()> {
+        self.internal_log_addrs.num_log_addrs = 0;
+        unsafe {
+            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        Ok(())
     }
 
     pub fn get_osd_name(&mut self) -> Result<String> {
@@ -198,10 +212,6 @@ impl Device {
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
         let name = BufferOperand::from_str(name)?;
         self.internal_log_addrs.osd_name[..14].copy_from_slice(&name.buffer);
-        unsafe {
-            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
-        }
-
         if self.tx_logical_address != LogicalAddress::UNREGISTERED {
             let message = Message::SetOsdName { name };
             self.tx_message(&message, LogicalAddress::Tv)?;
@@ -221,9 +231,6 @@ impl Device {
             self.internal_log_addrs.vendor_id = vendor_id.into();
         } else {
             self.internal_log_addrs.vendor_id = SysVendorId::default();
-        }
-        unsafe {
-            adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
         Ok(())
     }
@@ -252,7 +259,7 @@ impl Device {
         if message.len > 15 {
             return Err(Error::InvalidData);
         }
-        let bytes = &message.msg[1..message.len as usize - 1];
+        let bytes = &message.msg[1..message.len as usize];
 
         Ok(Envelope {
             message: Message::try_from_bytes(bytes)?,
@@ -414,14 +421,14 @@ impl TryFrom<File> for Device {
 
 impl DevicePoller {
     pub fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
-        let pollfd = PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI | PollFlags::POLLIN);
-        let done = poll(&mut [pollfd], timeout)?;
+        let mut pollfd = [PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI | PollFlags::POLLIN)];
+        let done = poll(&mut pollfd, timeout)?;
 
         if done == 0 {
             return Err(Error::Timeout);
         }
 
-        match pollfd.revents() {
+        match pollfd[0].revents() {
             None => Ok(PollStatus::Nothing),
             Some(flags) if flags.contains(PollFlags::POLLIN | PollFlags::POLLPRI) => {
                 Ok(PollStatus::GotAll)
