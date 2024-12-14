@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
+use tracing_subscriber;
 use zbus::connection::Builder;
 
 use crate::config::read_default_config;
@@ -35,6 +36,8 @@ struct Arguments {
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let args = Arguments::parse();
     let connection = Builder::session()?
         .name("com.steampowered.CecDaemon1")?
