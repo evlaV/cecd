@@ -71,9 +71,10 @@ pub struct DevicePoller {
     fd: OwnedFd,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PollStatus {
     Nothing,
+    Destroyed,
     GotEvent,
     GotMessage,
     GotAll,
@@ -421,7 +422,10 @@ impl TryFrom<File> for Device {
 
 impl DevicePoller {
     pub fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
-        let mut pollfd = [PollFd::new(self.fd.as_fd(), PollFlags::POLLPRI | PollFlags::POLLIN)];
+        let mut pollfd = [PollFd::new(
+            self.fd.as_fd(),
+            PollFlags::POLLPRI | PollFlags::POLLIN,
+        )];
         let done = poll(&mut pollfd, timeout)?;
 
         if done == 0 {
@@ -430,6 +434,7 @@ impl DevicePoller {
 
         match pollfd[0].revents() {
             None => Ok(PollStatus::Nothing),
+            Some(flags) if flags.contains(PollFlags::POLLHUP) => Ok(PollStatus::Destroyed),
             Some(flags) if flags.contains(PollFlags::POLLIN | PollFlags::POLLPRI) => {
                 Ok(PollStatus::GotAll)
             }

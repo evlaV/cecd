@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use linux_cec::device::{AsyncDevice, PollResult, PollTimeout};
+use linux_cec::device::{AsyncDevice, PollResult, PollStatus, PollTimeout};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, UiCommand};
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
@@ -39,6 +39,8 @@ struct PollTask {
     interface: InterfaceRef<CecDevice>,
     uinput: UInputDevice,
     active_key: Option<UiCommand>,
+    connection: Connection,
+    path: String,
 }
 
 impl CecDevice {
@@ -101,6 +103,8 @@ impl CecDevice {
             interface: interface.clone(),
             uinput,
             active_key: None,
+            connection,
+            path: path.clone(),
         };
         interface.get_mut().await.poller = Some(spawn(poll_task.run()));
         info!("Device {path} registered");
@@ -216,6 +220,13 @@ impl PollTask {
                     let Ok(status) = status else {
                         continue
                     };
+                    if status == PollStatus::Destroyed {
+                        let path = self.path;
+                        info!("Device {path} disconnected");
+                        let object_server = self.connection.object_server();
+                        object_server.remove::<CecDevice, String>(path).await?;
+                        break Ok(());
+                    }
                     let Ok(results) = self
                         .device
                         .lock()
