@@ -4,18 +4,13 @@ use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, warn};
+use tracing::{debug, error};
 use udev::{Event, EventType, MonitorBuilder};
 
 use crate::system::SystemHandle;
 
 async fn handle_event(ev: Event, system: &SystemHandle) {
-    let Some(tags) = ev.property_value("CURRENT_TAGS") else {
-        return;
-    };
-    if !tags.to_string_lossy().contains(":uaccess:") {
-        return;
-    }
+    debug!("Got udev event {ev:#?}");
     let Some(node) = ev.devnode() else {
         return;
     };
@@ -39,12 +34,11 @@ pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken)
         select! {
             _ = token.cancelled() => break Ok(()),
             guard = fd.ready(Interest::READABLE) => {
-                let _guard = guard?;
-                let Some(ev) = iter.next() else {
-                    warn!("Poller said event was present, but it was not");
-                    continue;
+                let mut guard = guard?;
+                while let Some(ev) = iter.next() {
+                    handle_event(ev, &system).await;
                 };
-                handle_event(ev, &system).await;
+                guard.clear_ready();
             },
             _ = fd.ready(Interest::ERROR) => break Ok(()),
         };
