@@ -37,7 +37,7 @@ struct PollTask {
     device: Arc<Mutex<AsyncDevice>>,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
-    uinput: UInputDevice,
+    uinput: Option<UInputDevice>,
     active_key: Option<UiCommand>,
     connection: Connection,
     path: String,
@@ -57,7 +57,6 @@ impl CecDevice {
 
     pub async fn register(self, connection: Connection, system: SystemHandle) -> Result<()> {
         debug!("Registering CEC device {} on bus", self.path.display());
-        let mut uinput = UInputDevice::new()?;
 
         let device = self.device.clone();
         let osd_name;
@@ -79,9 +78,16 @@ impl CecDevice {
         debug!("Logical address: {log_addr:?}");
         debug!("Vendor ID: {vendor_id:?}");
 
-        uinput.set_mappings(mappings)?;
-        uinput.set_name(osd_name.clone())?;
-        uinput.open()?;
+        let uinput = if !mappings.is_empty() {
+            let mut uinput_dev = UInputDevice::new()?;
+            uinput_dev.set_mappings(mappings)?;
+            uinput_dev.set_name(osd_name.clone())?;
+            uinput_dev.open()?;
+            Some(uinput_dev)
+        } else {
+            None
+        };
+
         {
             let device = device.lock().await;
             device.set_initiator(InitiatorMode::Enabled).await?;
@@ -276,10 +282,12 @@ impl PollTask {
                 self.interface
                     .user_control_pressed(ui_command as u8, envelope.initiator.into())
                     .await?;
-                if let Some(old_key) = self.active_key {
-                    self.uinput.key_up(old_key)?;
+                if let Some(uinput) = self.uinput.as_ref() {
+                    if let Some(old_key) = self.active_key {
+                        uinput.key_up(old_key)?;
+                    }
+                    uinput.key_down(ui_command)?;
                 }
-                self.uinput.key_down(ui_command)?;
                 self.active_key = Some(ui_command);
                 None
             }
@@ -288,7 +296,9 @@ impl PollTask {
                     .user_control_released(envelope.initiator.into())
                     .await?;
                 if let Some(old_key) = self.active_key {
-                    self.uinput.key_up(old_key)?;
+                    if let Some(uinput) = self.uinput.as_ref() {
+                        uinput.key_up(old_key)?;
+                    }
                     self.active_key = None;
                 }
                 None
