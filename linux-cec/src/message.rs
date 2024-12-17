@@ -336,6 +336,7 @@ mod test_active_source {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
+        extra: [Overfull],
     }
 
     #[test]
@@ -373,6 +374,7 @@ mod test_inactive_source {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
+        extra: [Overfull],
     }
 
     #[test]
@@ -411,6 +413,7 @@ mod test_routing_change {
             new_address: 0x5678,
         },
         bytes: [0x12, 0x34, 0x56, 0x78],
+        extra: [Overfull],
     }
 
     #[test]
@@ -472,6 +475,7 @@ mod test_routing_information {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
+        extra: [Overfull],
     }
 
     #[test]
@@ -509,6 +513,7 @@ mod test_set_stream_path {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
+        extra: [Overfull],
     }
 
     #[test]
@@ -547,6 +552,7 @@ mod test_record_on {
             source: operand::RecordSource::Own,
         },
         bytes: [operand::RecordSourceType::Own as u8],
+        extra: [Overfull],
     }
 
     message_test! {
@@ -571,6 +577,7 @@ mod test_record_on {
             0x9A,
             0xBC
         ],
+        extra: [Overfull],
     }
 
     message_test! {
@@ -590,6 +597,7 @@ mod test_record_on {
             0x34,
             operand::BroadcastSystem::SecamL as u8
         ],
+        extra: [Overfull],
     }
 
     #[test]
@@ -626,6 +634,7 @@ mod test_record_status {
             status: operand::RecordStatusInfo::CurrentSource
         },
         bytes: [operand::RecordStatusInfo::CurrentSource as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -711,6 +720,7 @@ mod test_timer_cleared_status {
             status: operand::TimerClearedStatusData::Cleared,
         },
         bytes: [operand::TimerClearedStatusData::Cleared as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -740,6 +750,7 @@ mod test_timer_status {
             },
         },
         bytes: [(operand::MediaInfo::UnprotectedMedia as u8) | 0x10 | constants::CEC_OP_PROG_INFO_ENOUGH_SPACE],
+        extra: [Overfull],
     }
 
     message_test! {
@@ -777,6 +788,7 @@ mod test_timer_status {
             0x30,
             0x45
         ],
+        extra: [Overfull],
     }
 
     #[test]
@@ -802,6 +814,7 @@ mod test_cec_version {
             version: operand::Version::V2_0,
         },
         bytes: [operand::Version::V2_0 as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -828,6 +841,7 @@ mod test_report_physical_addr {
             device_type: operand::PrimaryDeviceType::Processor,
         },
         bytes: [0x12, 0x34, operand::PrimaryDeviceType::Processor as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -877,6 +891,7 @@ mod test_set_menu_language {
             language: [0x12, 0x34, 0x56],
         },
         bytes: [0x12, 0x34, 0x56],
+        extra: [Overfull],
     }
 
     #[test]
@@ -926,6 +941,7 @@ mod test_deck_control {
             mode: operand::DeckControlMode::Stop,
         },
         bytes: [operand::DeckControlMode::Stop as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -951,6 +967,7 @@ mod test_deck_status {
             info: operand::DeckInfo::Record,
         },
         bytes: [operand::DeckInfo::Record as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -976,6 +993,7 @@ mod test_give_deck_status {
             request: operand::StatusRequest::Once,
         },
         bytes: [operand::StatusRequest::Once as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -1001,6 +1019,7 @@ mod test_play {
             mode: operand::PlayMode::Still,
         },
         bytes: [operand::PlayMode::Still as u8],
+        extra: [Overfull],
     }
 
     #[test]
@@ -1026,6 +1045,7 @@ mod test_give_tuner_device_status {
             request: operand::StatusRequest::Once,
         },
         bytes: [operand::StatusRequest::Once as u8],
+        extra: [Overfull],
     }
 
     #[test]

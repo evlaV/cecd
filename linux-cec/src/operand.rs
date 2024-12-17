@@ -93,6 +93,7 @@ mod test_u8 {
         ty: u8,
         instance: 0x56,
         bytes: [0x56],
+        extra: [Overfull],
     }
 
     #[test]
@@ -148,6 +149,7 @@ mod test_option {
         ty: Option<u8>,
         instance: Some(0x56),
         bytes: [0x56],
+        extra: [Overfull],
     }
 }
 
@@ -181,6 +183,7 @@ mod test_array {
         ty: [u8; 1],
         instance: [0x56],
         bytes: [0x56],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -188,6 +191,7 @@ mod test_array {
         ty: [u8; 2],
         instance: [0x56, 0x78],
         bytes: [0x56, 0x78],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -195,6 +199,7 @@ mod test_array {
         ty: [u8; 3],
         instance: [0x56, 0x78, 0x9A],
         bytes: [0x56, 0x78, 0x9A],
+        extra: [Overfull],
     }
 
     #[test]
@@ -267,6 +272,7 @@ mod test_u16 {
         ty: u16,
         instance: 0x5678,
         bytes: [0x56, 0x78],
+        extra: [Overfull],
     }
 
     #[test]
@@ -325,6 +331,7 @@ mod test_bool {
         ty: bool,
         instance: true,
         bytes: [0x01],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -332,6 +339,7 @@ mod test_bool {
         ty: bool,
         instance: false,
         bytes: [0x00],
+        extra: [Overfull],
     }
 
     #[test]
@@ -1511,6 +1519,7 @@ mod test_analogue_service_id {
             0x34,
             BroadcastSystem::PalBG as u8
         ],
+        extra: [Overfull],
     }
 
     #[test]
@@ -1735,6 +1744,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1753,6 +1763,7 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1772,6 +1783,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1791,6 +1803,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1810,6 +1823,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1829,6 +1843,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1847,6 +1862,7 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1865,6 +1881,7 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1883,6 +1900,7 @@ mod test_digital_service_id {
             0x00,
             0x00,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1902,6 +1920,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1921,6 +1940,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1940,6 +1960,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1959,6 +1980,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -1978,6 +2000,7 @@ mod test_digital_service_id {
             0xAB,
             0xCD,
         ],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2047,6 +2070,7 @@ mod test_audio_format_id_and_code {
             .with_code(0x05)
             .with_id(AudioFormatId::CEA861Cxt),
         bytes: [0x45],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2078,6 +2102,7 @@ mod test_audio_status {
         ty: AudioStatus,
         instance: AudioStatus::new().with_volume(0x09).with_mute(true),
         bytes: [0x89],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2152,6 +2177,7 @@ mod test_bcd_byte {
         ty: BcdByte::<0, 99>,
         instance: BcdByte::<0, 99>::try_from(12).unwrap(),
         bytes: [0x12],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2295,6 +2321,7 @@ mod test_arib_data {
             original_network_id: 0xABCD,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2358,6 +2385,7 @@ mod test_atsc_data {
             program_number: 0x5678,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x00, 0x00],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2442,6 +2470,7 @@ mod test_channel_id {
         ty: ChannelId,
         instance: ChannelId::OnePart(0x1234),
         bytes: [0x04, 0x00, 0x12, 0x34],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -2449,6 +2478,7 @@ mod test_channel_id {
         ty: ChannelId,
         instance: ChannelId::TwoPart(0x0123, 0x4567),
         bytes: [0x09, 0x23, 0x45, 0x67],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2568,6 +2598,7 @@ mod test_duration {
             minutes: Minute::try_from(20u8).unwrap(),
         },
         bytes: [0x99, 0x20],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2626,6 +2657,7 @@ mod test_dvb_data {
             original_network_id: 0xABCD,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0xAB, 0xCD],
+        extra: [Overfull],
     }
 
     #[test]
@@ -2737,6 +2769,7 @@ mod test_rc_profile {
             rc_profile_n: BoundedBufferOperand::default(),
         },
         bytes: [0x02],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -2747,6 +2780,7 @@ mod test_rc_profile {
             rc_profile_n: BoundedBufferOperand::default(),
         },
         bytes: [0x40 | RcProfileSource::HAS_DEV_ROOT_MENU.bits()],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -2757,6 +2791,7 @@ mod test_rc_profile {
             rc_profile_n: BoundedBufferOperand::try_from_bytes(&[0x40]).unwrap(),
         },
         bytes: [0x82, 0x40],
+        extra: [Overfull],
     }
 }
 
@@ -2777,6 +2812,7 @@ mod test_time {
             minute: Minute::try_from(20u8).unwrap(),
         },
         bytes: [0x04, 0x20],
+        extra: [Overfull],
     }
 
     #[test]
@@ -3036,6 +3072,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x01],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3047,6 +3084,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x81],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3058,6 +3096,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x21],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3069,6 +3108,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::NoFreeTimer),
         },
         bytes: [0x41],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3080,6 +3120,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::DateOutOfRange),
         },
         bytes: [0x02],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3091,6 +3132,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::RecordingSequenceError),
         },
         bytes: [0x03],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3102,6 +3144,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPlug),
         },
         bytes: [0x04],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3113,6 +3156,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InvalidExternalPhysicalAddress),
         },
         bytes: [0x05],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3124,6 +3168,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::CaUnsupported),
         },
         bytes: [0x06],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3135,6 +3180,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::InsufficientCaEntitlements),
         },
         bytes: [0x07],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3146,6 +3192,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ResolutionUnsupported),
         },
         bytes: [0x08],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3157,6 +3204,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ParentalLock),
         },
         bytes: [0x09],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3168,6 +3216,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::NotProgrammed(NotProgrammedErrorInfo::ClockFailure),
         },
         bytes: [0x0A],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3197,6 +3246,7 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x0E, 0x23, 0x59],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3208,6 +3258,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::EnoughSpace),
         },
         bytes: [0x18],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3237,6 +3288,7 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x19, 0x23, 0x59],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3248,6 +3300,7 @@ mod test_timer_status_data {
             programmed_info: TimerProgrammedInfo::Programmed(ProgrammedInfo::NoneAvailable),
         },
         bytes: [0x1A],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3277,6 +3330,7 @@ mod test_timer_status_data {
             }),
         },
         bytes: [0x1B, 0x23, 0x59],
+        extra: [Overfull],
     }
 
     #[test]
@@ -3675,6 +3729,7 @@ mod test_record_source {
         ty: RecordSource,
         instance: RecordSource::Own,
         bytes: [RecordSourceType::Own as u8],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3697,6 +3752,7 @@ mod test_record_source {
             0x9A,
             0xBC
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3714,6 +3770,7 @@ mod test_record_source {
             0x34,
             BroadcastSystem::SecamL as u8
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3724,6 +3781,7 @@ mod test_record_source {
             RecordSourceType::ExternalPlug as u8,
             0x56,
         ],
+        extra: [Overfull],
     }
 
     opcode_test! {
@@ -3735,6 +3793,7 @@ mod test_record_source {
             0x12,
             0x34
         ],
+        extra: [Overfull],
     }
 
     #[test]

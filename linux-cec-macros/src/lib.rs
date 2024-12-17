@@ -2,10 +2,11 @@ use heck::AsSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Punct, TokenStream as TokenStream2};
 use quote::quote;
+use std::collections::HashSet;
 use syn::parse::{self, Parse, ParseStream};
 use syn::{
-    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, ExprArray, Field, Fields,
-    FieldsUnnamed, Ident, Meta, Type, TypeArray,
+    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, ExprArray, ExprPath, Field,
+    Fields, FieldsUnnamed, Ident, Meta, Type, TypeArray,
 };
 
 macro_rules! bail {
@@ -198,8 +199,27 @@ impl MessageEnum {
                                 #message::try_from_bytes(&[#opcode::#ident as u8]),
                                 Ok(#message::#ident {})
                             );
+                        }
+
+                        #[test]
+                        fn test_decoding_overfull() {
                             assert_eq!(
-                                #message::try_from_bytes(&[#opcode::#ident as u8, 0x12]),
+                                #message::try_from_bytes(&[
+                                    #opcode::#ident as u8,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                ]),
                                 Ok(#message::#ident {})
                             );
                         }
@@ -605,6 +625,7 @@ struct CodecTest {
     ty: Type,
     instance: Expr,
     bytes: ExprArray,
+    extra: HashSet<String>,
 }
 
 impl Parse for CodecTest {
@@ -613,6 +634,7 @@ impl Parse for CodecTest {
         let mut ty = None;
         let mut instance = None;
         let mut bytes = None;
+        let mut extra = HashSet::new();
 
         let span = input.span();
 
@@ -659,6 +681,27 @@ impl Parse for CodecTest {
                     }
                     bytes = Some(input.parse()?);
                 }
+                x if x == "extra" => {
+                    if !extra.is_empty() {
+                        return Err(parse::Error::new(input.span(), "Duplicate field `extra`"));
+                    }
+                    if input.parse::<Punct>()?.as_char() != ':' {
+                        return Err(parse::Error::new(input.span(), "Expected `:`"));
+                    }
+                    let extras = input.parse::<ExprArray>()?.elems;
+                    for elem in extras {
+                        match elem {
+                            Expr::Path(ExprPath { path, .. }) => {
+                                if let Some(ident) = path.get_ident() {
+                                    extra.insert(ident.to_string());
+                                } else {
+                                    todo!();
+                                }
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
                 _ => {
                     return Err(parse::Error::new(
                         input.span(),
@@ -684,6 +727,7 @@ impl Parse for CodecTest {
             ty,
             instance,
             bytes,
+            extra,
         })
     }
 }
@@ -695,20 +739,42 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         ty,
         instance,
         bytes,
+        mut extra,
+        ..
     } = parse_macro_input!(input as CodecTest);
     let encode_name: Ident;
     let decode_name: Ident;
     let len_name: Ident;
+    let overfull_name: Ident;
 
     if let Some(name) = name {
         encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
         decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
         len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
+        overfull_name = parse_str(format!("test_decode_overfull{name}").as_str()).unwrap();
     } else {
         encode_name = parse_str("test_encode").unwrap();
         decode_name = parse_str("test_decode").unwrap();
         len_name = parse_str("test_len").unwrap();
+        overfull_name = parse_str("test_decode_overfull").unwrap();
     };
+
+    let test_overfull = if let Some(_) = extra.take("Overfull") {
+        Some(quote! {
+            #[test]
+            fn #overfull_name() {
+                let mut bytes = Vec::from(&#bytes);
+                bytes.resize(14, 0);
+                assert_eq!(<#ty as OperandEncodable>::try_from_bytes(&bytes), Ok(#instance));
+            }
+        })
+    } else {
+        None
+    };
+
+    if !extra.is_empty() {
+        bail!("Unknown elements in `extra`: {:?}", extra);
+    }
 
     quote! {
         #[test]
@@ -727,6 +793,8 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         fn #len_name() {
             assert_eq!(<#ty as OperandEncodable>::len(&#instance), #bytes.len());
         }
+
+        #test_overfull
     }
     .into()
 }
@@ -738,21 +806,26 @@ pub fn message_test(input: TokenStream) -> TokenStream {
         ty,
         instance,
         bytes,
+        mut extra,
+        ..
     } = parse_macro_input!(input as CodecTest);
     let encode_name: Ident;
     let decode_name: Ident;
     let len_name: Ident;
+    let overfull_name: Ident;
     let test_opcode;
 
     if let Some(name) = name {
         encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
         decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
         len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
+        overfull_name = parse_str(format!("test_decode_overfull{name}").as_str()).unwrap();
         test_opcode = None;
     } else {
         encode_name = parse_str("test_encode").unwrap();
         decode_name = parse_str("test_decode").unwrap();
         len_name = parse_str("test_len").unwrap();
+        overfull_name = parse_str("test_decode_overfull").unwrap();
         test_opcode = Some(quote! {
             #[test]
             fn test_opcode() {
@@ -760,6 +833,24 @@ pub fn message_test(input: TokenStream) -> TokenStream {
             }
         });
     };
+
+    let test_overfull = if let Some(_) = extra.take("Overfull") {
+        Some(quote! {
+            #[test]
+            fn #overfull_name() {
+                let mut vec = vec![Opcode::#ty as u8];
+                vec.extend(&#bytes);
+                vec.resize(14, 0);
+                assert_eq!(Message::try_from_bytes(&vec), Ok(#instance));
+            }
+        })
+    } else {
+        None
+    };
+
+    if !extra.is_empty() {
+        bail!("Unknown elements in `extra`: {:?}", extra);
+    }
 
     quote! {
         #test_opcode
@@ -782,6 +873,8 @@ pub fn message_test(input: TokenStream) -> TokenStream {
         fn #len_name() {
             assert_eq!(#instance.len(), #bytes.len() + 1);
         }
+
+        #test_overfull
     }
     .into()
 }
