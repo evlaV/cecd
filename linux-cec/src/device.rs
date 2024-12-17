@@ -179,7 +179,7 @@ impl Device {
             self.internal_log_addrs.log_addr[index] = (*log_addr).into();
         }
 
-        if log_addrs.len() > 0 {
+        if log_addrs.len() > 0 && self.internal_log_addrs.num_log_addrs > 0 {
             // Clear old logical addresses first, if present
             self.clear_logical_addresses()?;
         }
@@ -187,6 +187,11 @@ impl Device {
         self.internal_log_addrs.num_log_addrs = log_addrs.len().try_into().unwrap();
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+        }
+        if log_addrs.len() > 0 {
+            self.tx_logical_address =
+                LogicalAddress::try_from_primitive(self.internal_log_addrs.log_addr[0])
+                    .unwrap_or(LogicalAddress::UNREGISTERED);
         }
         Ok(())
     }
@@ -197,6 +202,7 @@ impl Device {
 
     pub fn clear_logical_addresses(&mut self) -> Result<()> {
         self.internal_log_addrs.num_log_addrs = 0;
+        self.tx_logical_address = LogicalAddress::UNREGISTERED;
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
