@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use linux_cec::device::{AsyncDevice, PollResult, PollStatus, PollTimeout};
+use linux_cec::device::{AsyncDevice, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, UiCommand};
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
@@ -7,6 +7,7 @@ use num_enum::TryFromPrimitive;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs::canonicalize;
 use tokio::select;
 use tokio::sync::Mutex;
@@ -222,7 +223,7 @@ impl PollTask {
         let poller = self.device.lock().await.get_poller().await?;
         loop {
             select! {
-                status = poller.poll(PollTimeout::NONE) => {
+                status = poller.poll(Duration::from_secs(2).try_into().unwrap()) => {
                     let Ok(status) = status else {
                         continue
                     };
