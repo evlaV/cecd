@@ -3,10 +3,11 @@ use clap::Parser;
 use std::sync::Arc;
 use tokio::select;
 use tokio::signal::ctrl_c;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
-use tokio::task::LocalSet;
+use tokio::task::{JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
-use tracing::debug;
+use tracing::{debug, warn};
 use tracing_subscriber;
 use zbus::connection::Builder;
 
@@ -28,7 +29,7 @@ struct Arguments {
     /// will attempt to detect the all available CEC devices in /dev.
     device: Option<String>,
 
-    #[arg(short, long, default_value_t = true)]
+    #[arg(short, long)]
     /// Enable hotplugging of CEC device. If enabled, the -d argument will be
     /// ignored and cecd will instead use the first available cec device if
     /// present, or wait for one to appear if not.
@@ -59,10 +60,18 @@ pub async fn main() -> Result<()> {
         }
     );
 
+    let mut joinset = JoinSet::new();
     if let Some(device) = args.device {
-        system.find_dev(device).await?;
+        let token = system.find_dev(device).await?;
+        joinset.spawn(async move {
+            token.cancelled().await;
+        });
     } else {
-        system.find_devs().await?;
+        for token in system.find_devs().await? {
+            joinset.spawn(async move {
+                token.cancelled().await;
+            });
+        }
     }
 
     let local = LocalSet::new();
@@ -71,12 +80,22 @@ pub async fn main() -> Result<()> {
         let system = system.clone();
         let token = token.clone();
         local.spawn_local(udev_hotplug(system, token));
+    } else {
+        if joinset.is_empty() {
+            warn!("No devices found");
+            return Ok(());
+        }
+        local.spawn_local(async move {
+            joinset.join_all().await;
+        });
     }
+    let _guard = token.drop_guard();
 
+    let mut sigterm = signal(SignalKind::terminate())?;
     select! {
         r = ctrl_c() => r?,
+        _ = sigterm.recv() => (),
         _ = local => (),
-    }
-
+    };
     Ok(())
 }

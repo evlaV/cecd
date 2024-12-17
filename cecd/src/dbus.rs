@@ -28,7 +28,7 @@ const PATH: &'static str = "/com/steampowered/CecDaemon1";
 #[derive(Debug)]
 pub struct CecDevice {
     device: Arc<Mutex<AsyncDevice>>,
-    token: CancellationToken,
+    pub token: CancellationToken,
     poller: Option<JoinHandle<Result<()>>>,
     path: PathBuf,
 }
@@ -221,11 +221,10 @@ impl PollTask {
                         continue
                     };
                     if status == PollStatus::Destroyed {
-                        let path = self.path;
+                        let path = &self.path;
                         info!("Device {path} disconnected");
-                        let object_server = self.connection.object_server();
-                        object_server.remove::<CecDevice, String>(path).await?;
-                        break Ok(());
+                        self.token.cancel();
+                        break;
                     }
                     let Ok(results) = self
                         .device
@@ -243,9 +242,13 @@ impl PollTask {
                         }
                     }
                 }
-                _ = self.token.cancelled() => (),
+                _ = self.token.cancelled() => break,
             }
         }
+        let path = self.path;
+        let object_server = self.connection.object_server();
+        object_server.remove::<CecDevice, String>(path).await?;
+        Ok(())
     }
 
     async fn handle_poll_result(&mut self, result: PollResult) -> Result<()> {

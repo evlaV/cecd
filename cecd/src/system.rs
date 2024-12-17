@@ -119,7 +119,8 @@ impl SystemHandle {
         self.lock().await.vendor_id
     }
 
-    pub(crate) async fn find_devs(&self) -> Result<()> {
+    pub(crate) async fn find_devs(&self) -> Result<Vec<CancellationToken>> {
+        let mut tokens = Vec::new();
         let devs;
         let connection;
         {
@@ -128,12 +129,13 @@ impl SystemHandle {
             connection = system.connection.clone();
         }
         for dev in devs {
+            tokens.push(dev.token.clone());
             dev.register(connection.clone(), self.clone()).await?;
         }
-        Ok(())
+        Ok(tokens)
     }
 
-    pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<()> {
+    pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<CancellationToken> {
         let dev;
         let connection;
         {
@@ -141,7 +143,9 @@ impl SystemHandle {
             dev = system.find_dev(path).await?;
             connection = system.connection.clone();
         }
-        dev.register(connection.clone(), self.clone()).await
+        let token = dev.token.clone();
+        dev.register(connection.clone(), self.clone()).await?;
+        Ok(token)
     }
 
     pub(crate) async fn close_dev(&self, path: impl AsRef<Path>) {
