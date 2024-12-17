@@ -134,7 +134,7 @@ impl<T: PartialOrd + Display + Add<Output = T> + Copy> Add<T> for Range<T> {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[error("Expected a {expected} {quantity}, got {got} {quantity}")]
+    #[error("Expected {expected} {quantity}, got {got} {quantity}")]
     OutOfRange {
         expected: Range<usize>,
         got: usize,
