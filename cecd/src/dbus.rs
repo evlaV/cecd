@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollStatus};
 use linux_cec::message::Message;

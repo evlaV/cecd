@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use anyhow::Result;
 use async_trait::async_trait;
 use config::builder::AsyncState;

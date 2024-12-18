@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use bitfield_struct::bitfield;
 use linux_cec_macros::BitfieldSpecifier;
 use linux_cec_sys::constants;

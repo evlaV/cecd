@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use linux_cec_sys::constants;
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};

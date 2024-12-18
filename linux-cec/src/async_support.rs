@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use nix::poll::PollTimeout;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};

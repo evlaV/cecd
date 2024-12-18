@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
 use linux_cec::message::Message;

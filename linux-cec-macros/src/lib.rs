@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use heck::AsSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Punct, TokenStream as TokenStream2};

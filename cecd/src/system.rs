@@ -1,3 +1,8 @@
+/*
+ * Copyright © 2024 Valve Software
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 use anyhow::{ensure, Result};
 use input_linux::Key;
 use linux_cec::operand::{UiCommand, VendorId};
