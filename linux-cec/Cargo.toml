@@ -26,4 +26,4 @@ num_enum = "0.7"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "2.0"
 tracing = { version = "0.1", default-features = false, optional = true }
-tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"], optional = true }
+tokio = { version = "1", default-features = false, features = ["fs", "macros", "rt-multi-thread", "sync"], optional = true }
