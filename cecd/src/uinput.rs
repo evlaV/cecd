@@ -5,13 +5,14 @@
 
 use anyhow::{ensure, Result};
 use input_linux::sys::BUS_CEC;
-use input_linux::{EventKind, EventTime, InputId, Key, KeyEvent, KeyState, UInputHandle};
+use input_linux::{
+    EventKind, EventTime, InputId, Key, KeyEvent, KeyState, SynchronizeEvent, UInputHandle,
+};
 use linux_cec::operand::UiCommand;
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::os::fd::{IntoRawFd, RawFd};
-use std::slice::from_ref;
 use std::time::SystemTime;
 use tracing::{debug, warn};
 
@@ -90,7 +91,8 @@ impl UInputDevice {
         });
 
         let ev = KeyEvent::new(tv, key, value);
-        self.handle.write(from_ref(ev.as_ref()))?;
+        let syn = SynchronizeEvent::report(tv);
+        self.handle.write(&[*ev.as_ref(), *syn.as_ref()])?;
         Ok(())
     }
 
