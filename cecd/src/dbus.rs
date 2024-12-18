@@ -81,7 +81,7 @@ impl CecDevice {
             mappings = system.mappings.clone();
         }
         debug!("OSD name: {osd_name}");
-        debug!("Logical address: {log_addr:?}");
+        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
         debug!("Vendor ID: {vendor_id:?}");
 
         let uinput = if !mappings.is_empty() {
@@ -268,16 +268,16 @@ impl PollTask {
             return Ok(());
         };
 
-        let initiator: u8 = envelope.initiator.into();
-        let destination: u8 = envelope.destination.into();
+        let initiator = envelope.initiator;
+        let destination = envelope.destination;
         debug!(
-            "Got message from {initiator} to {destination}: {:?}",
-            envelope.message
+            "Got message from {initiator} ({:x}) to {destination} ({:x}): {:?}",
+            initiator as u8, destination as u8, envelope.message
         );
         self.interface
             .received_message(
-                envelope.initiator.into(),
-                envelope.destination.into(),
+                initiator.into(),
+                destination.into(),
                 envelope.timestamp,
                 envelope.message.to_bytes().as_ref(),
             )
@@ -286,7 +286,7 @@ impl PollTask {
         let reply = match envelope.message {
             Message::UserControlPressed { ui_command } => {
                 self.interface
-                    .user_control_pressed(ui_command as u8, envelope.initiator.into())
+                    .user_control_pressed(ui_command as u8, initiator as u8)
                     .await?;
                 if let Some(uinput) = self.uinput.as_ref() {
                     if let Some(old_key) = self.active_key {
@@ -299,7 +299,7 @@ impl PollTask {
             }
             Message::UserControlReleased => {
                 self.interface
-                    .user_control_released(envelope.initiator.into())
+                    .user_control_released(initiator as u8)
                     .await?;
                 if let Some(old_key) = self.active_key {
                     if let Some(uinput) = self.uinput.as_ref() {

@@ -266,7 +266,10 @@ impl Device {
         raw_message.len = len.try_into().unwrap();
         raw_message.msg[1..len].copy_from_slice(&bytes[..len - 1]);
         #[cfg(feature = "tracing")]
-        debug!("Sending message {message:#?} to {destination:?}");
+        debug!(
+            "Sending message {message:#?} to {destination} ({:x})",
+            destination as u8
+        );
         self.tx_raw_message(&mut raw_message)
     }
 

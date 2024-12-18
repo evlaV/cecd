@@ -11,6 +11,7 @@ use std::io;
 use std::ops::Add;
 use std::string::ToString;
 use std::time::Duration;
+use strum::{Display, EnumString};
 use thiserror::Error;
 
 pub mod cdc;
@@ -25,25 +26,95 @@ mod async_support;
 pub use linux_cec_sys as sys;
 pub use linux_cec_sys::PhysicalAddress;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive, Display, EnumString,
+)]
 #[repr(u8)]
 pub enum LogicalAddress {
+    #[strum(serialize = "tv", serialize = "0")]
     Tv = constants::CEC_LOG_ADDR_TV,
+    #[strum(
+        serialize = "recording-device1",
+        serialize = "recording-device-1",
+        serialize = "recording-device",
+        serialize = "1"
+    )]
     RecordingDevice1 = constants::CEC_LOG_ADDR_RECORD_1,
+    #[strum(
+        serialize = "recording-device2",
+        serialize = "recording-device-2",
+        serialize = "2"
+    )]
     RecordingDevice2 = constants::CEC_LOG_ADDR_RECORD_2,
+    #[strum(
+        serialize = "tuner1",
+        serialize = "tuner-1",
+        serialize = "tuner",
+        serialize = "3"
+    )]
     Tuner1 = constants::CEC_LOG_ADDR_TUNER_1,
+    #[strum(
+        serialize = "playback-device1",
+        serialize = "playback-device-1",
+        serialize = "playback-device",
+        serialize = "4"
+    )]
     PlaybackDevice1 = constants::CEC_LOG_ADDR_PLAYBACK_1,
+    #[strum(serialize = "audio-system", serialize = "5")]
     AudioSystem = constants::CEC_LOG_ADDR_AUDIOSYSTEM,
+    #[strum(serialize = "tuner2", serialize = "tuner-2", serialize = "6")]
     Tuner2 = constants::CEC_LOG_ADDR_TUNER_2,
+    #[strum(serialize = "tuner3", serialize = "tuner-3", serialize = "7")]
     Tuner3 = constants::CEC_LOG_ADDR_TUNER_3,
+    #[strum(
+        serialize = "playback-device2",
+        serialize = "playback-device-2",
+        serialize = "8"
+    )]
     PlaybackDevice2 = constants::CEC_LOG_ADDR_PLAYBACK_2,
+    #[strum(
+        serialize = "recording-device3",
+        serialize = "recording-device-3",
+        serialize = "9"
+    )]
     RecordingDevice3 = constants::CEC_LOG_ADDR_RECORD_3,
+    #[strum(
+        serialize = "tuner4",
+        serialize = "tuner-4",
+        serialize = "10",
+        serialize = "a"
+    )]
     Tuner4 = constants::CEC_LOG_ADDR_TUNER_4,
+    #[strum(
+        serialize = "playback-device3",
+        serialize = "playback-device-3",
+        serialize = "11",
+        serialize = "b"
+    )]
     PlaybackDevice3 = constants::CEC_LOG_ADDR_PLAYBACK_3,
+    #[strum(
+        serialize = "backup1",
+        serialize = "backup-1",
+        serialize = "12",
+        serialize = "c"
+    )]
     Backup1 = constants::CEC_LOG_ADDR_BACKUP_1,
+    #[strum(
+        serialize = "backup2",
+        serialize = "backup-2",
+        serialize = "13",
+        serialize = "d"
+    )]
     Backup2 = constants::CEC_LOG_ADDR_BACKUP_2,
+    #[strum(serialize = "specific", serialize = "14", serialize = "e")]
     Specific = constants::CEC_LOG_ADDR_SPECIFIC,
     #[default]
+    #[strum(
+        serialize = "unregistered",
+        serialize = "broadcast",
+        serialize = "15",
+        serialize = "f"
+    )]
     UnregisteredOrBroadcast = constants::CEC_LOG_ADDR_UNREGISTERED,
 }
 

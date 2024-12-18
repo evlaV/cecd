@@ -8,7 +8,6 @@ use linux_cec::device::Device;
 use linux_cec::message::Message;
 use linux_cec::operand::{BufferOperand, UiCommand};
 use linux_cec::{InitiatorMode, LogicalAddress, Result};
-use num_enum::TryFromPrimitive;
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -26,7 +25,7 @@ enum Command {
     GetConnectorInfo,
     GetPhysicalAddress,
     GetLogicalAddress,
-    SetLogicalAddress { log_addr: u8 },
+    SetLogicalAddress { log_addr: LogicalAddress },
     SetOsdName { name: String },
     SetActive,
     Standby,
@@ -47,12 +46,11 @@ fn main() -> Result<()> {
         }
         Command::GetLogicalAddress => {
             for addr in dev.get_logical_addresses()? {
-                println!("Logical address: {:x}", addr as u8);
+                println!("Logical address: {addr} ({:x})", addr as u8);
             }
         }
         Command::SetLogicalAddress { log_addr } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let log_addr = LogicalAddress::try_from_primitive(log_addr)?;
             dev.set_logical_address(log_addr)?;
         }
         Command::SetOsdName { name } => {
