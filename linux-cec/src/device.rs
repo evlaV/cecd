@@ -273,7 +273,7 @@ impl Device {
         self.tx_raw_message(&mut raw_message)
     }
 
-    pub(crate) fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
+    pub fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
         unsafe {
             transmit_message(self.file.as_raw_fd(), message)?;
         }
@@ -311,7 +311,7 @@ impl Device {
         Ok(envelope)
     }
 
-    pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<cec_msg> {
+    pub fn rx_raw_message(&self, timeout_ms: u32) -> Result<cec_msg> {
         let mut message = cec_msg::from_timeout(timeout_ms);
         unsafe {
             receive_message(self.file.as_raw_fd(), &mut message)?;

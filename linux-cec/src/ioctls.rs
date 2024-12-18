@@ -37,6 +37,8 @@ pub(crate) enum CecInitiatorModes {
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
     ExclusiveInitiator = constants::CEC_MODE_EXCL_INITIATOR,
+    Monitor = constants::CEC_MODE_MONITOR,
+    MonitorAll = constants::CEC_MODE_MONITOR_ALL,
     #[default]
     Invalid(u32),
 }
@@ -72,6 +74,8 @@ impl From<FollowerMode> for CecFollowerModes {
             FollowerMode::Disabled => CecFollowerModes::NoFollower,
             FollowerMode::Enabled => CecFollowerModes::Follower,
             FollowerMode::Exclusive => CecFollowerModes::ExclusiveFollower,
+            FollowerMode::Monitor => CecFollowerModes::Monitor,
+            FollowerMode::MonitorAll => CecFollowerModes::MonitorAll,
         }
     }
 }

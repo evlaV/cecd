@@ -137,6 +137,8 @@ pub enum FollowerMode {
     Disabled,
     Enabled,
     Exclusive,
+    Monitor,
+    MonitorAll,
     // TODO: other modes
 }
 
