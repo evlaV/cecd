@@ -118,13 +118,10 @@ impl MessageEnum {
                 }
                 let field = unnamed.first().unwrap();
                 let typename = &field.ty;
-                let size;
-                match typename {
-                    Type::Path(ref path) if path.path.get_ident().is_none() => {
-                        size = quote!(x.len());
-                    }
-                    _ => size = quote!(::core::mem::size_of::<#typename>()),
-                }
+                let size = match typename {
+                    Type::Path(ref path) if path.path.get_ident().is_none() => quote!(x.len()),
+                    _ => quote!(::core::mem::size_of::<#typename>()),
+                };
 
                 self.to_bytes.push(quote! {
                     #message::#ident(ref x) => {
@@ -643,7 +640,7 @@ impl Parse for CodecTest {
 
             match ident {
                 x if x == "name" => {
-                    if !name.is_none() {
+                    if name.is_some() {
                         return Err(parse::Error::new(input.span(), "Duplicate field `name`"));
                     }
                     if input.parse::<Punct>()?.as_char() != ':' {
@@ -652,7 +649,7 @@ impl Parse for CodecTest {
                     name = Some(input.parse()?);
                 }
                 x if x == "ty" => {
-                    if !ty.is_none() {
+                    if ty.is_some() {
                         return Err(parse::Error::new(input.span(), "Duplicate field `ty`"));
                     }
                     if input.parse::<Punct>()?.as_char() != ':' {
@@ -661,7 +658,7 @@ impl Parse for CodecTest {
                     ty = Some(input.parse()?);
                 }
                 x if x == "instance" => {
-                    if !instance.is_none() {
+                    if instance.is_some() {
                         return Err(parse::Error::new(
                             input.span(),
                             "Duplicate field `instance`",
@@ -673,7 +670,7 @@ impl Parse for CodecTest {
                     instance = Some(input.parse()?);
                 }
                 x if x == "bytes" => {
-                    if !bytes.is_none() {
+                    if bytes.is_some() {
                         return Err(parse::Error::new(input.span(), "Duplicate field `bytes`"));
                     }
                     if input.parse::<Punct>()?.as_char() != ':' {
@@ -759,7 +756,7 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         overfull_name = parse_str("test_decode_overfull").unwrap();
     };
 
-    let test_overfull = if let Some(_) = extra.take("Overfull") {
+    let test_overfull = if extra.take("Overfull").is_some() {
         Some(quote! {
             #[test]
             fn #overfull_name() {
@@ -834,7 +831,7 @@ pub fn message_test(input: TokenStream) -> TokenStream {
         });
     };
 
-    let test_overfull = if let Some(_) = extra.take("Overfull") {
+    let test_overfull = if extra.take("Overfull").is_some() {
         Some(quote! {
             #[test]
             fn #overfull_name() {

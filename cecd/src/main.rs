@@ -8,7 +8,6 @@ use tokio::sync::Mutex;
 use tokio::task::{JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
-use tracing_subscriber;
 use zbus::connection::Builder;
 
 use crate::config::read_default_config;

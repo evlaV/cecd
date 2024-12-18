@@ -120,8 +120,8 @@ impl OperandEncodable for HecField {
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
         let word = u16::try_from_bytes(bytes)?;
         let mut input = [false; 14];
-        for idx in 0..14 {
-            input[idx] = (word >> idx) & 1 == 1;
+        for (idx, item) in input.iter_mut().enumerate() {
+            *item = (word >> idx) & 1 == 1;
         }
         Ok(HecField {
             input,

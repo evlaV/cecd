@@ -500,9 +500,9 @@ impl TryFrom<u32> for VendorId {
     }
 }
 
-impl Into<u32> for VendorId {
-    fn into(self) -> u32 {
-        self.0
+impl From<VendorId> for u32 {
+    fn from(val: VendorId) -> u32 {
+        val.0
     }
 }
 

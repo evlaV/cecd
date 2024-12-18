@@ -182,7 +182,7 @@ impl Device {
             self.internal_log_addrs.log_addr[index] = (*log_addr).into();
         }
 
-        if log_addrs.len() > 0 && self.internal_log_addrs.num_log_addrs > 0 {
+        if !log_addrs.is_empty() && self.internal_log_addrs.num_log_addrs > 0 {
             // Clear old logical addresses first, if present
             self.clear_logical_addresses()?;
         }
@@ -191,7 +191,7 @@ impl Device {
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
-        if log_addrs.len() > 0 {
+        if !log_addrs.is_empty() {
             self.tx_logical_address =
                 LogicalAddress::try_from_primitive(self.internal_log_addrs.log_addr[0])
                     .unwrap_or(LogicalAddress::UNREGISTERED);
@@ -235,7 +235,7 @@ impl Device {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
-        Ok(VendorId::try_from_sys(self.internal_log_addrs.vendor_id)?)
+        VendorId::try_from_sys(self.internal_log_addrs.vendor_id)
     }
 
     pub fn set_vendor_id(&mut self, vendor_id: Option<VendorId>) -> Result<()> {
@@ -482,18 +482,10 @@ impl DevicePoller {
 
 impl PollStatus {
     pub fn got_message(&self) -> bool {
-        match self {
-            PollStatus::GotMessage => true,
-            PollStatus::GotAll => true,
-            _ => false,
-        }
+        matches!(self, PollStatus::GotMessage | PollStatus::GotAll)
     }
 
     pub fn got_event(&self) -> bool {
-        match self {
-            PollStatus::GotEvent => true,
-            PollStatus::GotAll => true,
-            _ => false,
-        }
+        matches!(self, PollStatus::GotEvent | PollStatus::GotAll)
     }
 }

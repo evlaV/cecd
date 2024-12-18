@@ -24,7 +24,7 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
     fdo::Error::Failed(format!("{val}"))
 }
 
-const PATH: &'static str = "/com/steampowered/CecDaemon1";
+const PATH: &str = "/com/steampowered/CecDaemon1";
 
 #[derive(Debug)]
 pub struct CecDevice {

@@ -1,5 +1,6 @@
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::len_without_is_empty)]
+#![allow(clippy::len_zero)]
 
 use bitfield_struct::bitfield;
 use bitflags::bitflags;
@@ -31,10 +32,10 @@ pub trait OperandEncodable: Sized {
     fn len(&self) -> usize;
 }
 
-impl Into<SysVendorId> for VendorId {
-    fn into(self: VendorId) -> SysVendorId {
+impl From<VendorId> for SysVendorId {
+    fn from(val: VendorId) -> SysVendorId {
         SysVendorId::try_from(
-            ((self.0[0] as u32) << 16) | ((self.0[1] as u32) << 8) | (self.0[2] as u32),
+            ((val.0[0] as u32) << 16) | ((val.0[1] as u32) << 8) | (val.0[2] as u32),
         )
         .unwrap()
     }
@@ -2165,7 +2166,7 @@ impl<const MIN: u8, const MAX: u8> TryFrom<u8> for BcdByte<MIN, MAX> {
             max: MAX as usize,
         }
         .check(byte, "value")?;
-        Ok(BcdByte((byte / 10 << 4) + (byte % 10)))
+        Ok(BcdByte(((byte / 10) << 4) + (byte % 10)))
     }
 }
 

@@ -1,3 +1,5 @@
+#![allow(clippy::len_without_is_empty)]
+
 #[cfg(test)]
 use linux_cec_macros::message_test;
 use linux_cec_macros::{MessageEnum, Operand};
@@ -310,7 +312,7 @@ impl CdcMessage {
 impl OperandEncodable for CdcMessage {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         let bytes = CdcMessage::to_bytes(self);
-        buf.extend(bytes.into_iter());
+        buf.extend(bytes);
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {

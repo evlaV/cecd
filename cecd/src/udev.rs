@@ -35,7 +35,7 @@ pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken)
             _ = token.cancelled() => break Ok(()),
             guard = fd.ready(Interest::READABLE) => {
                 let mut guard = guard?;
-                while let Some(ev) = iter.next() {
+                for ev in iter.by_ref() {
                     handle_event(ev, &system).await;
                 };
                 guard.clear_ready();
