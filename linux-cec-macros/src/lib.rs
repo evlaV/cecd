@@ -487,9 +487,9 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         }
 
                         fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-                            if bytes.len() != #len {
+                            if bytes.len() < #len {
                                 Err(crate::Error::OutOfRange {
-                                    expected: crate::Range::Exact(#len),
+                                    expected: crate::Range::AtLeast(#len),
                                     got: bytes.len(),
                                     quantity: "bytes",
                                 })
