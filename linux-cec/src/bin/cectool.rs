@@ -26,10 +26,27 @@ enum Command {
     GetPhysicalAddress,
     GetLogicalAddress,
     SetLogicalAddress { log_addr: LogicalAddress },
+    ClearLogicalAddress,
     SetOsdName { name: String },
     SetActive,
     Standby,
-    SendKey { key: UiCommand },
+    VolumeUp {
+        #[arg(default_value_t = LogicalAddress::Tv)]
+        target: LogicalAddress,
+    },
+    VolumeDown {
+        #[arg(default_value_t = LogicalAddress::Tv)]
+        target: LogicalAddress,
+    },
+    Mute {
+        #[arg(default_value_t = LogicalAddress::Tv)]
+        target: LogicalAddress,
+    },
+    SendKey {
+        key: UiCommand,
+        #[arg(default_value_t = LogicalAddress::Tv)]
+        target: LogicalAddress,
+    },
 }
 
 fn main() -> Result<()> {
@@ -53,6 +70,10 @@ fn main() -> Result<()> {
             dev.set_initiator(InitiatorMode::Enabled)?;
             dev.set_logical_address(log_addr)?;
         }
+        Command::ClearLogicalAddress => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.clear_logical_addresses()?;
+        }
         Command::SetOsdName { name } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
             let message = Message::SetOsdName {
@@ -70,12 +91,25 @@ fn main() -> Result<()> {
             let message = Message::Standby {};
             dev.tx_message(&message, LogicalAddress::Tv)?;
         }
-        Command::SendKey { key } => {
+        Command::VolumeUp { target } => {
             dev.set_initiator(InitiatorMode::Enabled)?;
-            let message = Message::UserControlPressed { ui_command: key };
-            dev.tx_message(&message, LogicalAddress::BROADCAST)?;
-            let message = Message::UserControlReleased {};
-            dev.tx_message(&message, LogicalAddress::BROADCAST)?;
+            dev.press_user_control(UiCommand::VolumeUp, target)?;
+            dev.release_user_control(target)?;
+        }
+        Command::VolumeDown { target } => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.press_user_control(UiCommand::VolumeDown, target)?;
+            dev.release_user_control(target)?;
+        }
+        Command::Mute { target } => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.press_user_control(UiCommand::Mute, target)?;
+            dev.release_user_control(target)?;
+        }
+        Command::SendKey { key, target } => {
+            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.press_user_control(key, target)?;
+            dev.release_user_control(target)?;
         }
     }
     Ok(())
