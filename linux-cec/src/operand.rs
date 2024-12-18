@@ -3397,9 +3397,9 @@ mod test_timer_status_data {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TunerDeviceInfo {
-    recording: bool,
-    tuner_display_info: TunerDisplayInfo,
-    service_id: ServiceId,
+    pub recording: bool,
+    pub tuner_display_info: TunerDisplayInfo,
+    pub service_id: ServiceId,
 }
 
 impl OperandEncodable for TunerDeviceInfo {

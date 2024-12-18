@@ -132,21 +132,17 @@ pub enum Message {
     GiveTunerDeviceStatus {
         request: operand::StatusRequest,
     } = constants::CEC_MSG_GIVE_TUNER_DEVICE_STATUS,
-    // TODO: Unit tests
     SelectAnalogueService {
         service_id: operand::AnalogueServiceId,
     } = constants::CEC_MSG_SELECT_ANALOGUE_SERVICE,
-    // TODO: Unit tests
     SelectDigitalService {
         service_id: operand::DigitalServiceId,
     } = constants::CEC_MSG_SELECT_DIGITAL_SERVICE,
-    // TODO: Unit tests
     TunerDeviceStatus {
         info: operand::TunerDeviceInfo,
     } = constants::CEC_MSG_TUNER_DEVICE_STATUS,
     TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
     TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
-    // TODO: Unit tests
     DeviceVendorId {
         vendor_id: operand::VendorId,
     } = constants::CEC_MSG_DEVICE_VENDOR_ID,
@@ -1054,6 +1050,144 @@ mod test_give_tuner_device_status {
             Message::try_from_bytes(&[Opcode::GiveTunerDeviceStatus as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_select_analogue_service {
+    use super::*;
+
+    message_test! {
+        ty: SelectAnalogueService,
+        instance: Message::SelectAnalogueService {
+            service_id: operand::AnalogueServiceId {
+                broadcast_type: operand::AnalogueBroadcastType::Terrestrial,
+                frequency: 0x1234,
+                broadcast_system: operand::BroadcastSystem::PalBG,
+            },
+        },
+        bytes: [
+            operand::AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            operand::BroadcastSystem::PalBG as u8
+        ],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SelectAnalogueService as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_select_digital_service {
+    use super::*;
+
+    message_test! {
+        ty: SelectDigitalService,
+        instance: Message::SelectDigitalService {
+            service_id: operand::DigitalServiceId::AribGeneric(operand::AribData {
+                transport_stream_id: 0x1234,
+                service_id: 0x5678,
+                original_network_id: 0xABCD,
+            }),
+        },
+        bytes: [
+            operand::DigitalServiceBroadcastSystem::AribGeneric as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0xAB,
+            0xCD,
+        ],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SelectDigitalService as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_tuner_device_status {
+    use super::*;
+
+    message_test! {
+        ty: TunerDeviceStatus,
+        instance: Message::TunerDeviceStatus {
+            info: operand::TunerDeviceInfo {
+                recording: true,
+                tuner_display_info: operand::TunerDisplayInfo::Analogue,
+                service_id: operand::ServiceId::Analogue(operand::AnalogueServiceId {
+                    broadcast_type: operand::AnalogueBroadcastType::Terrestrial,
+                    frequency: 0x1234,
+                    broadcast_system: operand::BroadcastSystem::PalBG,
+                }),
+            },
+        },
+        bytes: [
+            0x82,
+            operand::AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            operand::BroadcastSystem::PalBG as u8
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::TunerDeviceStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::Only(vec![6, 9]),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_device_vendor_id {
+    use super::*;
+
+    message_test! {
+        ty: DeviceVendorId,
+        instance: Message::DeviceVendorId {
+            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+        },
+        bytes: [0x12, 0x34, 0x56],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::DeviceVendorId as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes",
             })
