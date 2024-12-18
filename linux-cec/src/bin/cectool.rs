@@ -7,7 +7,8 @@ use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
 use linux_cec::message::Message;
 use linux_cec::operand::{BufferOperand, UiCommand};
-use linux_cec::{InitiatorMode, LogicalAddress, Result};
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Result};
+use num_enum::TryFromPrimitive;
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -75,6 +76,15 @@ enum Command {
         #[arg(default_value_t = LogicalAddress::Tv)]
         target: LogicalAddress,
     },
+    /// Monitor CEC traffic
+    Monitor {
+        /// Monitor traffic to all destinations, not just broadcast and direct
+        #[arg(short, long)]
+        all: bool,
+        /// Suppress printing polling messages
+        #[arg(short = 'p', long)]
+        suppress_poll: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -138,6 +148,45 @@ fn main() -> Result<()> {
             dev.set_initiator(InitiatorMode::Enabled)?;
             dev.press_user_control(key, target)?;
             dev.release_user_control(target)?;
+        }
+        Command::Monitor { all, suppress_poll } => {
+            dev.set_initiator(InitiatorMode::Disabled)?;
+            dev.set_follower(if all {
+                FollowerMode::MonitorAll
+            } else {
+                FollowerMode::Monitor
+            })?;
+            loop {
+                let message = dev.rx_raw_message(0)?;
+                let bytes = &message.msg[1..message.len as usize];
+                if suppress_poll && bytes.is_empty() {
+                    continue;
+                }
+                let initiator = message.initiator();
+                let destination = message.destination();
+                println!(
+                    "Message @ {}: {} ({:x}) -> {} ({:x})",
+                    message.rx_ts,
+                    LogicalAddress::try_from_primitive(initiator).unwrap(),
+                    initiator,
+                    if destination == 15 {
+                        String::from("broadcast")
+                    } else {
+                        format!("{}", LogicalAddress::try_from_primitive(destination).unwrap())
+                    },
+                    destination,
+                );
+                if bytes.is_empty() {
+                    println!("  poll");
+                } else {
+                    println!("  raw: {bytes:?}");
+                    if let Ok(decoded) = Message::try_from_bytes(bytes) {
+                        println!("  decoded: {decoded:#?}");
+                    } else {
+                        println!("  decoding failed");
+                    }
+                }
+            }
         }
     }
     Ok(())
