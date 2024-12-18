@@ -10,7 +10,7 @@ clap = { version = "4.5", default-features = false, features = ["derive", "help"
 config = { version = "0.14", default-features = false, features = ["async", "toml"] }
 input-linux = "0.7"
 libc = "0.2"
-linux-cec = { path = "../linux-cec", features = ["async"] }
+linux-cec = { path = "../linux-cec", features = ["async", "tracing"] }
 nix = { version = "0.29", default-features = false, features = ["fs"] }
 num_enum = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }

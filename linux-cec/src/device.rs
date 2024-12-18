@@ -20,6 +20,8 @@ use std::fs::{File, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::path::Path;
 use std::str::FromStr;
+#[cfg(feature = "tracing")]
+use tracing::{debug, warn};
 
 pub use nix::poll::PollTimeout;
 
@@ -217,10 +219,12 @@ impl Device {
     }
 
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
-        let name = BufferOperand::from_str(name)?;
-        self.internal_log_addrs.osd_name[..14].copy_from_slice(&name.buffer);
+        let name_buffer = BufferOperand::from_str(name)?;
+        #[cfg(feature = "tracing")]
+        debug!("Setting OSD name to {name}");
+        self.internal_log_addrs.osd_name[..14].copy_from_slice(&name_buffer.buffer);
         if self.tx_logical_address != LogicalAddress::UNREGISTERED {
-            let message = Message::SetOsdName { name };
+            let message = Message::SetOsdName { name: name_buffer };
             self.tx_message(&message, LogicalAddress::Tv)?;
         }
         Ok(())
@@ -236,7 +240,14 @@ impl Device {
     pub fn set_vendor_id(&mut self, vendor_id: Option<VendorId>) -> Result<()> {
         if let Some(vendor_id) = vendor_id {
             self.internal_log_addrs.vendor_id = vendor_id.into();
+            #[cfg(feature = "tracing")]
+            debug!(
+                "Setting vendor ID to {:02X}-{:02X}-{:02X}",
+                vendor_id.0[0], vendor_id.0[1], vendor_id.0[2]
+            );
         } else {
+            #[cfg(feature = "tracing")]
+            debug!("Clearing vendor ID");
             self.internal_log_addrs.vendor_id = SysVendorId::default();
         }
         Ok(())
@@ -248,6 +259,8 @@ impl Device {
         let len = usize::min(bytes.len(), 15) + 1;
         raw_message.len = len.try_into().unwrap();
         raw_message.msg[1..len].copy_from_slice(&bytes[..len - 1]);
+        #[cfg(feature = "tracing")]
+        debug!("Sending message {message:#?} to {destination:?}");
         self.tx_raw_message(&mut raw_message)
     }
 
@@ -267,13 +280,26 @@ impl Device {
             return Err(Error::InvalidData);
         }
         let bytes = &message.msg[1..message.len as usize];
+        let initiator = LogicalAddress::try_from_primitive(message.msg[0] >> 4)?;
+        let destination = LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?;
+        let timestamp = message.rx_ts;
 
-        Ok(Envelope {
-            message: Message::try_from_bytes(bytes)?,
-            initiator: LogicalAddress::try_from_primitive(message.msg[0] >> 4)?,
-            destination: LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?,
-            timestamp: message.rx_ts,
-        })
+        #[cfg(feature = "tracing")]
+        let message = Message::try_from_bytes(bytes).inspect_err(|e| {
+            warn!("Failed to parse incoming message {bytes:?}: {e}");
+        })?;
+        #[cfg(not(feature = "tracing"))]
+        let message = Message::try_from_bytes(bytes)?;
+
+        let envelope = Envelope {
+            message,
+            initiator,
+            destination,
+            timestamp,
+        };
+        #[cfg(feature = "tracing")]
+        debug!("Got message {envelope:#?}");
+        Ok(envelope)
     }
 
     pub(crate) fn rx_raw_message(&self, timeout_ms: u32) -> Result<cec_msg> {

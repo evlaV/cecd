@@ -416,6 +416,7 @@ dependencies = [
  "strum",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
