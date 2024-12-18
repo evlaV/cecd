@@ -139,6 +139,7 @@ impl Device {
         self.set_mode(mode)
     }
 
+    #[allow(unused)] // This isn't used yet
     pub(crate) fn get_capabilities(&self) -> Result<cec_caps> {
         let mut caps = cec_caps::default();
         unsafe {
