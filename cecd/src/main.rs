@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use clap::Parser;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::select;
 use tokio::signal::ctrl_c;
@@ -15,7 +16,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 use zbus::connection::Builder;
 
-use crate::config::read_default_config;
+use crate::config::{read_config_file, read_default_config};
 use crate::system::{System, SystemHandle};
 use crate::udev::udev_hotplug;
 
@@ -38,6 +39,10 @@ struct Arguments {
     /// ignored and cecd will instead use the first available cec device if
     /// present, or wait for one to appear if not.
     allow_hotplug: bool,
+
+    #[arg(short, long)]
+    /// Override the default configuration paths and use a custom config file.
+    config: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -52,7 +57,12 @@ pub async fn main() -> Result<()> {
 
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(System::new(connection, token.clone()))));
-    system.set_config(read_default_config().await?).await?;
+    let config = if let Some(config_path) = args.config {
+        read_config_file(config_path).await?
+    } else {
+        read_default_config().await?
+    };
+    system.set_config(config).await?;
 
     debug!("cecd starting up");
     debug!("OSD name: {}", system.osd_name().await);

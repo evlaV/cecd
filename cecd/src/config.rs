@@ -159,3 +159,13 @@ pub(crate) async fn read_default_config() -> Result<Config> {
     let config = builder.build().await?;
     Ok(config.try_deserialize()?)
 }
+
+pub(crate) async fn read_config_file(path: impl AsRef<Path>) -> Result<Config> {
+    let builder = ConfigBuilder::<AsyncState>::default();
+    let builder = builder.add_async_source(AsyncFileSource::from(
+        path.as_ref().to_path_buf(),
+        FileFormat::Toml,
+    ));
+    let config = builder.build().await?;
+    Ok(config.try_deserialize()?)
+}
