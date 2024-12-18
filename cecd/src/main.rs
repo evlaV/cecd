@@ -32,13 +32,13 @@ struct Arguments {
     #[arg(short, long)]
     /// Which device to listen on. If parameter isn't specified, then cecd
     /// will attempt to detect the all available CEC devices in /dev.
-    device: Option<String>,
+    device: Option<PathBuf>,
 
     #[arg(short, long)]
     /// Enable hotplugging of CEC device. If enabled, the -d argument will be
     /// ignored and cecd will instead use the first available cec device if
     /// present, or wait for one to appear if not.
-    allow_hotplug: bool,
+    enable_hotplug: bool,
 
     #[arg(short, long)]
     /// Override the default configuration paths and use a custom config file.
@@ -90,7 +90,7 @@ pub async fn main() -> Result<()> {
 
     let local = LocalSet::new();
 
-    if args.allow_hotplug {
+    if args.enable_hotplug {
         let system = system.clone();
         let token = token.clone();
         local.spawn_local(udev_hotplug(system, token));
