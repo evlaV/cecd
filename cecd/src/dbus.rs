@@ -309,6 +309,16 @@ impl PollTask {
                 }
                 None
             }
+            Message::SetStreamPath { address } => {
+                let this_address = self.device.lock().await.get_physical_address().await?;
+                if address == this_address {
+                    Some(Message::ActiveSource {
+                        address: this_address,
+                    })
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 
