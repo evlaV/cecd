@@ -413,14 +413,14 @@ impl Device {
     pub fn activate_source(&self, text_view: bool) -> Result<()> {
         let address = self.get_physical_address()?;
         let active_source = Message::ActiveSource { address };
-        self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
         if text_view {
             let text_view_on = Message::TextViewOn {};
-            self.tx_message(&text_view_on, LogicalAddress::Tv)
+            self.tx_message(&text_view_on, LogicalAddress::Tv)?;
         } else {
             let image_view_on = Message::ImageViewOn {};
-            self.tx_message(&image_view_on, LogicalAddress::Tv)
+            self.tx_message(&image_view_on, LogicalAddress::Tv)?;
         }
+        self.tx_message(&active_source, LogicalAddress::BROADCAST)
     }
 
     pub fn standby(&self, target: LogicalAddress) -> Result<()> {
