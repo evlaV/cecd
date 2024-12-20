@@ -154,49 +154,39 @@ pub enum Message {
         vendor_id: operand::VendorId,
     } = constants::CEC_MSG_DEVICE_VENDOR_ID,
     GiveDeviceVendorId = constants::CEC_MSG_GIVE_DEVICE_VENDOR_ID,
-    // TODO: Unit tests
     VendorCommand {
         command: operand::BufferOperand,
     } = constants::CEC_MSG_VENDOR_COMMAND,
-    // TODO: Unit tests
     VendorCommandWithId {
         vendor_id: operand::VendorId,
         vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
     } = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
-    // TODO: Unit tests
     VendorRemoteButtonDown {
         rc_code: operand::BufferOperand,
     } = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_DOWN,
     VendorRemoteButtonUp = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_UP,
-    // TODO: Unit tests
     SetOsdString {
         display_control: operand::DisplayControl,
         osd_string: operand::BoundedBufferOperand<13, u8>,
     } = constants::CEC_MSG_SET_OSD_STRING,
     GiveOsdName = constants::CEC_MSG_GIVE_OSD_NAME,
-    // TODO: Unit tests
     SetOsdName {
         name: operand::BufferOperand,
     } = constants::CEC_MSG_SET_OSD_NAME,
-    // TODO: Unit tests
     MenuRequest {
         request_type: operand::MenuRequestType,
     } = constants::CEC_MSG_MENU_REQUEST,
-    // TODO: Unit tests
     MenuStatus {
         state: operand::MenuState,
     } = constants::CEC_MSG_MENU_STATUS,
-    // TODO: Unit tests
     UserControlPressed {
         ui_command: operand::UiCommand,
     } = constants::CEC_MSG_USER_CONTROL_PRESSED,
     UserControlReleased = constants::CEC_MSG_USER_CONTROL_RELEASED,
     GiveDevicePowerStatus = constants::CEC_MSG_GIVE_DEVICE_POWER_STATUS,
-    // TODO: Unit tests
     ReportPowerStatus {
         status: operand::PowerStatus,
     } = constants::CEC_MSG_REPORT_POWER_STATUS,
-    // TODO: Unit tests
     FeatureAbort {
         opcode: Opcode,
         abort_reason: operand::AbortReason,
@@ -204,7 +194,6 @@ pub enum Message {
     Abort = constants::CEC_MSG_ABORT,
     GiveAudioStatus = constants::CEC_MSG_GIVE_AUDIO_STATUS,
     GiveSystemAudioModeStatus = constants::CEC_MSG_GIVE_SYSTEM_AUDIO_MODE_STATUS,
-    // TODO: Unit tests
     ReportAudioStatus {
         status: operand::AudioStatus,
     } = constants::CEC_MSG_REPORT_AUDIO_STATUS,
@@ -1195,6 +1184,450 @@ mod test_device_vendor_id {
             Message::try_from_bytes(&[Opcode::DeviceVendorId as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_vendor_command {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: VendorCommand,
+        instance: Message::VendorCommand {
+            command: operand::BufferOperand::from_str("").unwrap(),
+        },
+        bytes: [],
+    }
+
+    message_test! {
+        name: _full,
+        ty: VendorCommand,
+        instance: Message::VendorCommand {
+            command: operand::BufferOperand::from_str("12345678901234").unwrap(),
+        },
+        bytes: [
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+            b'2',
+            b'3',
+            b'4'
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::VendorCommand {
+                command: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .opcode(),
+            Opcode::VendorCommand
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_vendor_command_with_id {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: VendorCommandWithId,
+        instance: Message::VendorCommandWithId {
+            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+            vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("").unwrap(),
+        },
+        bytes: [0x12, 0x34, 0x56],
+    }
+
+    message_test! {
+        name: _full,
+        ty: VendorCommandWithId,
+        instance: Message::VendorCommandWithId {
+            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+            vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("12345678901").unwrap(),
+        },
+        bytes: [
+            0x12,
+            0x34,
+            0x56,
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::VendorCommandWithId {
+                vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+                vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("").unwrap(),
+            }
+            .opcode(),
+            Opcode::VendorCommandWithId
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::VendorCommandWithId as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_vendor_remote_button_down {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: VendorRemoteButtonDown,
+        instance: Message::VendorRemoteButtonDown {
+            rc_code: operand::BufferOperand::from_str("").unwrap(),
+        },
+        bytes: [],
+    }
+
+    message_test! {
+        name: _full,
+        ty: VendorRemoteButtonDown,
+        instance: Message::VendorRemoteButtonDown {
+            rc_code: operand::BufferOperand::from_str("12345678901234").unwrap(),
+        },
+        bytes: [
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+            b'2',
+            b'3',
+            b'4'
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::VendorRemoteButtonDown {
+                rc_code: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .opcode(),
+            Opcode::VendorRemoteButtonDown
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_osd_string {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: SetOsdString,
+        instance: Message::SetOsdString {
+            display_control: operand::DisplayControl::UntilCleared,
+            osd_string: operand::BoundedBufferOperand::<13, u8>::from_str("").unwrap(),
+        },
+        bytes: [operand::DisplayControl::UntilCleared as u8],
+    }
+
+    message_test! {
+        name: _full,
+        ty: SetOsdString,
+        instance: Message::SetOsdString {
+            display_control: operand::DisplayControl::UntilCleared,
+            osd_string: operand::BoundedBufferOperand::<13, u8>::from_str("1234567890123").unwrap(),
+        },
+        bytes: [
+            operand::DisplayControl::UntilCleared as u8,
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+            b'2',
+            b'3',
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::SetOsdString {
+                display_control: operand::DisplayControl::UntilCleared,
+                osd_string: operand::BoundedBufferOperand::<13, u8>::from_str("").unwrap(),
+            }
+            .opcode(),
+            Opcode::SetOsdString
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetOsdString as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_osd_name {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: SetOsdName,
+        instance: Message::SetOsdName {
+            name: operand::BufferOperand::from_str("").unwrap(),
+        },
+        bytes: [],
+    }
+
+    message_test! {
+        name: _full,
+        ty: SetOsdName,
+        instance: Message::SetOsdName {
+            name: operand::BufferOperand::from_str("12345678901234").unwrap(),
+        },
+        bytes: [
+            b'1',
+            b'2',
+            b'3',
+            b'4',
+            b'5',
+            b'6',
+            b'7',
+            b'8',
+            b'9',
+            b'0',
+            b'1',
+            b'2',
+            b'3',
+            b'4'
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::SetOsdName {
+                name: operand::BufferOperand::from_str("12345678901234").unwrap(),
+            }
+            .opcode(),
+            Opcode::SetOsdName
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_menu_request {
+    use super::*;
+
+    message_test! {
+        ty: MenuRequest,
+        instance: Message::MenuRequest {
+            request_type: operand::MenuRequestType::Query,
+        },
+        bytes: [operand::MenuRequestType::Query as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::MenuRequest as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_menu_state {
+    use super::*;
+
+    message_test! {
+        ty: MenuStatus,
+        instance: Message::MenuStatus {
+            state: operand::MenuState::Deactivated,
+        },
+        bytes: [operand::MenuState::Deactivated as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::MenuStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_user_control_pressed {
+    use super::*;
+
+    message_test! {
+        ty: UserControlPressed,
+        instance: Message::UserControlPressed {
+            ui_command: operand::UiCommand::Play,
+        },
+        bytes: [operand::UiCommand::Play as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::UserControlPressed as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_power_status {
+    use super::*;
+
+    message_test! {
+        ty: ReportPowerStatus,
+        instance: Message::ReportPowerStatus {
+            status: operand::PowerStatus::ToOn,
+        },
+        bytes: [operand::PowerStatus::ToOn as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportPowerStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_feature_abort {
+    use super::*;
+
+    message_test! {
+        ty: FeatureAbort,
+        instance: Message::FeatureAbort {
+            opcode: Opcode::FeatureAbort,
+            abort_reason: operand::AbortReason::IncorrectMode,
+        },
+        bytes: [Opcode::FeatureAbort as u8, operand::AbortReason::IncorrectMode as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::FeatureAbort as u8, Opcode::FeatureAbort as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::FeatureAbort as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_audio_status {
+    use super::*;
+
+    message_test! {
+        ty: ReportAudioStatus,
+        instance: Message::ReportAudioStatus {
+            status: operand::AudioStatus::new().with_volume(2).with_mute(true),
+        },
+        bytes: [0x82],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportAudioStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
                 got: 1,
                 quantity: "bytes",
             })
