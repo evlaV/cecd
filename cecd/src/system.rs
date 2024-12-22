@@ -4,9 +4,8 @@
  */
 
 use anyhow::{ensure, Result};
-use input_linux::Key;
 use linux_cec::device::AsyncDevice;
-use linux_cec::operand::{UiCommand, VendorId};
+use linux_cec::operand::VendorId;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -27,9 +26,7 @@ use crate::uinput::UInputDevice;
 #[derive(Debug)]
 pub(crate) struct System {
     osd_name: String,
-    vendor_id: Option<VendorId>,
-    log_addr: LogicalAddress,
-    mappings: HashMap<UiCommand, Key>,
+    config: Config,
 
     connection: Connection,
     system_bus: Connection,
@@ -69,9 +66,7 @@ impl System {
 
         Ok(System {
             osd_name: String::from("CEC Device"),
-            vendor_id: None,
-            log_addr: LogicalAddress::UNREGISTERED,
-            mappings: HashMap::new(),
+            config: Config::default(),
             connection,
             system_bus,
             token,
@@ -144,16 +139,10 @@ impl System {
     }
 
     pub(crate) async fn set_config(&mut self, config: Config) -> Result<()> {
-        if let Some(osd_name) = config.osd_name {
-            self.osd_name = osd_name;
+        if let Some(ref osd_name) = config.osd_name {
+            self.osd_name = osd_name.clone();
         }
-        if let Some(vendor_id) = config.vendor_id {
-            self.vendor_id = Some(VendorId(vendor_id));
-        }
-        if let Some(logical_address) = config.logical_address {
-            self.log_addr = logical_address;
-        }
-        self.mappings = config.mappings;
+        self.config = config;
         Ok(())
     }
 
@@ -161,18 +150,17 @@ impl System {
         &self,
         device: Arc<Mutex<AsyncDevice>>,
     ) -> Result<Option<UInputDevice>> {
-        let log_addr = if self.log_addr != LogicalAddress::UNREGISTERED {
-            self.log_addr
-        } else {
-            LogicalAddress::PlaybackDevice1
+        let log_addr = match self.config.logical_address {
+            Some(addr) if addr != LogicalAddress::UNREGISTERED => addr,
+            _ => LogicalAddress::PlaybackDevice1,
         };
         debug!("OSD name: {}", self.osd_name);
         debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
-        debug!("Vendor ID: {:?}", self.vendor_id);
+        debug!("Vendor ID: {:?}", self.config.vendor_id);
 
-        let uinput = if !self.mappings.is_empty() {
+        let uinput = if !self.config.mappings.is_empty() {
             let mut uinput_dev = UInputDevice::new()?;
-            uinput_dev.set_mappings(self.mappings.clone())?;
+            uinput_dev.set_mappings(self.config.mappings.clone())?;
             uinput_dev.set_name(self.osd_name.clone())?;
             uinput_dev.open()?;
             Some(uinput_dev)
@@ -183,7 +171,7 @@ impl System {
         let device = device.lock().await;
         device.set_initiator(InitiatorMode::Enabled).await?;
         device.set_osd_name(&self.osd_name).await?;
-        device.set_vendor_id(self.vendor_id).await?;
+        device.set_vendor_id(self.config.vendor_id).await?;
         device.set_logical_address(log_addr).await?;
         device.set_follower(FollowerMode::Enabled).await?;
 
@@ -205,7 +193,7 @@ impl SystemHandle {
     }
 
     pub(crate) async fn vendor_id(&self) -> Option<VendorId> {
-        self.lock().await.vendor_id
+        self.lock().await.config.vendor_id
     }
 
     pub(crate) async fn find_devs(&self) -> Result<Vec<CancellationToken>> {

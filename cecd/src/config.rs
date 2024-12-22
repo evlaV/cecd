@@ -10,7 +10,7 @@ use config::{
     AsyncSource, ConfigBuilder, ConfigError, FileFormat, FileStoredFormat, Format, Map, Value,
 };
 use input_linux::Key;
-use linux_cec::operand::UiCommand;
+use linux_cec::operand::{UiCommand, VendorId};
 use linux_cec::LogicalAddress;
 use serde::de::{self, Unexpected};
 use serde::{Deserialize, Deserializer};
@@ -58,10 +58,35 @@ where
     )?))
 }
 
+fn de_vendor_id<'de, D>(deserializer: D) -> Result<Option<VendorId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(deserializer)?;
+    let parts: Vec<&str> = string.split('-').collect();
+    if parts.len() != 3 {
+        return Err(de::Error::invalid_length(parts.len(), &"three bytes"));
+    }
+
+    let mut id = [0; 3];
+    for (idx, part) in parts.into_iter().enumerate() {
+        if part.len() != 2 {
+            return Err(de::Error::invalid_value(
+                Unexpected::Str(part),
+                &"hexadecimal byte",
+            ));
+        }
+        id[idx] = u8::from_str_radix(part, 16)
+            .map_err(|_| de::Error::invalid_value(Unexpected::Str(part), &"hexadecimal byte"))?
+    }
+    Ok(Some(VendorId(id)))
+}
+
 #[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
     pub osd_name: Option<String>,
-    pub vendor_id: Option<[u8; 3]>,
+    #[serde(deserialize_with = "de_vendor_id", default)]
+    pub vendor_id: Option<VendorId>,
     #[serde(deserialize_with = "de_logical_address", default)]
     pub logical_address: Option<LogicalAddress>,
     #[serde(deserialize_with = "de_mappings", default)]
