@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, UiCommand};
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
+use linux_cec::LogicalAddress;
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -72,44 +72,7 @@ impl CecDevice {
         debug!("Registering CEC device {} on bus", self.path.display());
 
         let device = self.device.clone();
-        let osd_name;
-        let log_addr;
-        let vendor_id;
-        let mappings;
-        {
-            let system = system.lock().await;
-            osd_name = system.osd_name.clone();
-            if system.log_addr != LogicalAddress::UNREGISTERED {
-                log_addr = system.log_addr;
-            } else {
-                log_addr = LogicalAddress::PlaybackDevice1;
-            }
-            vendor_id = system.vendor_id;
-            mappings = system.mappings.clone();
-        }
-        debug!("OSD name: {osd_name}");
-        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
-        debug!("Vendor ID: {vendor_id:?}");
-
-        let uinput = if !mappings.is_empty() {
-            let mut uinput_dev = UInputDevice::new()?;
-            uinput_dev.set_mappings(mappings)?;
-            uinput_dev.set_name(osd_name.clone())?;
-            uinput_dev.open()?;
-            Some(uinput_dev)
-        } else {
-            None
-        };
-
-        {
-            let device = device.lock().await;
-            device.set_initiator(InitiatorMode::Enabled).await?;
-            device.set_osd_name(&osd_name).await?;
-            device.set_vendor_id(vendor_id).await?;
-            device.set_logical_address(log_addr).await?;
-            device.set_follower(FollowerMode::Enabled).await?;
-        }
-
+        let uinput = system.lock().await.configure_dev(device.clone()).await?;
         let token = self.token.clone();
         let object_server = connection.object_server();
         let path = self.dbus_path()?;

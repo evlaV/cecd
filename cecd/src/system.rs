@@ -5,8 +5,9 @@
 
 use anyhow::{ensure, Result};
 use input_linux::Key;
+use linux_cec::device::AsyncDevice;
 use linux_cec::operand::{UiCommand, VendorId};
-use linux_cec::LogicalAddress;
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,13 +22,14 @@ use zbus::proxy;
 
 use crate::config::Config;
 use crate::dbus::CecDevice;
+use crate::uinput::UInputDevice;
 
 #[derive(Debug)]
 pub(crate) struct System {
-    pub osd_name: String,
-    pub vendor_id: Option<VendorId>,
-    pub log_addr: LogicalAddress,
-    pub mappings: HashMap<UiCommand, Key>,
+    osd_name: String,
+    vendor_id: Option<VendorId>,
+    log_addr: LogicalAddress,
+    mappings: HashMap<UiCommand, Key>,
 
     connection: Connection,
     system_bus: Connection,
@@ -153,6 +155,39 @@ impl System {
         }
         self.mappings = config.mappings;
         Ok(())
+    }
+
+    pub(crate) async fn configure_dev(
+        &self,
+        device: Arc<Mutex<AsyncDevice>>,
+    ) -> Result<Option<UInputDevice>> {
+        let log_addr = if self.log_addr != LogicalAddress::UNREGISTERED {
+            self.log_addr
+        } else {
+            LogicalAddress::PlaybackDevice1
+        };
+        debug!("OSD name: {}", self.osd_name);
+        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
+        debug!("Vendor ID: {:?}", self.vendor_id);
+
+        let uinput = if !self.mappings.is_empty() {
+            let mut uinput_dev = UInputDevice::new()?;
+            uinput_dev.set_mappings(self.mappings.clone())?;
+            uinput_dev.set_name(self.osd_name.clone())?;
+            uinput_dev.open()?;
+            Some(uinput_dev)
+        } else {
+            None
+        };
+
+        let device = device.lock().await;
+        device.set_initiator(InitiatorMode::Enabled).await?;
+        device.set_osd_name(&self.osd_name).await?;
+        device.set_vendor_id(self.vendor_id).await?;
+        device.set_logical_address(log_addr).await?;
+        device.set_follower(FollowerMode::Enabled).await?;
+
+        Ok(uinput)
     }
 }
 
