@@ -69,6 +69,7 @@ enum Command {
         target: LogicalAddress,
     },
     /// Send a specified user command key
+    #[allow(clippy::enum_variant_names)]
     SendCommand {
         /// The name of the specified command key
         key: UiCommand,
@@ -172,7 +173,10 @@ fn main() -> Result<()> {
                     if destination == 15 {
                         String::from("broadcast")
                     } else {
-                        format!("{}", LogicalAddress::try_from_primitive(destination).unwrap())
+                        format!(
+                            "{}",
+                            LogicalAddress::try_from_primitive(destination).unwrap()
+                        )
                     },
                     destination,
                 );
