@@ -197,27 +197,21 @@ pub enum Message {
     ReportAudioStatus {
         status: operand::AudioStatus,
     } = constants::CEC_MSG_REPORT_AUDIO_STATUS,
-    // TODO: Unit tests
     ReportShortAudioDescriptor {
         descriptors: operand::BoundedBufferOperand<4, operand::ShortAudioDescriptor>,
     } = constants::CEC_MSG_REPORT_SHORT_AUDIO_DESCRIPTOR,
-    // TODO: Unit tests
     RequestShortAudioDescriptor {
         descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
     } = constants::CEC_MSG_REQUEST_SHORT_AUDIO_DESCRIPTOR,
-    // TODO: Unit tests
     SetSystemAudioMode {
         status: bool,
     } = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
-    // TODO: Unit tests
     SystemAudioModeRequest {
         physical_address: PhysicalAddress,
     } = constants::CEC_MSG_SYSTEM_AUDIO_MODE_REQUEST,
-    // TODO: Unit tests
     SystemAudioModeStatus {
-        system_audio_status: bool,
+        status: bool,
     } = constants::CEC_MSG_SYSTEM_AUDIO_MODE_STATUS,
-    // TODO: Unit tests
     SetAudioRate {
         audio_rate: operand::AudioRate,
     } = constants::CEC_MSG_SET_AUDIO_RATE,
@@ -1284,7 +1278,8 @@ mod test_vendor_command_with_id {
         assert_eq!(
             Message::VendorCommandWithId {
                 vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
-                vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("").unwrap(),
+                vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("")
+                    .unwrap(),
             }
             .opcode(),
             Opcode::VendorCommandWithId
@@ -1626,6 +1621,251 @@ mod test_report_audio_status {
     fn test_decoding_missing_operand() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportAudioStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_short_audio_descriptor {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: ReportShortAudioDescriptor,
+        instance: Message::ReportShortAudioDescriptor {
+            descriptors: operand::BoundedBufferOperand::default(),
+        },
+        bytes: [],
+    }
+
+    message_test! {
+        name: _full,
+        ty: ReportShortAudioDescriptor,
+        instance: Message::ReportShortAudioDescriptor {
+            descriptors: operand::BoundedBufferOperand {
+                buffer: [
+                    [0x01, 0x23, 0x45],
+                    [0x67, 0x89, 0xAB],
+                    [0xCD, 0xEF, 0xFE],
+                    [0xDC, 0xBA, 0x98]
+                ],
+                len: 4
+            },
+        },
+        bytes: [
+            0x01,
+            0x23,
+            0x45,
+            0x67,
+            0x89,
+            0xAB,
+            0xCD,
+            0xEF,
+            0xFE,
+            0xDC,
+            0xBA,
+            0x98,
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::ReportShortAudioDescriptor {
+                descriptors: operand::BoundedBufferOperand {
+                    buffer: [
+                        [0x01, 0x23, 0x45],
+                        [0x67, 0x89, 0xAB],
+                        [0xCD, 0xEF, 0xFE],
+                        [0xDC, 0xBA, 0x98]
+                    ],
+                    len: 4
+                },
+            }
+            .opcode(),
+            Opcode::ReportShortAudioDescriptor
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_request_short_audio_descriptor {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: RequestShortAudioDescriptor,
+        instance: Message::RequestShortAudioDescriptor {
+            descriptors: operand::BoundedBufferOperand::default(),
+        },
+        bytes: [],
+    }
+
+    message_test! {
+        name: _full,
+        ty: RequestShortAudioDescriptor,
+        instance: Message::RequestShortAudioDescriptor {
+            descriptors: operand::BoundedBufferOperand {
+                buffer: [
+                    operand::AudioFormatIdAndCode::new()
+                        .with_code(1)
+                        .with_id(operand::AudioFormatId::CEA861),
+                    operand::AudioFormatIdAndCode::new()
+                        .with_code(2)
+                        .with_id(operand::AudioFormatId::CEA861),
+                    operand::AudioFormatIdAndCode::new()
+                        .with_code(3)
+                        .with_id(operand::AudioFormatId::CEA861Cxt),
+                    operand::AudioFormatIdAndCode::new()
+                        .with_code(4)
+                        .with_id(operand::AudioFormatId::CEA861Cxt),
+                ],
+                len: 4
+            },
+        },
+        bytes: [0x01, 0x02, 0x43, 0x44],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::RequestShortAudioDescriptor {
+                descriptors: operand::BoundedBufferOperand {
+                    buffer: [
+                        operand::AudioFormatIdAndCode::new()
+                            .with_code(1)
+                            .with_id(operand::AudioFormatId::CEA861),
+                        operand::AudioFormatIdAndCode::new()
+                            .with_code(2)
+                            .with_id(operand::AudioFormatId::CEA861),
+                        operand::AudioFormatIdAndCode::new()
+                            .with_code(3)
+                            .with_id(operand::AudioFormatId::CEA861Cxt),
+                        operand::AudioFormatIdAndCode::new()
+                            .with_code(4)
+                            .with_id(operand::AudioFormatId::CEA861Cxt),
+                    ],
+                    len: 4
+                },
+            }
+            .opcode(),
+            Opcode::RequestShortAudioDescriptor
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_system_audio_mode {
+    use super::*;
+
+    message_test! {
+        ty: SetSystemAudioMode,
+        instance: Message::SetSystemAudioMode {
+            status: true,
+        },
+        bytes: [0x01],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetSystemAudioMode as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_system_audio_mode_request {
+    use super::*;
+
+    message_test! {
+        ty: SystemAudioModeRequest,
+        instance: Message::SystemAudioModeRequest {
+            physical_address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SystemAudioModeRequest as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SystemAudioModeRequest as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_system_audio_mode_status {
+    use super::*;
+
+    message_test! {
+        ty: SystemAudioModeStatus,
+        instance: Message::SystemAudioModeStatus {
+            status: true,
+        },
+        bytes: [0x01],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SystemAudioModeStatus as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_audio_rate {
+    use super::*;
+
+    message_test! {
+        ty: SetAudioRate,
+        instance: Message::SetAudioRate {
+            audio_rate: operand::AudioRate::WideFast,
+        },
+        bytes: [operand::AudioRate::WideFast as u8],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetAudioRate as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
                 got: 1,
