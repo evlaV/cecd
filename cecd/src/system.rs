@@ -7,7 +7,6 @@ use anyhow::{ensure, Result};
 use input_linux::Key;
 use linux_cec::operand::{UiCommand, VendorId};
 use linux_cec::LogicalAddress;
-use num_enum::TryFromPrimitive;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -150,7 +149,7 @@ impl System {
             self.vendor_id = Some(VendorId(vendor_id));
         }
         if let Some(logical_address) = config.logical_address {
-            self.log_addr = LogicalAddress::try_from_primitive(logical_address)?;
+            self.log_addr = logical_address;
         }
         self.mappings = config.mappings;
         Ok(())

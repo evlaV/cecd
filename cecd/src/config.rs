@@ -11,6 +11,7 @@ use config::{
 };
 use input_linux::Key;
 use linux_cec::operand::UiCommand;
+use linux_cec::LogicalAddress;
 use serde::de::{self, Unexpected};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
@@ -46,11 +47,23 @@ where
     Ok(mappings)
 }
 
+fn de_logical_address<'de, D>(deserializer: D) -> Result<Option<LogicalAddress>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(deserializer)?;
+
+    Ok(Some(LogicalAddress::from_str(string.as_str()).map_err(
+        |_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"),
+    )?))
+}
+
 #[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
     pub osd_name: Option<String>,
     pub vendor_id: Option<[u8; 3]>,
-    pub logical_address: Option<u8>,
+    #[serde(deserialize_with = "de_logical_address", default)]
+    pub logical_address: Option<LogicalAddress>,
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,
 }
