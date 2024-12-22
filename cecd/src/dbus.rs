@@ -15,6 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs::canonicalize;
 use tokio::select;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
@@ -22,7 +23,7 @@ use tracing::{debug, error, info, warn};
 use zbus::object_server::{InterfaceRef, SignalEmitter};
 use zbus::{fdo, interface, Connection};
 
-use crate::system::SystemHandle;
+use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
 
 fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
@@ -45,6 +46,7 @@ struct PollTask {
     interface: InterfaceRef<CecDevice>,
     uinput: Option<UInputDevice>,
     active_key: Option<UiCommand>,
+    channel: UnboundedReceiver<SystemMessage>,
     connection: Connection,
     path: String,
 }
@@ -61,7 +63,12 @@ impl CecDevice {
         })
     }
 
-    pub async fn register(self, connection: Connection, system: SystemHandle) -> Result<()> {
+    pub async fn register(
+        self,
+        connection: Connection,
+        system: SystemHandle,
+        channel: UnboundedReceiver<SystemMessage>,
+    ) -> Result<()> {
         debug!("Registering CEC device {} on bus", self.path.display());
 
         let device = self.device.clone();
@@ -115,6 +122,7 @@ impl CecDevice {
             interface: interface.clone(),
             uinput,
             active_key: None,
+            channel,
             connection,
             path: path.clone(),
         };
@@ -254,6 +262,14 @@ impl PollTask {
                         }
                     }
                 }
+                message = self.channel.recv() => {
+                    let Some(message) = message else {
+                        break;
+                    };
+                    if let Err(err) = self.handle_message(message).await {
+                        error!("Message handling failed: {err}");
+                    }
+                }
                 _ = self.token.cancelled() => break,
             }
         }
@@ -338,6 +354,21 @@ impl PollTask {
                 .await
                 .tx_message(&abort, envelope.initiator)
                 .await?;
+        }
+        Ok(())
+    }
+
+    async fn handle_message(&self, message: SystemMessage) -> Result<()> {
+        match message {
+            SystemMessage::Wake => {
+                let _ = self
+                    .device
+                    .lock()
+                    .await
+                    .activate_source(true)
+                    .await
+                    .inspect_err(|e| warn!("Failed to activate source: {e}"));
+            }
         }
         Ok(())
     }

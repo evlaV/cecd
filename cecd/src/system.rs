@@ -12,10 +12,13 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, WeakUnboundedSender};
 use tokio::sync::{Mutex, MutexGuard};
+use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, info};
-use zbus::connection::Connection;
+use tracing::{debug, info, warn};
+use zbus::connection::{Builder, Connection};
+use zbus::proxy;
 
 use crate::config::Config;
 use crate::dbus::CecDevice;
@@ -28,24 +31,54 @@ pub(crate) struct System {
     pub mappings: HashMap<UiCommand, Key>,
 
     connection: Connection,
+    system_bus: Connection,
     token: CancellationToken,
-    active: HashMap<PathBuf, CancellationToken>,
+    devs: HashMap<PathBuf, DeviceHandle>,
+}
+
+#[derive(Debug)]
+struct DeviceHandle {
+    token: CancellationToken,
+    channel: WeakUnboundedSender<SystemMessage>,
+}
+
+#[proxy(
+    interface = "org.freedesktop.login1.Manager",
+    default_service = "org.freedesktop.login1",
+    default_path = "/org/freedesktop/login1"
+)]
+trait LoginManager {
+    #[zbus(signal)]
+    fn prepare_for_sleep(&self, sleep: bool) -> Result<()>;
+}
+
+#[derive(Debug)]
+pub(crate) enum SystemMessage {
+    Wake,
 }
 
 impl System {
-    pub(crate) fn new(connection: Connection, token: CancellationToken) -> System {
-        System {
+    pub(crate) async fn new(token: CancellationToken) -> Result<System> {
+        let connection = Builder::session()?
+            .name("com.steampowered.CecDaemon1")?
+            .build()
+            .await?;
+
+        let system_bus = Connection::system().await?;
+
+        Ok(System {
             osd_name: String::from("CEC Device"),
             vendor_id: None,
             log_addr: LogicalAddress::UNREGISTERED,
             mappings: HashMap::new(),
             connection,
+            system_bus,
             token,
-            active: HashMap::new(),
-        }
+            devs: HashMap::new(),
+        })
     }
 
-    pub(crate) async fn find_devs(&mut self) -> Result<Vec<CecDevice>> {
+    async fn find_devs(&mut self) -> Result<Vec<(CecDevice, UnboundedReceiver<SystemMessage>)>> {
         let mut devs = Vec::new();
         let mut add = HashMap::new();
         let mut dir = read_dir("/dev").await?;
@@ -56,7 +89,7 @@ impl System {
             }
 
             let path = entry.path();
-            if self.active.contains_key(&path) {
+            if self.devs.contains_key(&path) {
                 continue;
             }
 
@@ -64,31 +97,48 @@ impl System {
             debug!("Scanning cec device {pathname}");
 
             let token = self.token.child_token();
-            devs.push(CecDevice::open(&path, token.clone()).await?);
+            let (channel, rx) = unbounded_channel();
+            devs.push((CecDevice::open(&path, token.clone()).await?, rx));
             info!("Found cec device at {pathname}");
-            add.insert(path, token);
+            add.insert(
+                path,
+                DeviceHandle {
+                    token,
+                    channel: channel.downgrade(),
+                },
+            );
         }
-        self.active.extend(add);
+        self.devs.extend(add);
         Ok(devs)
     }
 
-    pub(crate) async fn find_dev(&mut self, path: impl AsRef<Path>) -> Result<CecDevice> {
+    async fn find_dev(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<(CecDevice, UnboundedReceiver<SystemMessage>)> {
         let pathname = path.as_ref().display();
         debug!("Scanning cec device {pathname}");
         ensure!(
-            !self.active.contains_key(path.as_ref()),
+            !self.devs.contains_key(path.as_ref()),
             "Device {pathname} already loaded"
         );
         let token = self.token.child_token();
+        let (channel, rx) = unbounded_channel();
         let dev = CecDevice::open(&path, token.clone()).await?;
         info!("Found cec device at {pathname}");
-        self.active.insert(path.as_ref().to_path_buf(), token);
-        Ok(dev)
+        self.devs.insert(
+            path.as_ref().to_path_buf(),
+            DeviceHandle {
+                token,
+                channel: channel.downgrade(),
+            },
+        );
+        Ok((dev, rx))
     }
 
     pub(crate) fn close_dev(&mut self, path: impl AsRef<Path>) {
-        if let Some(token) = self.active.remove(path.as_ref()) {
-            token.cancel();
+        if let Some(handle) = self.devs.remove(path.as_ref()) {
+            handle.token.cancel();
         }
     }
 
@@ -133,23 +183,24 @@ impl SystemHandle {
             devs = system.find_devs().await?;
             connection = system.connection.clone();
         }
-        for dev in devs {
+        for (dev, rx) in devs {
             tokens.push(dev.token.clone());
-            dev.register(connection.clone(), self.clone()).await?;
+            dev.register(connection.clone(), self.clone(), rx).await?;
         }
         Ok(tokens)
     }
 
     pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<CancellationToken> {
         let dev;
+        let rx;
         let connection;
         {
             let mut system = self.lock().await;
-            dev = system.find_dev(path).await?;
+            (dev, rx) = system.find_dev(path).await?;
             connection = system.connection.clone();
         }
         let token = dev.token.clone();
-        dev.register(connection.clone(), self.clone()).await?;
+        dev.register(connection.clone(), self.clone(), rx).await?;
         Ok(token)
     }
 
@@ -161,5 +212,33 @@ impl SystemHandle {
     pub(crate) async fn set_config(&self, config: Config) -> Result<()> {
         let mut system = self.lock().await;
         system.set_config(config).await
+    }
+
+    pub(crate) async fn run(&mut self) -> Result<()> {
+        let login_manager = LoginManagerProxy::new(&self.lock().await.system_bus).await?;
+        let mut sleep_stream = login_manager.receive_prepare_for_sleep().await?;
+        loop {
+            let Some(sleep_message) = sleep_stream.next().await else {
+                continue;
+            };
+            let sleep = match sleep_message.args() {
+                Ok(args) => args.sleep,
+                Err(e) => {
+                    warn!("Failed to receive PrepareForSleep message from logind: {e}");
+                    continue;
+                }
+            };
+            if !sleep {
+                self.lock().await.devs.retain(|_, dev| {
+                    if let Some(channel) = dev.channel.upgrade() {
+                        if let Ok(()) = channel.send(SystemMessage::Wake) {
+                            return true;
+                        }
+                    }
+                    dev.token.cancel();
+                    false
+                });
+            }
+        }
     }
 }

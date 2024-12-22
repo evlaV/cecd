@@ -11,10 +11,9 @@ use tokio::select;
 use tokio::signal::ctrl_c;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
-use tokio::task::{JoinSet, LocalSet};
+use tokio::task::{spawn, JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
-use zbus::connection::Builder;
 
 use crate::config::{read_config_file, read_default_config};
 use crate::system::{System, SystemHandle};
@@ -50,19 +49,18 @@ pub async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Arguments::parse();
-    let connection = Builder::session()?
-        .name("com.steampowered.CecDaemon1")?
-        .build()
-        .await?;
-
     let token = CancellationToken::new();
-    let system = SystemHandle(Arc::new(Mutex::new(System::new(connection, token.clone()))));
+    let system = SystemHandle(Arc::new(Mutex::new(System::new(token.clone()).await?)));
     let config = if let Some(config_path) = args.config {
         read_config_file(config_path).await?
     } else {
         read_default_config().await?
     };
     system.set_config(config).await?;
+    let system_task = {
+        let mut system = system.clone();
+        spawn(async move { system.run().await })
+    };
 
     debug!("cecd starting up");
     debug!("OSD name: {}", system.osd_name().await);
@@ -110,6 +108,7 @@ pub async fn main() -> Result<()> {
         r = ctrl_c() => r?,
         _ = sigterm.recv() => (),
         _ = local => (),
+        r = system_task => r??,
     };
     Ok(())
 }
