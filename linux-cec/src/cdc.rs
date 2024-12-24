@@ -4,10 +4,11 @@
  */
 
 use bitfield_struct::bitfield;
-use linux_cec_macros::{BitfieldSpecifier, Operand};
+use linux_cec_macros::{BitfieldSpecifier, MessageEnum, Operand};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, Result};
+use crate::{constants, operand, PhysicalAddress, Result};
 
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[bits = 2]
@@ -141,3 +142,59 @@ impl OperandEncodable for HecField {
 
 pub type HecSupportField = HecField;
 pub type HecActivationField = HecField;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
+#[repr(u8)]
+pub enum Message {
+    HecInquireState {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+    } = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
+    HecReportState {
+        physical_address: PhysicalAddress,
+        state: HecState,
+        support: HecSupportField,
+        activation: HecActivationField,
+    } = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
+    HecSetStateAdjacent {
+        terminating_address: PhysicalAddress,
+        set_state: bool,
+    } = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
+    HecSetState {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+        set_state: bool,
+        terminating_addresses: operand::BoundedBufferOperand<3, PhysicalAddress>,
+    } = constants::CEC_MSG_CDC_HEC_SET_STATE,
+    HecRequestDeactivation {
+        terminating_address1: PhysicalAddress,
+        terminating_address2: PhysicalAddress,
+        terminating_address3: PhysicalAddress,
+    } = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
+    HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
+    HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
+    HpdSetState(InputPortHpdState) = constants::CEC_MSG_CDC_HPD_SET_STATE,
+    HpdReportState(HpdStateErrorCode) = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
+}
+
+impl Message {
+    pub fn opcode(&self) -> Opcode {
+        let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
+        Opcode::try_from_primitive(opcode).unwrap()
+    }
+}
+
+impl OperandEncodable for Message {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        let bytes = Message::to_bytes(self);
+        buf.extend(bytes);
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Message::try_from_bytes(bytes)
+    }
+
+    fn len(&self) -> usize {
+        Message::len(self)
+    }
+}

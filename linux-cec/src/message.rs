@@ -13,9 +13,11 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::str::FromStr;
 
 use crate::operand::OperandEncodable;
-use crate::{cdc, constants, operand, PhysicalAddress, Result};
+use crate::{constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
 use crate::{Error, Range};
+
+pub use crate::cdc::{Message as CdcMessage, Opcode as CdcOpcode};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
@@ -253,62 +255,6 @@ impl Message {
     pub fn opcode(&self) -> Opcode {
         let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
         Opcode::try_from_primitive(opcode).unwrap()
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
-#[repr(u8)]
-pub enum CdcMessage {
-    HecInquireState {
-        terminating_address1: PhysicalAddress,
-        terminating_address2: PhysicalAddress,
-    } = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
-    HecReportState {
-        physical_address: PhysicalAddress,
-        state: cdc::HecState,
-        support: cdc::HecSupportField,
-        activation: cdc::HecActivationField,
-    } = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
-    HecSetStateAdjacent {
-        terminating_address: PhysicalAddress,
-        set_state: bool,
-    } = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
-    HecSetState {
-        terminating_address1: PhysicalAddress,
-        terminating_address2: PhysicalAddress,
-        set_state: bool,
-        terminating_addresses: operand::BoundedBufferOperand<3, PhysicalAddress>,
-    } = constants::CEC_MSG_CDC_HEC_SET_STATE,
-    HecRequestDeactivation {
-        terminating_address1: PhysicalAddress,
-        terminating_address2: PhysicalAddress,
-        terminating_address3: PhysicalAddress,
-    } = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
-    HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
-    HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
-    HpdSetState(cdc::InputPortHpdState) = constants::CEC_MSG_CDC_HPD_SET_STATE,
-    HpdReportState(cdc::HpdStateErrorCode) = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
-}
-
-impl CdcMessage {
-    pub fn opcode(&self) -> CdcOpcode {
-        let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
-        CdcOpcode::try_from_primitive(opcode).unwrap()
-    }
-}
-
-impl OperandEncodable for CdcMessage {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        let bytes = CdcMessage::to_bytes(self);
-        buf.extend(bytes);
-    }
-
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        CdcMessage::try_from_bytes(bytes)
-    }
-
-    fn len(&self) -> usize {
-        CdcMessage::len(self)
     }
 }
 

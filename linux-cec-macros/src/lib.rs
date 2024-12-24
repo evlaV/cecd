@@ -300,12 +300,11 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as DeriveInput)
     else {
-        bail!("This macro only works on the Message or CdcMessage enum");
+        bail!("This macro only works on the Message enum");
     };
     let opcode: Ident = parse_str(match &message {
         x if x == "Message" => "Opcode",
-        x if x == "CdcMessage" => "CdcOpcode",
-        _ => bail!("This macro only works on the Message or CdcMessage enum"),
+        _ => bail!("This macro only works on the Message enum"),
     })
     .unwrap();
 
