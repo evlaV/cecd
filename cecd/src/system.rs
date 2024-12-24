@@ -250,7 +250,7 @@ impl SystemHandle {
                     continue;
                 }
             };
-            if !sleep {
+            if !sleep && self.lock().await.config.wake_tv {
                 self.lock().await.devs.retain(|_, dev| {
                     if let Some(channel) = dev.channel.upgrade() {
                         if let Ok(()) = channel.send(SystemMessage::Wake) {

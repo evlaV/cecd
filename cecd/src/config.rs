@@ -91,6 +91,8 @@ pub(crate) struct Config {
     pub logical_address: Option<LogicalAddress>,
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,
+    #[serde(default)]
+    pub wake_tv: bool,
 }
 
 #[derive(Debug)]
