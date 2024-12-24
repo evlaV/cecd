@@ -11,7 +11,7 @@ use tokio::select;
 use tokio::signal::ctrl_c;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
-use tokio::task::{spawn, JoinSet, LocalSet};
+use tokio::task::{spawn, JoinHandle, JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
@@ -51,7 +51,7 @@ pub async fn main() -> Result<()> {
     let args = Arguments::parse();
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(System::new(token.clone()).await?)));
-    let config = if let Some(config_path) = args.config {
+    let config = if let Some(ref config_path) = args.config {
         read_config_file(config_path).await?
     } else {
         read_default_config().await?
@@ -101,6 +101,26 @@ pub async fn main() -> Result<()> {
             joinset.join_all().await;
         });
     }
+
+    let config_reload: JoinHandle<Result<()>> = {
+        let token = token.clone();
+        spawn(async move {
+            loop {
+                let mut sighup = signal(SignalKind::hangup())?;
+                select! {
+                    _ = sighup.recv() => (),
+                    _ = token.cancelled() => break,
+                }
+                let config = if let Some(ref config_path) = args.config {
+                    read_config_file(config_path).await?
+                } else {
+                    read_default_config().await?
+                };
+                system.set_config(config).await?;
+            }
+            Ok(())
+        })
+    };
     let _guard = token.drop_guard();
 
     let mut sigterm = signal(SignalKind::terminate())?;
@@ -108,6 +128,7 @@ pub async fn main() -> Result<()> {
         r = ctrl_c() => r?,
         _ = sigterm.recv() => (),
         _ = local => (),
+        r = config_reload => r??,
         r = system_task => r??,
     };
     Ok(())

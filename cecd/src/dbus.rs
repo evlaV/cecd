@@ -42,6 +42,7 @@ pub struct CecDevice {
 
 struct PollTask {
     device: Arc<Mutex<AsyncDevice>>,
+    system: SystemHandle,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
     uinput: Option<UInputDevice>,
@@ -81,6 +82,7 @@ impl CecDevice {
         let interface = object_server.interface(path.clone()).await?;
         let poll_task = PollTask {
             device,
+            system,
             token,
             interface: interface.clone(),
             uinput,
@@ -321,7 +323,7 @@ impl PollTask {
         Ok(())
     }
 
-    async fn handle_message(&self, message: SystemMessage) -> Result<()> {
+    async fn handle_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
             SystemMessage::Wake => {
                 let _ = self
@@ -331,6 +333,15 @@ impl PollTask {
                     .activate_source(true)
                     .await
                     .inspect_err(|e| warn!("Failed to activate source: {e}"));
+            }
+            SystemMessage::ReloadConfig => {
+                self.uinput = None; // Drop old UInputDevice before opening a new one
+                self.uinput = self
+                    .system
+                    .lock()
+                    .await
+                    .configure_dev(self.device.clone())
+                    .await?;
             }
         }
         Ok(())

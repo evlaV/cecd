@@ -50,9 +50,10 @@ trait LoginManager {
     fn prepare_for_sleep(&self, sleep: bool) -> Result<()>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub(crate) enum SystemMessage {
     Wake,
+    ReloadConfig,
 }
 
 impl System {
@@ -153,6 +154,7 @@ impl System {
         debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
         debug!("Vendor ID: {:?}", self.config.vendor_id);
 
+        self.send_message(SystemMessage::ReloadConfig).await;
         Ok(())
     }
 
@@ -184,6 +186,18 @@ impl System {
         device.set_follower(FollowerMode::Enabled).await?;
 
         Ok(uinput)
+    }
+
+    async fn send_message(&mut self, message: SystemMessage) {
+        self.devs.retain(|_, dev| {
+            if let Some(channel) = dev.channel.upgrade() {
+                if let Ok(()) = channel.send(message) {
+                    return true;
+                }
+            }
+            dev.token.cancel();
+            false
+        });
     }
 }
 
@@ -259,15 +273,7 @@ impl SystemHandle {
                 }
             };
             if !sleep && self.lock().await.config.wake_tv {
-                self.lock().await.devs.retain(|_, dev| {
-                    if let Some(channel) = dev.channel.upgrade() {
-                        if let Ok(()) = channel.send(SystemMessage::Wake) {
-                            return true;
-                        }
-                    }
-                    dev.token.cancel();
-                    false
-                });
+                self.lock().await.send_message(SystemMessage::Wake).await;
             }
         }
     }
