@@ -158,7 +158,7 @@ impl System {
         debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
         debug!("Vendor ID: {:?}", self.config.vendor_id);
 
-        let uinput = if !self.config.mappings.is_empty() {
+        let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
             let mut uinput_dev = UInputDevice::new()?;
             uinput_dev.set_mappings(self.config.mappings.clone())?;
             uinput_dev.set_name(self.osd_name.clone())?;

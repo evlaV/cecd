@@ -93,6 +93,8 @@ pub(crate) struct Config {
     pub mappings: HashMap<UiCommand, Key>,
     #[serde(default)]
     pub wake_tv: bool,
+    #[serde(default)]
+    pub disable_uinput: bool,
 }
 
 #[derive(Debug)]
