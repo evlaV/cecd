@@ -143,6 +143,16 @@ impl System {
             self.osd_name = osd_name.clone();
         }
         self.config = config;
+
+        let log_addr = if self.config.logical_address != LogicalAddress::UNREGISTERED {
+            self.config.logical_address
+        } else {
+            LogicalAddress::PlaybackDevice1
+        };
+        debug!("OSD name: {}", self.osd_name);
+        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
+        debug!("Vendor ID: {:?}", self.config.vendor_id);
+
         Ok(())
     }
 
@@ -155,9 +165,6 @@ impl System {
         } else {
             LogicalAddress::PlaybackDevice1
         };
-        debug!("OSD name: {}", self.osd_name);
-        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
-        debug!("Vendor ID: {:?}", self.config.vendor_id);
 
         let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
             let mut uinput_dev = UInputDevice::new()?;
