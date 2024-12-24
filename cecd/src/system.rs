@@ -150,9 +150,10 @@ impl System {
         &self,
         device: Arc<Mutex<AsyncDevice>>,
     ) -> Result<Option<UInputDevice>> {
-        let log_addr = match self.config.logical_address {
-            Some(addr) if addr != LogicalAddress::UNREGISTERED => addr,
-            _ => LogicalAddress::PlaybackDevice1,
+        let log_addr = if self.config.logical_address != LogicalAddress::UNREGISTERED {
+            self.config.logical_address
+        } else {
+            LogicalAddress::PlaybackDevice1
         };
         debug!("OSD name: {}", self.osd_name);
         debug!("Logical address: {log_addr} ({:x})", log_addr as u8);

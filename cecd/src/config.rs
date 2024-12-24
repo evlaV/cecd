@@ -47,15 +47,14 @@ where
     Ok(mappings)
 }
 
-fn de_logical_address<'de, D>(deserializer: D) -> Result<Option<LogicalAddress>, D::Error>
+fn de_logical_address<'de, D>(deserializer: D) -> Result<LogicalAddress, D::Error>
 where
     D: Deserializer<'de>,
 {
     let string = String::deserialize(deserializer)?;
 
-    Ok(Some(LogicalAddress::from_str(string.as_str()).map_err(
-        |_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"),
-    )?))
+    Ok(LogicalAddress::from_str(string.as_str())
+        .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"))?)
 }
 
 fn de_vendor_id<'de, D>(deserializer: D) -> Result<Option<VendorId>, D::Error>
@@ -88,7 +87,7 @@ pub(crate) struct Config {
     #[serde(deserialize_with = "de_vendor_id", default)]
     pub vendor_id: Option<VendorId>,
     #[serde(deserialize_with = "de_logical_address", default)]
-    pub logical_address: Option<LogicalAddress>,
+    pub logical_address: LogicalAddress,
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,
     #[serde(default)]
