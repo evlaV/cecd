@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+#![allow(clippy::len_without_is_empty)]
+
 use bitfield_struct::bitfield;
 use linux_cec_macros::{BitfieldSpecifier, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};

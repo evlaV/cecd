@@ -53,8 +53,8 @@ where
 {
     let string = String::deserialize(deserializer)?;
 
-    Ok(LogicalAddress::from_str(string.as_str())
-        .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"))?)
+    LogicalAddress::from_str(string.as_str())
+        .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"))
 }
 
 fn de_vendor_id<'de, D>(deserializer: D) -> Result<Option<VendorId>, D::Error>
