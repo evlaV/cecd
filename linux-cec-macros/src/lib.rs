@@ -10,8 +10,8 @@ use quote::quote;
 use std::collections::HashSet;
 use syn::parse::{self, Parse, ParseStream};
 use syn::{
-    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, ExprArray, ExprPath, Field,
-    Fields, FieldsUnnamed, Ident, Meta, Type, TypeArray,
+    parse_macro_input, parse_str, Data, DataEnum, DeriveInput, Expr, ExprArray, ExprLit, ExprPath,
+    Field, Fields, FieldsUnnamed, Ident, Lit, LitInt, Meta, Type, TypeArray,
 };
 
 macro_rules! bail {
@@ -527,7 +527,7 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
     };
 
     let mut ty: Option<Type> = None;
-    let mut bits: Option<Expr> = None;
+    let mut bits: Option<LitInt> = None;
     let mut into_patterns = Vec::new();
     let mut from_patterns = Vec::new();
     let mut default = None;
@@ -554,7 +554,12 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                     Some(ident) if ident == "bits" => (),
                     _ => continue,
                 }
-                bits = Some(nv.value);
+                bits = match nv.value {
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Int(lit), ..
+                    }) => Some(lit),
+                    _ => bail!("`bits` must be an integer literal"),
+                };
             }
             _ => continue,
         }
@@ -601,19 +606,44 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
             _ => from_patterns.push(quote!(x if x == #expr => #ident::#var_ident)),
         }
     }
-    quote! {
-        impl #ident {
-            pub const fn into_bits(self) -> #ty {
-                match self {
-                    #(#into_patterns,)*
-                    #ident::#default(x) => x,
+
+    if default.is_some() {
+        quote! {
+            impl #ident {
+                pub const fn into_bits(self) -> #ty {
+                    match self {
+                        #(#into_patterns,)*
+                        #ident::#default(x) => x,
+                    }
+                }
+
+                pub const fn from_bits(bits: #ty) -> #ident {
+                    match bits & ((1 << (#bits)) - 1) {
+                        #(#from_patterns,)*
+                        x => #ident::#default(x),
+                    }
                 }
             }
+        }
+    } else {
+        let panic = if from_patterns.len() == 1 << bits.base10_parse::<usize>().unwrap() {
+            quote!(unreachable!())
+        } else {
+            quote!(panic!("Unknown value {x}"))
+        };
+        quote! {
+            impl #ident {
+                pub const fn into_bits(self) -> #ty {
+                    match self {
+                        #(#into_patterns,)*
+                    }
+                }
 
-            pub const fn from_bits(bits: #ty) -> #ident {
-                match bits & ((1 << (#bits)) - 1) {
-                    #(#from_patterns,)*
-                    x => #ident::#default(x),
+                pub const fn from_bits(bits: #ty) -> #ident {
+                    match bits & ((1 << (#bits)) - 1) {
+                        #(#from_patterns,)*
+                        x => #panic,
+                    }
                 }
             }
         }

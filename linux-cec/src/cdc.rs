@@ -31,8 +31,6 @@ pub enum HecFunctionalityState {
     Inactive = constants::CEC_OP_HEC_FUNC_STATE_INACTIVE,
     Active = constants::CEC_OP_HEC_FUNC_STATE_ACTIVE,
     ActivationField = constants::CEC_OP_HEC_FUNC_STATE_ACTIVATION_FIELD,
-    #[default]
-    Invalid(u8),
 }
 
 // TODO: Unit tests

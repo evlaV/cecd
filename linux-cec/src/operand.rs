@@ -847,8 +847,6 @@ pub enum AudioOutCompensated {
     Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
     NoDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_NO_DELAY,
     PartialDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_PARTIAL_DELAY,
-    #[default]
-    Invalid(u8),
 }
 
 #[repr(u8)]
