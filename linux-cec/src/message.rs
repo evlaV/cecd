@@ -50,7 +50,6 @@ pub enum Message {
         status: operand::RecordStatusInfo,
     } = constants::CEC_MSG_RECORD_STATUS,
     RecordTvScreen = constants::CEC_MSG_RECORD_TV_SCREEN,
-    // TODO: Unit tests
     ClearAnalogueTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -59,7 +58,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         service_id: operand::AnalogueServiceId,
     } = constants::CEC_MSG_CLEAR_ANALOGUE_TIMER,
-    // TODO: Unit tests
     ClearDigitalTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -68,7 +66,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         service_id: operand::DigitalServiceId,
     } = constants::CEC_MSG_CLEAR_DIGITAL_TIMER,
-    // TODO: Unit tests
     ClearExtTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -77,7 +74,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         external_source: operand::ExternalSource,
     } = constants::CEC_MSG_CLEAR_EXT_TIMER,
-    // TODO: Unit tests
     SetAnalogueTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -86,7 +82,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         service_id: operand::AnalogueServiceId,
     } = constants::CEC_MSG_SET_ANALOGUE_TIMER,
-    // TODO: Unit tests
     SetDigitalTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -95,7 +90,6 @@ pub enum Message {
         recording_sequence: operand::RecordingSequence,
         service_id: operand::DigitalServiceId,
     } = constants::CEC_MSG_SET_DIGITAL_TIMER,
-    // TODO: Unit tests
     SetExtTimer {
         day_of_month: operand::DayOfMonth,
         month_of_year: operand::MonthOfYear,
@@ -588,6 +582,955 @@ mod test_record_status {
             Err(Error::InvalidValueForType {
                 ty: "RecordStatusInfo",
                 value: String::from("254"),
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_clear_analogue_timer {
+    use super::*;
+
+    message_test! {
+        ty: ClearAnalogueTimer,
+        instance: Message::ClearAnalogueTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            service_id: operand::AnalogueServiceId {
+                broadcast_type: operand::AnalogueBroadcastType::Terrestrial,
+                frequency: 0x1234,
+                broadcast_system: operand::BroadcastSystem::NtscM
+            },
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            operand::AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            operand::BroadcastSystem::NtscM as u8
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(12),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ClearAnalogueTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_clear_digital_timer {
+    use super::*;
+
+    message_test! {
+        ty: ClearDigitalTimer,
+        instance: Message::ClearDigitalTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            service_id: operand::DigitalServiceId::AtscCable(
+                operand::AtscData {
+                    transport_stream_id: 0x1234,
+                    program_number: 0x5678,
+                }
+            ),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            operand::DigitalServiceBroadcastSystem::AtscCable as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0,
+            0,
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(15),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ClearDigitalTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_clear_ext_timer {
+    use super::*;
+
+    message_test! {
+        name: _phys_addr,
+        ty: ClearExtTimer,
+        instance: Message::ClearExtTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            external_source: operand::ExternalSource::PhysicalAddress(0x1234),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            0x12,
+            0x34,
+        ],
+    }
+
+    message_test! {
+        name: _plug,
+        ty: ClearExtTimer,
+        instance: Message::ClearExtTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            external_source: operand::ExternalSource::Plug(0x56),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            0x56,
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::ClearExtTimer {
+                day_of_month: operand::DayOfMonth::Day1,
+                month_of_year: operand::MonthOfYear::January,
+                start_time: operand::Time {
+                    hour: operand::Hour::try_from(12).unwrap(),
+                    minute: operand::Minute::try_from(30).unwrap(),
+                },
+                duration: operand::Duration {
+                    hours: operand::DurationHours::try_from(99).unwrap(),
+                    minutes: operand::Minute::try_from(59).unwrap(),
+                },
+                recording_sequence: operand::RecordingSequence::SUNDAY,
+                external_source: operand::ExternalSource::Plug(0x56),
+            }
+            .opcode(),
+            Opcode::ClearExtTimer
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::Only(vec![9, 10]),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ClearExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ClearExtTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_analogue_timer {
+    use super::*;
+
+    message_test! {
+        ty: SetAnalogueTimer,
+        instance: Message::SetAnalogueTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            service_id: operand::AnalogueServiceId {
+                broadcast_type: operand::AnalogueBroadcastType::Terrestrial,
+                frequency: 0x1234,
+                broadcast_system: operand::BroadcastSystem::NtscM
+            },
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            operand::AnalogueBroadcastType::Terrestrial as u8,
+            0x12,
+            0x34,
+            operand::BroadcastSystem::NtscM as u8
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(12),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetAnalogueTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetAnalogueTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_digital_timer {
+    use super::*;
+
+    message_test! {
+        ty: SetDigitalTimer,
+        instance: Message::SetDigitalTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            service_id: operand::DigitalServiceId::AtscCable(
+                operand::AtscData {
+                    transport_stream_id: 0x1234,
+                    program_number: 0x5678,
+                }
+            ),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            operand::DigitalServiceBroadcastSystem::AtscCable as u8,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0,
+            0,
+        ],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(15),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetDigitalTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetDigitalTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_set_ext_timer {
+    use super::*;
+
+    message_test! {
+        name: _phys_addr,
+        ty: SetExtTimer,
+        instance: Message::SetExtTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            external_source: operand::ExternalSource::PhysicalAddress(0x1234),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            0x12,
+            0x34,
+        ],
+    }
+
+    message_test! {
+        name: _plug,
+        ty: SetExtTimer,
+        instance: Message::SetExtTimer {
+            day_of_month: operand::DayOfMonth::Day1,
+            month_of_year: operand::MonthOfYear::January,
+            start_time: operand::Time {
+                hour: operand::Hour::try_from(12).unwrap(),
+                minute: operand::Minute::try_from(30).unwrap(),
+            },
+            duration: operand::Duration {
+                hours: operand::DurationHours::try_from(99).unwrap(),
+                minutes: operand::Minute::try_from(59).unwrap(),
+            },
+            recording_sequence: operand::RecordingSequence::SUNDAY,
+            external_source: operand::ExternalSource::Plug(0x56),
+        },
+        bytes: [
+            operand::DayOfMonth::Day1 as u8,
+            operand::MonthOfYear::January as u8,
+            0x12,
+            0x30,
+            0x99,
+            0x59,
+            constants::CEC_OP_REC_SEQ_SUNDAY,
+            0x56,
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::SetExtTimer {
+                day_of_month: operand::DayOfMonth::Day1,
+                month_of_year: operand::MonthOfYear::January,
+                start_time: operand::Time {
+                    hour: operand::Hour::try_from(12).unwrap(),
+                    minute: operand::Minute::try_from(30).unwrap(),
+                },
+                duration: operand::Duration {
+                    hours: operand::DurationHours::try_from(99).unwrap(),
+                    minutes: operand::Minute::try_from(59).unwrap(),
+                },
+                recording_sequence: operand::RecordingSequence::SUNDAY,
+                external_source: operand::ExternalSource::Plug(0x56),
+            }
+            .opcode(),
+            Opcode::SetExtTimer
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+                constants::CEC_OP_REC_SEQ_SUNDAY,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::Only(vec![9, 10]),
+                got: 8,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+                0x99,
+                0x59,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(8),
+                got: 7,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+                0x12,
+                0x30,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_4() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::SetExtTimer as u8,
+                operand::DayOfMonth::Day1 as u8,
+                operand::MonthOfYear::January as u8,
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_5() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetExtTimer as u8, operand::DayOfMonth::Day1 as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_6() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::SetExtTimer as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
             })
         );
     }
