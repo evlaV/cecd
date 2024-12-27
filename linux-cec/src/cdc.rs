@@ -7,7 +7,7 @@
 
 use bitfield_struct::bitfield;
 #[cfg(test)]
-use linux_cec_macros::opcode_test;
+use linux_cec_macros::{message_test, opcode_test};
 use linux_cec_macros::{BitfieldSpecifier, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
@@ -257,30 +257,25 @@ mod test_hec_field {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
 pub enum Message {
-    // TODO: Unit tests
     HecInquireState {
         terminating_address1: PhysicalAddress,
         terminating_address2: PhysicalAddress,
     } = constants::CEC_MSG_CDC_HEC_INQUIRE_STATE,
-    // TODO: Unit tests
     HecReportState {
         physical_address: PhysicalAddress,
         state: HecState,
         field: Option<HecField>,
     } = constants::CEC_MSG_CDC_HEC_REPORT_STATE,
-    // TODO: Unit tests
     HecSetStateAdjacent {
         terminating_address: PhysicalAddress,
-        set_state: bool,
+        state: bool,
     } = constants::CEC_MSG_CDC_HEC_SET_STATE_ADJACENT,
-    // TODO: Unit tests
     HecSetState {
         terminating_address1: PhysicalAddress,
         terminating_address2: PhysicalAddress,
-        set_state: bool,
+        state: bool,
         terminating_addresses: operand::BoundedBufferOperand<3, PhysicalAddress>,
     } = constants::CEC_MSG_CDC_HEC_SET_STATE,
-    // TODO: Unit tests
     HecRequestDeactivation {
         terminating_address1: PhysicalAddress,
         terminating_address2: PhysicalAddress,
@@ -313,5 +308,465 @@ impl OperandEncodable for Message {
 
     fn len(&self) -> usize {
         Message::len(self)
+    }
+}
+
+#[cfg(test)]
+mod test_hec_inquire_state {
+    use super::*;
+
+    message_test! {
+        ty: HecInquireState,
+        instance: Message::HecInquireState {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecInquireState as u8, 0x12, 0x34, 0x56]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecInquireState as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecInquireState as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecInquireState as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hec_report_state {
+    use super::*;
+
+    message_test! {
+        name: _field,
+        ty: HecReportState,
+        instance: Message::HecReportState {
+            physical_address: 0x1234,
+            state: HecState::new()
+                .with_cdc_error(CdcErrorCode::NoError)
+                .with_enc_functionality(EncFunctionalityState::Inactive)
+                .with_host_functionality(HostFunctionalityState::Active)
+                .with_hec_functionality(HecFunctionalityState::ActivationField),
+            field: Some(HecField {
+                input: [
+                     true, false, false, false,
+                    false,  true, false, false,
+                    false, false,  true,  true,
+                    false, false,
+                ],
+                output: true,
+            }),
+        },
+        bytes: [0x12, 0x34, 0xE4, 0x4C, 0x21],
+        extra: [Overfull],
+    }
+
+    message_test! {
+        name: _no_field,
+        ty: HecReportState,
+        instance: Message::HecReportState {
+            physical_address: 0x1234,
+            state: HecState::new()
+                .with_cdc_error(CdcErrorCode::NoError)
+                .with_enc_functionality(EncFunctionalityState::Inactive)
+                .with_host_functionality(HostFunctionalityState::Active)
+                .with_hec_functionality(HecFunctionalityState::ActivationField),
+            field: None,
+        },
+        bytes: [0x12, 0x34, 0xE4],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecReportState as u8, 0x12, 0x34, 0xE4, 0x4C]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecReportState as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecReportState as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecReportState as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::HecReportState {
+                physical_address: 0x1234,
+                state: HecState::new()
+                    .with_cdc_error(CdcErrorCode::NoError)
+                    .with_enc_functionality(EncFunctionalityState::Inactive)
+                    .with_host_functionality(HostFunctionalityState::Active)
+                    .with_hec_functionality(HecFunctionalityState::ActivationField),
+                field: None,
+            }
+            .opcode(),
+            Opcode::HecReportState
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hec_set_state_adjacent {
+    use super::*;
+
+    message_test! {
+        ty: HecSetStateAdjacent,
+        instance: Message::HecSetStateAdjacent {
+            terminating_address: 0x1234,
+            state: true,
+        },
+        bytes: [0x12, 0x34, 0x01],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hec_set_state {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: HecSetState,
+        instance: Message::HecSetState {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+            state: true,
+            terminating_addresses: operand::BoundedBufferOperand::default(),
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x01],
+    }
+
+    message_test! {
+        name: _1_extra,
+        ty: HecSetState,
+        instance: Message::HecSetState {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+            state: true,
+            terminating_addresses: operand::BoundedBufferOperand {
+                buffer: [0xABCD, 0, 0],
+                len: 1,
+            },
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD],
+    }
+
+    message_test! {
+        name: _2_extra,
+        ty: HecSetState,
+        instance: Message::HecSetState {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+            state: true,
+            terminating_addresses: operand::BoundedBufferOperand {
+                buffer: [0xABCD, 0xEF01, 0],
+                len: 2,
+            },
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01],
+    }
+
+    message_test! {
+        name: _full,
+        ty: HecSetState,
+        instance: Message::HecSetState {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+            state: true,
+            terminating_addresses: operand::BoundedBufferOperand {
+                buffer: [0xABCD, 0xEF01, 0x2345],
+                len: 3,
+            },
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::HecSetState {
+                terminating_address1: 0x1234,
+                terminating_address2: 0x5678,
+                state: true,
+                terminating_addresses: operand::BoundedBufferOperand::default(),
+            }
+            .opcode(),
+            Opcode::HecSetState
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12, 0x34, 0x56, 0x78]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12, 0x34, 0x56]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecSetState as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hec_request_deactivation {
+    use super::*;
+
+    message_test! {
+        ty: HecRequestDeactivation,
+        instance: Message::HecRequestDeactivation {
+            terminating_address1: 0x1234,
+            terminating_address2: 0x5678,
+            terminating_address3: 0x9ABC,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::HecRequestDeactivation as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78,
+                0x9A
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 6,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::HecRequestDeactivation as u8,
+                0x12,
+                0x34,
+                0x56,
+                0x78
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(7),
+                got: 5,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12, 0x34, 0x56]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
     }
 }
