@@ -283,9 +283,7 @@ pub enum Message {
     } = constants::CEC_MSG_CDC_HEC_REQUEST_DEACTIVATION,
     HecNotifyAlive = constants::CEC_MSG_CDC_HEC_NOTIFY_ALIVE,
     HecDiscover = constants::CEC_MSG_CDC_HEC_DISCOVER,
-    // TODO: Unit tests
     HpdSetState(InputPortHpdState) = constants::CEC_MSG_CDC_HPD_SET_STATE,
-    // TODO: Unit tests
     HpdReportState(HpdStateErrorCode) = constants::CEC_MSG_CDC_HPD_REPORT_STATE,
 }
 
@@ -764,6 +762,58 @@ mod test_hec_request_deactivation {
             Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hpd_set_state {
+    use super::*;
+
+    message_test! {
+        ty: HpdSetState,
+        instance: Message::HpdSetState(InputPortHpdState::new()
+            .with_input_port(0xA)
+            .with_state(HpdState::EdidDisableEnable)),
+        bytes: [0xA5],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HpdSetState as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_hpd_report_state {
+    use super::*;
+
+    message_test! {
+        ty: HpdReportState,
+        instance: Message::HpdReportState(HpdStateErrorCode::new()
+            .with_state(HpdState::EdidDisableEnable)
+            .with_error_code(HpdErrorCode::InitiatorNotCapable)),
+        bytes: [0x51],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::HpdReportState as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
                 got: 1,
                 quantity: "bytes",
             })
