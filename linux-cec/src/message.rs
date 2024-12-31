@@ -523,7 +523,7 @@ mod test_record_on {
     }
 
     #[test]
-    fn test_decode_all_missing() {
+    fn test_decode_missing_operands() {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RecordOn as u8]),
             Err(Error::OutOfRange {
