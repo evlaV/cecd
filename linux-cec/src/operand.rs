@@ -2561,6 +2561,15 @@ pub struct DeviceFeatures {
     pub device_features_n: BoundedBufferOperand<14, u8>,
 }
 
+impl DeviceFeatures {
+    pub fn new(device_features_1: DeviceFeatures1) -> DeviceFeatures {
+        DeviceFeatures {
+            device_features_1,
+            device_features_n: BoundedBufferOperand::default(),
+        }
+    }
+}
+
 impl TaggedLengthBuffer for DeviceFeatures {
     type FixedParam = DeviceFeatures1;
 
@@ -2725,6 +2734,15 @@ pub struct LatencyFlags {
 pub struct RcProfile {
     pub rc_profile_1: RcProfile1,
     pub rc_profile_n: BoundedBufferOperand<14, u8>,
+}
+
+impl RcProfile {
+    pub fn new(rc_profile_1: RcProfile1) -> RcProfile {
+        RcProfile {
+            rc_profile_1,
+            rc_profile_n: BoundedBufferOperand::default(),
+        }
+    }
 }
 
 impl TaggedLengthBuffer for RcProfile {

@@ -13,7 +13,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::str::FromStr;
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress, Result};
+use crate::{cdc, constants, operand, PhysicalAddress, Result};
 #[cfg(test)]
 use crate::{Error, Range};
 
@@ -218,25 +218,21 @@ pub enum Message {
     RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
     RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
     TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
-    // TODO: Unit tests
     CdcMessage {
         initiator: PhysicalAddress,
-        message: CdcMessage,
+        message: cdc::Message,
     } = constants::CEC_MSG_CDC_MESSAGE,
     /* HDMI 2.0 */
-    // TODO: Unit tests
     ReportFeatures {
         version: operand::Version,
         device_types: operand::AllDeviceTypes,
         rc_profile: operand::RcProfile,
-        dev_features: operand::DeviceFeatures,
+        device_features: operand::DeviceFeatures,
     } = constants::CEC_MSG_REPORT_FEATURES,
     GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
-    // TODO: Unit tests
     RequestCurrentLatency {
         physical_address: PhysicalAddress,
     } = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
-    // TODO: Unit tests
     ReportCurrentLatency {
         physical_address: PhysicalAddress,
         video_latency: operand::Delay,
@@ -2755,6 +2751,417 @@ mod test_set_audio_rate {
             Message::try_from_bytes(&[Opcode::SetAudioRate as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_cdc_message {
+    use super::*;
+
+    message_test! {
+        ty: CdcMessage,
+        instance: Message::CdcMessage {
+            initiator: 0x0123,
+            message: CdcMessage::HecRequestDeactivation {
+                terminating_address1: 0x4567,
+                terminating_address2: 0x89AB,
+                terminating_address3: 0xCDEF
+            },
+        },
+        bytes: [0x01, 0x23, CdcOpcode::HecRequestDeactivation as u8, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::CdcMessage as u8,
+                0x01,
+                0x23,
+                CdcOpcode::HecRequestDeactivation as u8
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(6),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_opcode() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::CdcMessage as u8, 0x01, 0x23]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_opcode_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::CdcMessage as u8, 0x01]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::CdcMessage as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_features {
+    use super::*;
+
+    message_test! {
+        name: _empty,
+        ty: ReportFeatures,
+        instance: Message::ReportFeatures {
+            version: operand::Version::V2_0,
+            device_types: operand::AllDeviceTypes::PLAYBACK,
+            rc_profile: operand::RcProfile::new(
+                operand::RcProfile1::Source(operand::RcProfileSource::all())),
+            device_features: operand::DeviceFeatures::new(operand::DeviceFeatures1::all()),
+        },
+        bytes: [
+            operand::Version::V2_0 as u8,
+            operand::AllDeviceTypes::PLAYBACK.bits(),
+            operand::RcProfileSource::all().bits(),
+            operand::DeviceFeatures1::all().bits()
+        ],
+        extra: [Overfull],
+    }
+
+    message_test! {
+        name: _extra_rc_profiles,
+        ty: ReportFeatures,
+        instance: Message::ReportFeatures {
+            version: operand::Version::V2_0,
+            device_types: operand::AllDeviceTypes::PLAYBACK,
+            rc_profile: operand::RcProfile {
+                rc_profile_1: operand::RcProfile1::Source(operand::RcProfileSource::all()),
+                rc_profile_n: operand::BoundedBufferOperand::try_from([
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ].as_ref()).unwrap(),
+            },
+            device_features: operand::DeviceFeatures::new(operand::DeviceFeatures1::all()),
+        },
+        bytes: [
+            operand::Version::V2_0 as u8,
+            operand::AllDeviceTypes::PLAYBACK.bits(),
+            operand::RcProfileSource::all().bits() | 0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x0,
+            operand::DeviceFeatures1::all().bits()
+        ],
+    }
+
+    message_test! {
+        name: _extra_device_features,
+        ty: ReportFeatures,
+        instance: Message::ReportFeatures {
+            version: operand::Version::V2_0,
+            device_types: operand::AllDeviceTypes::PLAYBACK,
+            rc_profile: operand::RcProfile::new(operand::RcProfile1::Source(operand::RcProfileSource::all())),
+            device_features: operand::DeviceFeatures {
+                device_features_1: operand::DeviceFeatures1::all(),
+                device_features_n: operand::BoundedBufferOperand::try_from([
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ].as_ref()).unwrap(),
+            },
+        },
+        bytes: [
+            operand::Version::V2_0 as u8,
+            operand::AllDeviceTypes::PLAYBACK.bits(),
+            operand::RcProfileSource::all().bits(),
+            operand::DeviceFeatures1::all().bits() | 0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x0,
+        ],
+    }
+
+    message_test! {
+        name: _balanced,
+        ty: ReportFeatures,
+        instance: Message::ReportFeatures {
+            version: operand::Version::V2_0,
+            device_types: operand::AllDeviceTypes::PLAYBACK,
+            rc_profile: operand::RcProfile {
+                rc_profile_1: operand::RcProfile1::Source(operand::RcProfileSource::all()),
+                rc_profile_n: operand::BoundedBufferOperand::try_from([
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ].as_ref()).unwrap(),
+            },
+            device_features: operand::DeviceFeatures {
+                device_features_1: operand::DeviceFeatures1::all(),
+                device_features_n: operand::BoundedBufferOperand::try_from([
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ].as_ref()).unwrap(),
+            },
+        },
+        bytes: [
+            operand::Version::V2_0 as u8,
+            operand::AllDeviceTypes::PLAYBACK.bits(),
+            operand::RcProfileSource::all().bits() | 0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x0,
+            operand::DeviceFeatures1::all().bits() | 0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x80,
+            0x0,
+        ],
+    }
+
+    #[test]
+    fn test_opcode() {
+        assert_eq!(
+            Message::ReportFeatures {
+                version: operand::Version::V2_0,
+                device_types: operand::AllDeviceTypes::PLAYBACK,
+                rc_profile: operand::RcProfile::new(operand::RcProfile1::Source(
+                    operand::RcProfileSource::all()
+                )),
+                device_features: operand::DeviceFeatures::new(operand::DeviceFeatures1::all()),
+            }
+            .opcode(),
+            Opcode::ReportFeatures
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ReportFeatures as u8,
+                operand::Version::V2_0 as u8,
+                operand::AllDeviceTypes::PLAYBACK.bits(),
+                operand::RcProfileSource::all().bits(),
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[
+                Opcode::ReportFeatures as u8,
+                operand::Version::V2_0 as u8,
+                operand::AllDeviceTypes::PLAYBACK.bits(),
+            ]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_3() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportFeatures as u8, operand::Version::V2_0 as u8,]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportFeatures as u8,]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(2),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_request_current_latency {
+    use super::*;
+
+    message_test! {
+        ty: RequestCurrentLatency,
+        instance: Message::RequestCurrentLatency {
+            physical_address: 0x1234,
+        },
+        bytes: [0x12, 0x34],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decoding_missing_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RequestCurrentLatency as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::RequestCurrentLatency as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 1,
+                quantity: "bytes",
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_report_current_latency {
+    use super::*;
+
+    message_test! {
+        ty: ReportCurrentLatency,
+        instance: Message::ReportCurrentLatency {
+            physical_address: 0x1234,
+            video_latency: 0x56,
+            flags: operand::LatencyFlags::new()
+                .with_audio_out_compensated(operand::AudioOutputCompensated::PartialDelay)
+                .with_low_latency_mode(true),
+            audio_output_delay: Some(0x78),
+        },
+        bytes: [0x12, 0x34, 0x56, 0x07, 0x78],
+        extra: [Overfull],
+    }
+
+    message_test! {
+        name: _no_delay,
+        ty: ReportCurrentLatency,
+        instance: Message::ReportCurrentLatency {
+            physical_address: 0x1234,
+            video_latency: 0x56,
+            flags: operand::LatencyFlags::new()
+                .with_audio_out_compensated(operand::AudioOutputCompensated::NoDelay)
+                .with_low_latency_mode(true),
+            audio_output_delay: None,
+        },
+        bytes: [0x12, 0x34, 0x56, 0x06],
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_1() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8, 0x12, 0x34, 0x56]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(5),
+                got: 4,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8, 0x12, 0x34]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(4),
+                got: 3,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operand_2_and_byte() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8, 0x12]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
+                got: 2,
+                quantity: "bytes",
+            })
+        );
+    }
+
+    #[test]
+    fn test_decoding_missing_operands() {
+        assert_eq!(
+            Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8]),
+            Err(Error::OutOfRange {
+                expected: Range::AtLeast(3),
                 got: 1,
                 quantity: "bytes",
             })
