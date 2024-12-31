@@ -46,6 +46,26 @@ impl From<VendorId> for SysVendorId {
     }
 }
 
+impl FromStr for VendorId {
+    type Err = Error;
+
+    fn from_str(val: &str) -> Result<VendorId> {
+        let parts: Vec<&str> = val.split('-').collect();
+        if parts.len() != 3 {
+            return Err(Error::InvalidData);
+        }
+
+        let mut id = [0; 3];
+        for (idx, part) in parts.into_iter().enumerate() {
+            if part.len() != 2 {
+                return Err(Error::InvalidData);
+            }
+            id[idx] = u8::from_str_radix(part, 16).map_err(|_| Error::InvalidData)?
+        }
+        Ok(VendorId(id))
+    }
+}
+
 impl Display for VendorId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:02x}-{:02x}-{:02x}", self.0[0], self.0[1], self.0[2])

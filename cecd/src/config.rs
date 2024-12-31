@@ -62,23 +62,12 @@ where
     D: Deserializer<'de>,
 {
     let string = String::deserialize(deserializer)?;
-    let parts: Vec<&str> = string.split('-').collect();
-    if parts.len() != 3 {
-        return Err(de::Error::invalid_length(parts.len(), &"three bytes"));
-    }
-
-    let mut id = [0; 3];
-    for (idx, part) in parts.into_iter().enumerate() {
-        if part.len() != 2 {
-            return Err(de::Error::invalid_value(
-                Unexpected::Str(part),
-                &"hexadecimal byte",
-            ));
-        }
-        id[idx] = u8::from_str_radix(part, 16)
-            .map_err(|_| de::Error::invalid_value(Unexpected::Str(part), &"hexadecimal byte"))?
-    }
-    Ok(Some(VendorId(id)))
+    Ok(Some(VendorId::from_str(&string).map_err(|_| {
+        de::Error::invalid_value(
+            Unexpected::Str(&string),
+            &"a 3-byte vendor identifier delimited by hyphens",
+        )
+    })?))
 }
 
 #[derive(Deserialize, Clone, Debug, Default)]
