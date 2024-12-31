@@ -555,10 +555,8 @@ mod test_hec_set_state {
             terminating_address1: 0x1234,
             terminating_address2: 0x5678,
             state: true,
-            terminating_addresses: operand::BoundedBufferOperand {
-                buffer: [0xABCD, 0, 0],
-                len: 1,
-            },
+            terminating_addresses: operand::BoundedBufferOperand::try_from(
+                [0xABCD].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD],
     }
@@ -570,10 +568,8 @@ mod test_hec_set_state {
             terminating_address1: 0x1234,
             terminating_address2: 0x5678,
             state: true,
-            terminating_addresses: operand::BoundedBufferOperand {
-                buffer: [0xABCD, 0xEF01, 0],
-                len: 2,
-            },
+            terminating_addresses: operand::BoundedBufferOperand::try_from(
+                [0xABCD, 0xEF01].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01],
     }
@@ -585,10 +581,8 @@ mod test_hec_set_state {
             terminating_address1: 0x1234,
             terminating_address2: 0x5678,
             state: true,
-            terminating_addresses: operand::BoundedBufferOperand {
-                buffer: [0xABCD, 0xEF01, 0x2345],
-                len: 3,
-            },
+            terminating_addresses: operand::BoundedBufferOperand::try_from(
+                [0xABCD, 0xEF01, 0x2345].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45],
         extra: [Overfull],

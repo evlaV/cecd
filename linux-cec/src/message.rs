@@ -2536,15 +2536,13 @@ mod test_report_short_audio_descriptor {
         name: _full,
         ty: ReportShortAudioDescriptor,
         instance: Message::ReportShortAudioDescriptor {
-            descriptors: operand::BoundedBufferOperand {
-                buffer: [
-                    [0x01, 0x23, 0x45],
-                    [0x67, 0x89, 0xAB],
-                    [0xCD, 0xEF, 0xFE],
-                    [0xDC, 0xBA, 0x98]
-                ],
-                len: 4
-            },
+            descriptors: operand::BoundedBufferOperand::try_from([
+                [0x01, 0x23, 0x45],
+                [0x67, 0x89, 0xAB],
+                [0xCD, 0xEF, 0xFE],
+                [0xDC, 0xBA, 0x98]
+            ].as_ref())
+            .unwrap(),
         },
         bytes: [
             0x01,
@@ -2566,15 +2564,16 @@ mod test_report_short_audio_descriptor {
     fn test_opcode() {
         assert_eq!(
             Message::ReportShortAudioDescriptor {
-                descriptors: operand::BoundedBufferOperand {
-                    buffer: [
+                descriptors: operand::BoundedBufferOperand::try_from(
+                    [
                         [0x01, 0x23, 0x45],
                         [0x67, 0x89, 0xAB],
                         [0xCD, 0xEF, 0xFE],
                         [0xDC, 0xBA, 0x98]
-                    ],
-                    len: 4
-                },
+                    ]
+                    .as_ref()
+                )
+                .unwrap(),
             }
             .opcode(),
             Opcode::ReportShortAudioDescriptor
@@ -2599,23 +2598,21 @@ mod test_request_short_audio_descriptor {
         name: _full,
         ty: RequestShortAudioDescriptor,
         instance: Message::RequestShortAudioDescriptor {
-            descriptors: operand::BoundedBufferOperand {
-                buffer: [
-                    operand::AudioFormatIdAndCode::new()
-                        .with_code(1)
-                        .with_id(operand::AudioFormatId::CEA861),
-                    operand::AudioFormatIdAndCode::new()
-                        .with_code(2)
-                        .with_id(operand::AudioFormatId::CEA861),
-                    operand::AudioFormatIdAndCode::new()
-                        .with_code(3)
-                        .with_id(operand::AudioFormatId::CEA861Cxt),
-                    operand::AudioFormatIdAndCode::new()
-                        .with_code(4)
-                        .with_id(operand::AudioFormatId::CEA861Cxt),
-                ],
-                len: 4
-            },
+            descriptors: operand::BoundedBufferOperand::try_from([
+                operand::AudioFormatIdAndCode::new()
+                    .with_code(1)
+                    .with_id(operand::AudioFormatId::CEA861),
+                operand::AudioFormatIdAndCode::new()
+                    .with_code(2)
+                    .with_id(operand::AudioFormatId::CEA861),
+                operand::AudioFormatIdAndCode::new()
+                    .with_code(3)
+                    .with_id(operand::AudioFormatId::CEA861Cxt),
+                operand::AudioFormatIdAndCode::new()
+                    .with_code(4)
+                    .with_id(operand::AudioFormatId::CEA861Cxt),
+            ].as_ref())
+            .unwrap(),
         },
         bytes: [0x01, 0x02, 0x43, 0x44],
     }
@@ -2624,8 +2621,8 @@ mod test_request_short_audio_descriptor {
     fn test_opcode() {
         assert_eq!(
             Message::RequestShortAudioDescriptor {
-                descriptors: operand::BoundedBufferOperand {
-                    buffer: [
+                descriptors: operand::BoundedBufferOperand::try_from(
+                    [
                         operand::AudioFormatIdAndCode::new()
                             .with_code(1)
                             .with_id(operand::AudioFormatId::CEA861),
@@ -2638,9 +2635,10 @@ mod test_request_short_audio_descriptor {
                         operand::AudioFormatIdAndCode::new()
                             .with_code(4)
                             .with_id(operand::AudioFormatId::CEA861Cxt),
-                    ],
-                    len: 4
-                },
+                    ]
+                    .as_ref()
+                )
+                .unwrap(),
             }
             .opcode(),
             Opcode::RequestShortAudioDescriptor

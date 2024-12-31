@@ -688,6 +688,28 @@ impl<const S: usize> FromStr for BoundedBufferOperand<S, u8> {
     }
 }
 
+impl<const S: usize, T: OperandEncodable + Default + Copy> TryFrom<&[T]>
+    for BoundedBufferOperand<S, T>
+{
+    type Error = Error;
+
+    fn try_from(arr: &[T]) -> Result<Self> {
+        Range::AtMost(S).check(arr.len(), "elements")?;
+        let mut buffer = [T::default(); S];
+        buffer[..arr.len()].copy_from_slice(arr);
+        Ok(BoundedBufferOperand::<S, T> {
+            buffer,
+            len: arr.len(),
+        })
+    }
+}
+
+impl<const S: usize, T: OperandEncodable + Default + Copy> BoundedBufferOperand<S, T> {
+    pub fn new() -> BoundedBufferOperand<S, T> {
+        BoundedBufferOperand::default()
+    }
+}
+
 pub type BufferOperand = BoundedBufferOperand<14, u8>;
 
 #[cfg(test)]
