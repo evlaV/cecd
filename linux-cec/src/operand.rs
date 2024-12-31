@@ -881,16 +881,6 @@ pub enum AnalogueBroadcastType {
     Terrestrial = constants::CEC_OP_ANA_BCAST_TYPE_TERRESTRIAL,
 }
 
-#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[bits = 2]
-#[repr(u8)]
-pub enum AudioOutCompensated {
-    NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
-    Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
-    NoDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_NO_DELAY,
-    PartialDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_PARTIAL_DELAY,
-}
-
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioRate {
@@ -920,8 +910,9 @@ pub enum AudioFormatId {
     Invalid(u8),
 }
 
+#[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[bits = 2]
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum AudioOutputCompensated {
     NotApplicable = constants::CEC_OP_AUD_OUT_COMPENSATED_NA,
     Delay = constants::CEC_OP_AUD_OUT_COMPENSATED_DELAY,
@@ -2724,7 +2715,7 @@ mod test_dvb_data {
 #[derive(PartialEq, Eq, Hash, Operand)]
 pub struct LatencyFlags {
     #[bits(2)]
-    pub audio_out_compensated: AudioOutCompensated,
+    pub audio_out_compensated: AudioOutputCompensated,
     pub low_latency_mode: bool,
     #[bits(5)]
     _reserved: usize,
