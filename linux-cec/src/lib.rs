@@ -254,7 +254,7 @@ impl From<io::Error> for Error {
         if let Some(raw) = val.raw_os_error() {
             Errno::from_raw(raw).into()
         } else {
-            todo!();
+            Error::UnknownError(format!("{val}"))
         }
     }
 }
