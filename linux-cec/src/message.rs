@@ -3096,11 +3096,11 @@ mod test_report_current_latency {
         ty: ReportCurrentLatency,
         instance: Message::ReportCurrentLatency {
             physical_address: 0x1234,
-            video_latency: 0x56,
+            video_latency: operand::Delay::try_from(0x56).unwrap(),
             flags: operand::LatencyFlags::new()
                 .with_audio_out_compensated(operand::AudioOutputCompensated::PartialDelay)
                 .with_low_latency_mode(true),
-            audio_output_delay: Some(0x78),
+            audio_output_delay: Some(operand::Delay::try_from(0x78).unwrap()),
         },
         bytes: [0x12, 0x34, 0x56, 0x07, 0x78],
         extra: [Overfull],
@@ -3111,7 +3111,7 @@ mod test_report_current_latency {
         ty: ReportCurrentLatency,
         instance: Message::ReportCurrentLatency {
             physical_address: 0x1234,
-            video_latency: 0x56,
+            video_latency: operand::Delay::try_from(0x56).unwrap(),
             flags: operand::LatencyFlags::new()
                 .with_audio_out_compensated(operand::AudioOutputCompensated::NoDelay)
                 .with_low_latency_mode(true),

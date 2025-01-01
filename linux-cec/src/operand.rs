@@ -22,7 +22,6 @@ use strum::{Display, EnumString};
 use crate::{constants, Error, PhysicalAddress, Range, Result};
 
 pub type AnalogueFrequency = u16; // TODO: Limit range
-pub type Delay = u8; // TODO: Limit range
 pub type DurationHours = BcdByte;
 pub type Hour = BcdByte<0, 23>;
 pub type Minute = BcdByte<0, 59>;
@@ -86,6 +85,130 @@ impl VendorId {
             }
             _ => Err(Error::InvalidData),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Delay(u8);
+
+impl From<Delay> for u8 {
+    fn from(val: Delay) -> u8 {
+        val.0
+    }
+}
+
+impl Delay {
+    const MIN: u8 = 1;
+    const MAX: u8 = 251;
+
+    pub fn is_valid(&self) -> bool {
+        Range::Interval {
+            min: Delay::MIN as usize,
+            max: Delay::MAX as usize,
+        }
+        .check(self.0, "value")
+        .is_ok()
+    }
+}
+
+impl TryFrom<u8> for Delay {
+    type Error = Error;
+
+    fn try_from(val: u8) -> Result<Delay> {
+        Range::Interval {
+            min: Delay::MIN as usize,
+            max: Delay::MAX as usize,
+        }
+        .check(val, "value")?;
+        Ok(Delay(val))
+    }
+}
+
+impl OperandEncodable for Delay {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([self.0]);
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() < 1 {
+            Err(crate::Error::OutOfRange {
+                expected: crate::Range::AtLeast(1),
+                got: bytes.len(),
+                quantity: "bytes",
+            })
+        } else {
+            Delay::try_from(bytes[0])
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+#[cfg(test)]
+mod test_delay {
+    use super::*;
+
+    opcode_test! {
+        name: _min,
+        ty: Delay,
+        instance: Delay(1),
+        bytes: [1],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _max,
+        ty: Delay,
+        instance: Delay(251),
+        bytes: [251],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decode_out_of_range() {
+        assert_eq!(
+            <Delay as OperandEncodable>::try_from_bytes(&[0]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::Interval { min: 1, max: 251 },
+                quantity: "value"
+            })
+        );
+
+        assert_eq!(
+            <Delay as OperandEncodable>::try_from_bytes(&[252]),
+            Err(Error::OutOfRange {
+                got: 252,
+                expected: Range::Interval { min: 1, max: 251 },
+                quantity: "value"
+            })
+        );
+    }
+
+    #[test]
+    fn test_encode_out_of_range() {
+        let mut buf = Vec::new();
+        Delay(0).to_bytes(&mut buf);
+        assert_eq!(&buf, &[0]);
+
+        let mut buf = Vec::new();
+        Delay(255).to_bytes(&mut buf);
+        assert_eq!(&buf, &[255]);
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <Delay as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
     }
 }
 
