@@ -74,6 +74,8 @@ impl From<FollowerMode> for CecFollowerModes {
             FollowerMode::Disabled => CecFollowerModes::NoFollower,
             FollowerMode::Enabled => CecFollowerModes::Follower,
             FollowerMode::Exclusive => CecFollowerModes::ExclusiveFollower,
+            FollowerMode::ExclusivePassthru => CecFollowerModes::ExclusiveFollowerPassthru,
+            FollowerMode::MonitorPin => CecFollowerModes::MonitorPin,
             FollowerMode::Monitor => CecFollowerModes::Monitor,
             FollowerMode::MonitorAll => CecFollowerModes::MonitorAll,
         }

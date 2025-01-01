@@ -137,9 +137,10 @@ pub enum FollowerMode {
     Disabled,
     Enabled,
     Exclusive,
+    ExclusivePassthru,
+    MonitorPin,
     Monitor,
     MonitorAll,
-    // TODO: other modes
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
