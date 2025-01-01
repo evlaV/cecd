@@ -2719,7 +2719,6 @@ mod test_dvb_data {
     }
 }
 
-// TODO: Unit tests
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Hash, Operand)]
 pub struct LatencyFlags {
@@ -2728,6 +2727,32 @@ pub struct LatencyFlags {
     pub low_latency_mode: bool,
     #[bits(5)]
     _reserved: usize,
+}
+
+#[cfg(test)]
+mod test_latency_flags {
+    use super::*;
+
+    opcode_test! {
+        ty: LatencyFlags,
+        instance: LatencyFlags::new()
+            .with_audio_out_compensated(AudioOutputCompensated::PartialDelay)
+            .with_low_latency_mode(true),
+        bytes: [0x07],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            LatencyFlags::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
