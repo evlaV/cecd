@@ -421,7 +421,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                 let mut fields = Vec::new();
                 for field in data.fields {
                     let Some(name) = field.ident else {
-                        todo!("No name");
+                        todo!("Operand field has no name: {field:#?}");
                     };
                     to.push(quote! {
                         self.#name.to_bytes(buf);
@@ -435,7 +435,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                             let offset = offset + #name.len();
                         }),
                         Type::Array(_) => (),
-                        _ => todo!(),
+                        _ => todo!("Unimplemented named operand type: {typename:#?}"),
                     }
                     fields.push(name);
                     len.push(quote!(::core::mem::size_of::<#typename>()));
@@ -506,11 +506,11 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     }
                 }
                 .into(),
-                _ => todo!(),
+                _ => todo!("Unimplemented unnamed field operand type: {data:#?}"),
             },
-            Fields::Unit => todo!(),
+            Fields::Unit => todo!("Unimplemented unit field operand type: {data:#?}"),
         },
-        _ => todo!(),
+        _ => todo!("Unimplemented operand type: {data:#?}"),
     }
 }
 
@@ -726,7 +726,7 @@ impl Parse for CodecTest {
                                 if let Some(ident) = path.get_ident() {
                                     extra.insert(ident.to_string());
                                 } else {
-                                    todo!();
+                                    return Err(parse::Error::new(input.span(), "Extras must be an identifier"));
                                 }
                             }
                             _ => todo!(),
