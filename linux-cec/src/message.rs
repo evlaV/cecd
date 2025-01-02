@@ -369,7 +369,7 @@ mod test_routing_change {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingChange as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 2,
                 quantity: "bytes",
             })
@@ -381,7 +381,7 @@ mod test_routing_change {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::RoutingChange as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 1,
                 quantity: "bytes",
             })
@@ -658,7 +658,7 @@ mod test_clear_analogue_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::AtLeast(12),
                 got: 7,
                 quantity: "bytes",
             })
@@ -676,7 +676,7 @@ mod test_clear_analogue_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::AtLeast(12),
                 got: 5,
                 quantity: "bytes",
             })
@@ -692,7 +692,7 @@ mod test_clear_analogue_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(12),
                 got: 3,
                 quantity: "bytes",
             })
@@ -707,7 +707,7 @@ mod test_clear_analogue_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(12),
                 got: 2,
                 quantity: "bytes",
             })
@@ -719,7 +719,7 @@ mod test_clear_analogue_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ClearAnalogueTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(12),
                 got: 1,
                 quantity: "bytes",
             })
@@ -804,7 +804,7 @@ mod test_clear_digital_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::AtLeast(15),
                 got: 7,
                 quantity: "bytes",
             })
@@ -822,7 +822,7 @@ mod test_clear_digital_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::AtLeast(15),
                 got: 5,
                 quantity: "bytes",
             })
@@ -838,7 +838,7 @@ mod test_clear_digital_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(15),
                 got: 3,
                 quantity: "bytes",
             })
@@ -853,7 +853,7 @@ mod test_clear_digital_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(15),
                 got: 2,
                 quantity: "bytes",
             })
@@ -865,7 +865,7 @@ mod test_clear_digital_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ClearDigitalTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(15),
                 got: 1,
                 quantity: "bytes",
             })
@@ -992,7 +992,7 @@ mod test_clear_ext_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 7,
                 quantity: "bytes",
             })
@@ -1010,7 +1010,7 @@ mod test_clear_ext_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 5,
                 quantity: "bytes",
             })
@@ -1026,7 +1026,7 @@ mod test_clear_ext_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1041,7 +1041,7 @@ mod test_clear_ext_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1053,7 +1053,7 @@ mod test_clear_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ClearExtTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 1,
                 quantity: "bytes",
             })
@@ -1134,7 +1134,7 @@ mod test_set_analogue_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::AtLeast(12),
                 got: 7,
                 quantity: "bytes",
             })
@@ -1152,7 +1152,7 @@ mod test_set_analogue_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::AtLeast(12),
                 got: 5,
                 quantity: "bytes",
             })
@@ -1168,7 +1168,7 @@ mod test_set_analogue_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(12),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1183,7 +1183,7 @@ mod test_set_analogue_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(12),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1195,7 +1195,7 @@ mod test_set_analogue_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetAnalogueTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(12),
                 got: 1,
                 quantity: "bytes",
             })
@@ -1280,7 +1280,7 @@ mod test_set_digital_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::AtLeast(15),
                 got: 7,
                 quantity: "bytes",
             })
@@ -1298,7 +1298,7 @@ mod test_set_digital_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::AtLeast(15),
                 got: 5,
                 quantity: "bytes",
             })
@@ -1314,7 +1314,7 @@ mod test_set_digital_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(15),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1329,7 +1329,7 @@ mod test_set_digital_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(15),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1341,7 +1341,7 @@ mod test_set_digital_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetDigitalTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(15),
                 got: 1,
                 quantity: "bytes",
             })
@@ -1468,7 +1468,7 @@ mod test_set_ext_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 7,
                 quantity: "bytes",
             })
@@ -1486,7 +1486,7 @@ mod test_set_ext_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 5,
                 quantity: "bytes",
             })
@@ -1502,7 +1502,7 @@ mod test_set_ext_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1514,7 +1514,7 @@ mod test_set_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetExtTimer as u8, operand::DayOfMonth::Day1 as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1526,7 +1526,7 @@ mod test_set_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetExtTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 1,
                 quantity: "bytes",
             })
@@ -1734,7 +1734,7 @@ mod test_report_physical_addr {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1746,7 +1746,7 @@ mod test_report_physical_addr {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes",
             })
@@ -2483,7 +2483,7 @@ mod test_feature_abort {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::FeatureAbort as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(3),
                 got: 1,
                 quantity: "bytes",
             })
@@ -2788,7 +2788,7 @@ mod test_cdc_message {
                 CdcOpcode::HecRequestDeactivation as u8
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(6),
+                expected: Range::AtLeast(10),
                 got: 4,
                 quantity: "bytes",
             })
@@ -2812,7 +2812,7 @@ mod test_cdc_message {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::CdcMessage as u8, 0x01]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 2,
                 quantity: "bytes",
             })
@@ -2824,7 +2824,7 @@ mod test_cdc_message {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::CdcMessage as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes",
             })
@@ -3020,7 +3020,7 @@ mod test_report_features {
                 operand::AllDeviceTypes::PLAYBACK.bits(),
             ]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
+                expected: Range::AtLeast(5),
                 got: 3,
                 quantity: "bytes",
             })
@@ -3032,7 +3032,7 @@ mod test_report_features {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportFeatures as u8, operand::Version::V2_0 as u8,]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 2,
                 quantity: "bytes",
             })
@@ -3044,7 +3044,7 @@ mod test_report_features {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportFeatures as u8,]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
+                expected: Range::AtLeast(5),
                 got: 1,
                 quantity: "bytes",
             })
@@ -3139,7 +3139,7 @@ mod test_report_current_latency {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8, 0x12, 0x34]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
+                expected: Range::AtLeast(5),
                 got: 3,
                 quantity: "bytes",
             })
@@ -3151,7 +3151,7 @@ mod test_report_current_latency {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 2,
                 quantity: "bytes",
             })
@@ -3163,7 +3163,7 @@ mod test_report_current_latency {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 1,
                 quantity: "bytes",
             })

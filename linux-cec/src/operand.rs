@@ -35,6 +35,7 @@ pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
     fn try_from_bytes(bytes: &[u8]) -> Result<Self>;
     fn len(&self) -> usize;
+    fn expected_len() -> Range<usize>;
 }
 
 impl From<VendorId> for SysVendorId {
@@ -146,6 +147,10 @@ impl OperandEncodable for Delay {
     fn len(&self) -> usize {
         1
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 #[cfg(test)]
@@ -233,6 +238,10 @@ impl OperandEncodable for u8 {
     fn len(&self) -> usize {
         1
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 #[cfg(test)]
@@ -281,6 +290,10 @@ impl<T: OperandEncodable> OperandEncodable for Option<T> {
             0
         }
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(0)
+    }
 }
 
 #[cfg(test)]
@@ -321,6 +334,10 @@ impl<const S: usize> OperandEncodable for [u8; S] {
 
     fn len(&self) -> usize {
         S
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(S)
     }
 }
 
@@ -412,6 +429,10 @@ impl OperandEncodable for u16 {
     fn len(&self) -> usize {
         2
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(2)
+    }
 }
 
 #[cfg(test)]
@@ -470,6 +491,10 @@ impl OperandEncodable for bool {
     fn len(&self) -> usize {
         1
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 #[cfg(test)]
@@ -523,6 +548,10 @@ pub trait TaggedLengthBuffer: Sized {
     fn extra_params(&self) -> &[u8] {
         &[] as &[u8; 0]
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 impl<T: TryFrom<u8> + Into<u8> + Copy, U: TaggedLengthBuffer<FixedParam = T>> OperandEncodable for U
@@ -566,6 +595,10 @@ where
 
     fn len(&self) -> usize {
         1 + self.extra_params().len()
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
     }
 }
 
@@ -785,6 +818,10 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> OperandEncodable
 
     fn len(&self) -> usize {
         usize::min(self.len, S) * size_of::<T>()
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(0)
     }
 }
 
@@ -1882,6 +1919,10 @@ impl OperandEncodable for DigitalServiceId {
     fn len(&self) -> usize {
         7
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(7)
+    }
 }
 
 #[cfg(test)]
@@ -2309,6 +2350,10 @@ impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
     fn len(&self) -> usize {
         1
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 impl<const MIN: u8, const MAX: u8> From<BcdByte<MIN, MAX>> for u8 {
@@ -2533,6 +2578,10 @@ impl OperandEncodable for AtscData {
     fn len(&self) -> usize {
         6
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(6)
+    }
 }
 
 #[cfg(test)]
@@ -2619,6 +2668,10 @@ impl OperandEncodable for ChannelId {
 
     fn len(&self) -> usize {
         4
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(4)
     }
 }
 
@@ -3261,6 +3314,10 @@ impl OperandEncodable for TimerStatusData {
             },
         }
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 #[cfg(test)]
@@ -3659,6 +3716,10 @@ impl OperandEncodable for TunerDeviceInfo {
             ServiceId::Digital(_) => 8,
         }
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::Only(array_vec![5, 8])
+    }
 }
 
 #[cfg(test)]
@@ -3806,6 +3867,10 @@ impl OperandEncodable for ExternalSource {
             ExternalSource::PhysicalAddress(_) => 2,
         }
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::Only(array_vec![1, 2])
+    }
 }
 
 #[cfg(test)]
@@ -3921,6 +3986,10 @@ impl OperandEncodable for RecordSource {
             RecordSource::External(ref source) => source.len(),
         };
         len + 1
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
     }
 }
 

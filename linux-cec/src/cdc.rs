@@ -12,9 +12,9 @@ use linux_cec_macros::{BitfieldSpecifier, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress, Result};
+use crate::{constants, operand, PhysicalAddress, Range, Result};
 #[cfg(test)]
-use crate::{Error, Range};
+use crate::Error;
 
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[bits = 2]
@@ -220,6 +220,10 @@ impl OperandEncodable for HecField {
     fn len(&self) -> usize {
         2
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(2)
+    }
 }
 
 #[cfg(test)]
@@ -307,6 +311,10 @@ impl OperandEncodable for Message {
     fn len(&self) -> usize {
         Message::len(self)
     }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
 }
 
 #[cfg(test)]
@@ -352,7 +360,7 @@ mod test_hec_inquire_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecInquireState as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 2,
                 quantity: "bytes",
             })
@@ -364,7 +372,7 @@ mod test_hec_inquire_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecInquireState as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(5),
                 got: 1,
                 quantity: "bytes",
             })
@@ -444,7 +452,7 @@ mod test_hec_report_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecReportState as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 2,
                 quantity: "bytes",
             })
@@ -456,7 +464,7 @@ mod test_hec_report_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecReportState as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes",
             })
@@ -512,7 +520,7 @@ mod test_hec_set_state_adjacent {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 2,
                 quantity: "bytes",
             })
@@ -524,7 +532,7 @@ mod test_hec_set_state_adjacent {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(4),
                 got: 1,
                 quantity: "bytes",
             })
@@ -619,7 +627,7 @@ mod test_hec_set_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12, 0x34, 0x56]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(6),
                 got: 4,
                 quantity: "bytes",
             })
@@ -631,7 +639,7 @@ mod test_hec_set_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12, 0x34]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(6),
                 got: 3,
                 quantity: "bytes",
             })
@@ -643,7 +651,7 @@ mod test_hec_set_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetState as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(6),
                 got: 2,
                 quantity: "bytes",
             })
@@ -655,7 +663,7 @@ mod test_hec_set_state {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecSetState as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(6),
                 got: 1,
                 quantity: "bytes",
             })
@@ -719,7 +727,7 @@ mod test_hec_request_deactivation {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12, 0x34, 0x56]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(7),
                 got: 4,
                 quantity: "bytes",
             })
@@ -731,7 +739,7 @@ mod test_hec_request_deactivation {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12, 0x34]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
+                expected: Range::AtLeast(7),
                 got: 3,
                 quantity: "bytes",
             })
@@ -743,7 +751,7 @@ mod test_hec_request_deactivation {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8, 0x12]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(7),
                 got: 2,
                 quantity: "bytes",
             })
@@ -755,7 +763,7 @@ mod test_hec_request_deactivation {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8]),
             Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
+                expected: Range::AtLeast(7),
                 got: 1,
                 quantity: "bytes",
             })

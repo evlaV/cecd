@@ -52,6 +52,7 @@ impl MessageEnum {
         let opcode = &self.opcode;
         let mut from_params = Vec::new();
         let mut names = Vec::new();
+        let mut types = Vec::new();
 
         let testname: Ident =
             parse_str(format!("test_{}", AsSnakeCase(ident.to_string())).as_str()).unwrap();
@@ -84,6 +85,7 @@ impl MessageEnum {
                     });
 
                     names.push(name);
+                    types.push(typename);
                 }
 
                 self.to_bytes.push(quote! {
@@ -99,6 +101,19 @@ impl MessageEnum {
                 self.from_bytes.push(quote! {
                     #opcode::#ident => {
                         let offset = 1;
+                        let expected_len: crate::Range<usize> = [#(<#types as OperandEncodable>::expected_len()),*]
+                            .into_iter()
+                            .fold(crate::Range::AtLeast(1), |accum, new| {
+                                match (accum, new) {
+                                    (crate::Range::AtLeast(x), crate::Range::AtLeast(y)) =>
+                                        crate::Range::AtLeast(x + y),
+                                    (crate::Range::AtLeast(x), crate::Range::Only(ys)) =>
+                                        crate::Range::Only(ys.into_iter().map(|y| x + y).collect()),
+                                    _ => todo!(),
+                                }
+                            });
+
+                        expected_len.check(bytes.len(), "bytes")?;
 
                         #(#from_params)*
 
@@ -123,10 +138,7 @@ impl MessageEnum {
                 }
                 let field = unnamed.first().unwrap();
                 let typename = &field.ty;
-                let size = match typename {
-                    Type::Path(ref path) if path.path.get_ident().is_none() => quote!(x.len()),
-                    _ => quote!(::core::mem::size_of::<#typename>()),
-                };
+                let size = quote!(<_ as OperandEncodable>::len(x));
 
                 self.to_bytes.push(quote! {
                     #message::#ident(ref x) => {
@@ -346,6 +358,10 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
             fn len(&self) -> usize {
                 1
             }
+
+            fn expected_len() -> crate::Range<usize> {
+                crate::Range::AtLeast(1)
+            }
         }
     }
     .into()
@@ -374,6 +390,10 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
             fn len(&self) -> usize {
                 1
             }
+
+            fn expected_len() -> crate::Range<usize> {
+                crate::Range::AtLeast(1)
+            }
         }
     }
     .into()
@@ -401,6 +421,10 @@ fn into_u8_encodable(ident: Ident) -> TokenStream {
 
             fn len(&self) -> usize {
                 1
+            }
+
+            fn expected_len() -> crate::Range<usize> {
+                crate::Range::AtLeast(1)
             }
         }
     }
@@ -464,6 +488,10 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         fn len(&self) -> usize {
                             #(#len)+*
                         }
+
+                        fn expected_len() -> crate::Range<usize> {
+                            crate::Range::AtLeast(::core::mem::size_of::<#ident>())
+                        }
                     }
                 };
                 q.into()
@@ -502,6 +530,10 @@ pub fn operand(input: TokenStream) -> TokenStream {
 
                         fn len(&self) -> usize {
                             #len
+                        }
+
+                        fn expected_len() -> crate::Range<usize> {
+                            crate::Range::AtLeast(#len)
                         }
                     }
                 }
