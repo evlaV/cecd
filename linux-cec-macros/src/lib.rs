@@ -43,6 +43,7 @@ struct MessageEnum {
     from_bytes: Vec<TokenStream2>,
     to_bytes: Vec<TokenStream2>,
     len: Vec<TokenStream2>,
+    expected_len: Vec<TokenStream2>,
     tests: Vec<TokenStream2>,
 }
 
@@ -52,7 +53,6 @@ impl MessageEnum {
         let opcode = &self.opcode;
         let mut from_params = Vec::new();
         let mut names = Vec::new();
-        let mut types = Vec::new();
 
         let testname: Ident =
             parse_str(format!("test_{}", AsSnakeCase(ident.to_string())).as_str()).unwrap();
@@ -61,6 +61,7 @@ impl MessageEnum {
             Fields::Named(_) => {
                 let mut sizes = Vec::new();
                 let mut params = Vec::new();
+                let mut types = Vec::new();
                 for field in fields {
                     let Some(name) = field.ident else {
                         return Err(format!("Variant {ident} cannot have unnamed fields"));
@@ -101,19 +102,6 @@ impl MessageEnum {
                 self.from_bytes.push(quote! {
                     #opcode::#ident => {
                         let offset = 1;
-                        let expected_len: crate::Range<usize> = [#(<#types as OperandEncodable>::expected_len()),*]
-                            .into_iter()
-                            .fold(crate::Range::AtLeast(1), |accum, new| {
-                                match (accum, new) {
-                                    (crate::Range::AtLeast(x), crate::Range::AtLeast(y)) =>
-                                        crate::Range::AtLeast(x + y),
-                                    (crate::Range::AtLeast(x), crate::Range::Only(ys)) =>
-                                        crate::Range::Only(ys.into_iter().map(|y| x + y).collect()),
-                                    _ => todo!(),
-                                }
-                            });
-
-                        expected_len.check(bytes.len(), "bytes")?;
 
                         #(#from_params)*
 
@@ -129,6 +117,22 @@ impl MessageEnum {
                         1#( + #sizes)*
                     }
                 });
+
+                self.expected_len.push(quote! {
+                    #opcode::#ident => {
+                        [#(<#types as OperandEncodable>::expected_len()),*]
+                            .into_iter()
+                            .fold(crate::Range::AtLeast(1), |accum, new| {
+                                match (accum, new) {
+                                    (crate::Range::AtLeast(x), crate::Range::AtLeast(y)) =>
+                                        crate::Range::AtLeast(x + y),
+                                    (crate::Range::AtLeast(x), crate::Range::Only(ys)) =>
+                                        crate::Range::Only(ys.into_iter().map(|y| x + y).collect()),
+                                    _ => todo!(),
+                                }
+                            })
+                    }
+                });
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
                 if unnamed.len() > 1 {
@@ -138,7 +142,6 @@ impl MessageEnum {
                 }
                 let field = unnamed.first().unwrap();
                 let typename = &field.ty;
-                let size = quote!(<_ as OperandEncodable>::len(x));
 
                 self.to_bytes.push(quote! {
                     #message::#ident(ref x) => {
@@ -158,7 +161,13 @@ impl MessageEnum {
 
                 self.len.push(quote! {
                     #message::#ident(ref x) => {
-                        1 + #size
+                        1 + <_ as OperandEncodable>::len(x)
+                    }
+                });
+
+                self.expected_len.push(quote! {
+                    #opcode::#ident => {
+                        <#typename as OperandEncodable>::expected_len() + 1
                     }
                 });
             }
@@ -179,6 +188,9 @@ impl MessageEnum {
                 });
 
                 self.len.push(quote!(#message::#ident => 1));
+
+                self.expected_len
+                    .push(quote!(#opcode::#ident => crate::Range::AtLeast(1)));
 
                 self.tests.push(quote! {
                     #[cfg(test)]
@@ -261,6 +273,7 @@ impl MessageEnum {
         let from_bytes = self.from_bytes;
         let to_bytes = self.to_bytes;
         let len = self.len;
+        let expected_len = self.expected_len;
         let tests = self.tests;
 
         Ok(quote! {
@@ -281,7 +294,9 @@ impl MessageEnum {
                             quantity: "bytes",
                         })
                     }
-                    Ok(match #opcode::try_from_primitive(bytes[0])? {
+                    let opcode = #opcode::try_from_primitive(bytes[0])?;
+                    #message::expected_len(opcode).check(bytes.len(), "bytes")?;
+                    Ok(match opcode {
                         #(#from_bytes)*
                     })
                 }
@@ -295,6 +310,12 @@ impl MessageEnum {
                 pub fn len(&self) -> usize {
                     match self {
                         #(#len,)*
+                    }
+                }
+
+                pub fn expected_len(opcode: #opcode) -> crate::Range<usize> {
+                    match opcode {
+                        #(#expected_len,)*
                     }
                 }
             }
@@ -326,6 +347,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         from_bytes: Vec::new(),
         to_bytes: Vec::new(),
         len: Vec::new(),
+        expected_len: Vec::new(),
         tests: Vec::new(),
     };
 
