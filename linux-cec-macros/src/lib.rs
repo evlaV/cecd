@@ -344,15 +344,8 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
             }
 
             fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-                if bytes.len() < 1 {
-                    Err(crate::Error::OutOfRange {
-                        expected: crate::Range::AtLeast(1),
-                        got: bytes.len(),
-                        quantity: "bytes",
-                    })
-                } else {
-                    Ok(#ident::from_bits_retain(bytes[0]))
-                }
+                Self::expected_len().check(bytes.len(), "bytes")?;
+                Ok(#ident::from_bits_retain(bytes[0]))
             }
 
             fn len(&self) -> usize {
@@ -376,15 +369,8 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
             }
 
             fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-                if bytes.len() < 1 {
-                    Err(crate::Error::OutOfRange {
-                        expected: crate::Range::AtLeast(1),
-                        got: bytes.len(),
-                        quantity: "bytes",
-                    })
-                } else {
-                    Ok(#ident::try_from(bytes[0])?)
-                }
+                Self::expected_len().check(bytes.len(), "bytes")?;
+                Ok(#ident::try_from(bytes[0])?)
             }
 
             fn len(&self) -> usize {
@@ -471,13 +457,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         }
 
                         fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-                            if bytes.len() < ::core::mem::size_of::<#ident>() {
-                                return Err(crate::Error::OutOfRange {
-                                    expected: crate::Range::AtLeast(::core::mem::size_of::<#ident>()),
-                                    got: bytes.len(),
-                                    quantity: "bytes",
-                                })
-                            }
+                            Self::expected_len().check(bytes.len(), "bytes")?;
                             let mut offset = 0;
                             #(#from)*
                             Ok(Self {
@@ -516,16 +496,9 @@ pub fn operand(input: TokenStream) -> TokenStream {
                         }
 
                         fn try_from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-                            if bytes.len() < #len {
-                                Err(crate::Error::OutOfRange {
-                                    expected: crate::Range::AtLeast(#len),
-                                    got: bytes.len(),
-                                    quantity: "bytes",
-                                })
-                            } else {
-                                let buf = bytes[..#len].first_chunk::<#len>();
-                                Ok(#ident(*buf.unwrap()))
-                            }
+                            Self::expected_len().check(bytes.len(), "bytes")?;
+                            let buf = bytes[..#len].first_chunk::<#len>();
+                            Ok(#ident(*buf.unwrap()))
                         }
 
                         fn len(&self) -> usize {
@@ -758,7 +731,10 @@ impl Parse for CodecTest {
                                 if let Some(ident) = path.get_ident() {
                                     extra.insert(ident.to_string());
                                 } else {
-                                    return Err(parse::Error::new(input.span(), "Extras must be an identifier"));
+                                    return Err(parse::Error::new(
+                                        input.span(),
+                                        "Extras must be an identifier",
+                                    ));
                                 }
                             }
                             _ => todo!(),

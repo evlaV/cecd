@@ -133,15 +133,8 @@ impl OperandEncodable for Delay {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 1 {
-            Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(1),
-                got: bytes.len(),
-                quantity: "bytes",
-            })
-        } else {
-            Delay::try_from(bytes[0])
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
+        Delay::try_from(bytes[0])
     }
 
     fn len(&self) -> usize {
@@ -224,15 +217,8 @@ impl OperandEncodable for u8 {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 1 {
-            Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(1),
-                got: bytes.len(),
-                quantity: "bytes",
-            })
-        } else {
-            Ok(bytes[0])
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
+        Ok(bytes[0])
     }
 
     fn len(&self) -> usize {
@@ -322,13 +308,7 @@ impl<const S: usize> OperandEncodable for [u8; S] {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < S {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(S),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         Ok(bytes[..S].try_into().unwrap())
     }
 
@@ -415,15 +395,8 @@ impl OperandEncodable for u16 {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 2 {
-            Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(2),
-                got: bytes.len(),
-                quantity: "bytes",
-            })
-        } else {
-            Ok((u16::from(bytes[0]) << 8) | u16::from(bytes[1]))
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
+        Ok((u16::from(bytes[0]) << 8) | u16::from(bytes[1]))
     }
 
     fn len(&self) -> usize {
@@ -477,15 +450,8 @@ impl OperandEncodable for bool {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 1 {
-            Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(1),
-                got: bytes.len(),
-                quantity: "bytes",
-            })
-        } else {
-            Ok(bytes[0] != 0)
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
+        Ok(bytes[0] != 0)
     }
 
     fn len(&self) -> usize {
@@ -1851,13 +1817,7 @@ impl OperandEncodable for DigitalServiceId {
         use DigitalServiceBroadcastSystem as System;
         use DigitalServiceId as Id;
 
-        if bytes.len() < 7 {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(7),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let head = bytes[0];
         let service_id_method = ServiceIdMethod::try_from_primitive(head >> 7)?;
         let broadcast_system = System::try_from_primitive(head & 0x7F)?;
@@ -2329,13 +2289,7 @@ impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<BcdByte<MIN, MAX>> {
-        if bytes.len() < 1 {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(1),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let byte = bytes[0];
         Range::Interval { min: 0, max: 9 }.check(byte & 0xF, "low bits")?;
         Range::Interval { min: 0, max: 9 }.check(byte >> 4, "high bits")?;
@@ -2557,13 +2511,7 @@ impl OperandEncodable for AtscData {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<AtscData> {
-        if bytes.len() < 6 {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(6),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let transport_stream_id = u16::try_from_bytes(bytes)?;
         let program_number = u16::try_from_bytes(&bytes[2..]).map_err(Error::add_offset(2))?;
         if u16::try_from_bytes(&bytes[4..]).map_err(Error::add_offset(4))? != 0 {
@@ -2649,13 +2597,7 @@ impl OperandEncodable for ChannelId {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 4 {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(4),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let high = u16::try_from_bytes(bytes)?;
         let low = u16::try_from_bytes(&bytes[2..]).map_err(Error::add_offset(2))?;
         let number_format = u8::try_from(high >> 10).unwrap();
@@ -3196,13 +3138,7 @@ impl OperandEncodable for TimerStatusData {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<TimerStatusData> {
-        if bytes.len() < 1 {
-            return Err(crate::Error::OutOfRange {
-                expected: crate::Range::AtLeast(1),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let byte = bytes[0];
         let overlap_warning = (byte & 0x80) == 0x80;
         let media_info = MediaInfo::try_from_primitive((byte >> 5) & 3)?;
@@ -3682,26 +3618,14 @@ impl OperandEncodable for TunerDeviceInfo {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 5 {
-            return Err(crate::Error::OutOfRange {
-                expected: Range::Only(array_vec![5, 8]),
-                got: bytes.len(),
-                quantity: "bytes",
-            });
-        }
+        Self::expected_len().check(bytes.len(), "bytes")?;
         let head = bytes[0];
         let recording = (head & 0x80) == 0x80;
         let tuner_display_info = TunerDisplayInfo::try_from_primitive(head & 0x7F)?;
         let service_id = match bytes.len() {
             5 => ServiceId::Analogue(AnalogueServiceId::try_from_bytes(&bytes[1..])?),
             8 => ServiceId::Digital(DigitalServiceId::try_from_bytes(&bytes[1..])?),
-            l => {
-                return Err(Error::OutOfRange {
-                    got: l,
-                    expected: Range::Only(array_vec![5, 8]),
-                    quantity: "bytes",
-                })
-            }
+            _ => unreachable!(),
         };
         Ok(TunerDeviceInfo {
             recording,
@@ -3848,16 +3772,13 @@ impl OperandEncodable for ExternalSource {
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Self::expected_len().check(bytes.len(), "bytes")?;
         match bytes.len() {
             1 => Ok(ExternalSource::Plug(bytes[0])),
             2 => Ok(ExternalSource::PhysicalAddress(
                 <PhysicalAddress as OperandEncodable>::try_from_bytes(bytes)?,
             )),
-            l => Err(Error::OutOfRange {
-                got: l,
-                expected: crate::Range::Only(array_vec![1, 2]),
-                quantity: "bytes",
-            }),
+            _ => unreachable!(),
         }
     }
 
@@ -3959,15 +3880,8 @@ impl OperandEncodable for RecordSource {
                 AnalogueServiceId::try_from_bytes(&bytes[1..]).map_err(Error::add_offset(1))?,
             )),
             RecordSourceType::ExternalPlug => {
-                if bytes.len() < 2 {
-                    Err(crate::Error::OutOfRange {
-                        expected: crate::Range::AtLeast(2),
-                        got: bytes.len(),
-                        quantity: "bytes",
-                    })
-                } else {
-                    Ok(RecordSource::External(ExternalSource::Plug(bytes[1])))
-                }
+                Range::AtLeast(2).check(bytes.len(), "bytes")?;
+                Ok(RecordSource::External(ExternalSource::Plug(bytes[1])))
             }
             RecordSourceType::ExternalPhysicalAddress => {
                 Ok(RecordSource::External(ExternalSource::PhysicalAddress(
