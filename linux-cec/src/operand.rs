@@ -90,6 +90,24 @@ impl VendorId {
     }
 }
 
+impl OperandEncodable for PhysicalAddress {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        <u16 as OperandEncodable>::to_bytes(&self.0, buf)
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(PhysicalAddress(u16::try_from_bytes(bytes)?))
+    }
+
+    fn len(&self) -> usize {
+        2
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(2)
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Delay(u8);

@@ -17,7 +17,7 @@ use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
     CEC_RX_STATUS,
 };
-use linux_cec_sys::{Timestamp, VendorId as SysVendorId};
+use linux_cec_sys::{Timestamp, VendorId as SysVendorId, PhysicalAddress as SysPhysicalAddress};
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
@@ -154,16 +154,16 @@ impl Device {
     }
 
     pub fn get_physical_address(&self) -> Result<PhysicalAddress> {
-        let mut phys_addr: PhysicalAddress = 0;
+        let mut phys_addr: SysPhysicalAddress = 0;
         unsafe {
             adapter_get_physical_address(self.file.as_raw_fd(), &mut phys_addr)?;
         }
-        Ok(phys_addr)
+        Ok(PhysicalAddress(phys_addr))
     }
 
     pub fn set_physical_address(&self, phys_addr: PhysicalAddress) -> Result<()> {
         unsafe {
-            adapter_set_physical_address(self.file.as_raw_fd(), &phys_addr)?;
+            adapter_set_physical_address(self.file.as_raw_fd(), &phys_addr.0)?;
         }
         Ok(())
     }

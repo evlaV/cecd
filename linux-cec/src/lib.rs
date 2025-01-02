@@ -25,7 +25,6 @@ pub mod operand;
 mod async_support;
 
 pub use linux_cec_sys as sys;
-pub use linux_cec_sys::PhysicalAddress;
 
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive, Display, EnumString,
@@ -273,6 +272,40 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
             ty: T::NAME,
             value: format!("{:?}", val.number),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct PhysicalAddress(pub u16);
+
+impl Display for PhysicalAddress {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "{:x}.{:x}.{:x}.{:x}",
+            self.0 >> 12,
+            (self.0 >> 8) & 0xF,
+            (self.0 >> 4) & 0xF,
+            self.0 & 0xF
+        ))
+    }
+}
+
+impl Default for PhysicalAddress {
+    fn default() -> PhysicalAddress {
+        PhysicalAddress(0xFFFF)
+    }
+}
+
+impl From<u16> for PhysicalAddress {
+    fn from(val: u16) -> PhysicalAddress {
+        PhysicalAddress(val)
+    }
+}
+
+impl From<PhysicalAddress> for u16 {
+    fn from(val: PhysicalAddress) -> u16 {
+        val.0
     }
 }
 

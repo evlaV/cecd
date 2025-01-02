@@ -98,7 +98,7 @@ fn main() -> Result<()> {
             println!("Connector info: {:?}", dev.get_connector_info());
         }
         Command::GetPhysicalAddress => {
-            println!("Physical address: {:04x}", dev.get_physical_address()?);
+            println!("Physical address: {}", dev.get_physical_address()?);
         }
         Command::GetLogicalAddress => {
             for addr in dev.get_logical_addresses()? {
