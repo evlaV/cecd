@@ -876,7 +876,7 @@ pub fn message_test(input: TokenStream) -> TokenStream {
     let overfull_name: Ident;
     let test_opcode;
 
-    if let Some(name) = name {
+    if let Some(ref name) = name {
         encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
         decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
         len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
@@ -903,6 +903,27 @@ pub fn message_test(input: TokenStream) -> TokenStream {
                 vec.extend(&#bytes);
                 vec.resize(14, 0);
                 assert_eq!(Message::try_from_bytes(&vec), Ok(#instance));
+            }
+        })
+    } else {
+        None
+    };
+
+    let test_empty = if extra.take("Empty").is_some() {
+        if name.is_some() {
+            bail!("Named tests cannot have `Empty` extra");
+        }
+        Some(quote! {
+            #[test]
+            fn test_decoding_missing_operands() {
+                assert_eq!(
+                    Message::try_from_bytes(&[Opcode::#ty as u8]),
+                    Err(Error::OutOfRange {
+                        expected: Message::expected_len(Opcode::#ty),
+                        got: 1,
+                        quantity: "bytes",
+                    })
+                );
             }
         })
     } else {
@@ -936,6 +957,8 @@ pub fn message_test(input: TokenStream) -> TokenStream {
         }
 
         #test_overfull
+
+        #test_empty
     }
     .into()
 }

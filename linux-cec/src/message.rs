@@ -260,19 +260,7 @@ mod test_active_source {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ActiveSource as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -298,7 +286,7 @@ mod test_inactive_source {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -308,18 +296,6 @@ mod test_inactive_source {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::InactiveSource as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -337,7 +313,7 @@ mod test_routing_change {
             new_address: 0x5678,
         },
         bytes: [0x12, 0x34, 0x56, 0x78],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -375,18 +351,6 @@ mod test_routing_change {
             })
         );
     }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RoutingChange as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -399,7 +363,7 @@ mod test_routing_information {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -409,18 +373,6 @@ mod test_routing_information {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RoutingInformation as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -437,7 +389,7 @@ mod test_set_stream_path {
             address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -447,18 +399,6 @@ mod test_set_stream_path {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetStreamPath as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -558,19 +498,7 @@ mod test_record_status {
             status: operand::RecordStatusInfo::CurrentSource
         },
         bytes: [operand::RecordStatusInfo::CurrentSource as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decode_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RecordStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes"
-            })
-        );
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -622,6 +550,7 @@ mod test_clear_analogue_timer {
             0x34,
             operand::BroadcastSystem::NtscM as u8
         ],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -709,18 +638,6 @@ mod test_clear_analogue_timer {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(12),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand_6() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ClearAnalogueTimer as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(12),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -768,6 +685,7 @@ mod test_clear_digital_timer {
             0,
             0,
         ],
+        extra: [Empty],
     }
 
     #[test]
@@ -855,18 +773,6 @@ mod test_clear_digital_timer {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(15),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand_6() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ClearDigitalTimer as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(15),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -1098,6 +1004,7 @@ mod test_set_analogue_timer {
             0x34,
             operand::BroadcastSystem::NtscM as u8
         ],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -1189,18 +1096,6 @@ mod test_set_analogue_timer {
             })
         );
     }
-
-    #[test]
-    fn test_decoding_missing_operand_6() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetAnalogueTimer as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(12),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -1244,6 +1139,7 @@ mod test_set_digital_timer {
             0,
             0,
         ],
+        extra: [Empty],
     }
 
     #[test]
@@ -1593,19 +1489,7 @@ mod test_timer_cleared_status {
             status: operand::TimerClearedStatusData::Cleared,
         },
         bytes: [operand::TimerClearedStatusData::Cleared as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::TimerClearedStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1623,7 +1507,7 @@ mod test_timer_status {
             },
         },
         bytes: [(operand::MediaInfo::UnprotectedMedia as u8) | 0x10 | constants::CEC_OP_PROG_INFO_ENOUGH_SPACE],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     message_test! {
@@ -1663,18 +1547,6 @@ mod test_timer_status {
         ],
         extra: [Overfull],
     }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::TimerStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -1687,19 +1559,7 @@ mod test_cec_version {
             version: operand::Version::V2_0,
         },
         bytes: [operand::Version::V2_0 as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::CecVersion as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1714,7 +1574,7 @@ mod test_report_physical_addr {
             device_type: operand::PrimaryDeviceType::Processor,
         },
         bytes: [0x12, 0x34, operand::PrimaryDeviceType::Processor as u8],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -1740,18 +1600,6 @@ mod test_report_physical_addr {
             })
         );
     }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportPhysicalAddr as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -1764,7 +1612,7 @@ mod test_set_menu_language {
             language: [0x12, 0x34, 0x56],
         },
         bytes: [0x12, 0x34, 0x56],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -1790,18 +1638,6 @@ mod test_set_menu_language {
             })
         );
     }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetMenuLanguage as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -1814,19 +1650,7 @@ mod test_deck_control {
             mode: operand::DeckControlMode::Stop,
         },
         bytes: [operand::DeckControlMode::Stop as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::DeckControl as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1840,19 +1664,7 @@ mod test_deck_status {
             info: operand::DeckInfo::Record,
         },
         bytes: [operand::DeckInfo::Record as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::DeckStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1866,19 +1678,7 @@ mod test_give_deck_status {
             request: operand::StatusRequest::Once,
         },
         bytes: [operand::StatusRequest::Once as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::GiveDeckStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1892,19 +1692,7 @@ mod test_play {
             mode: operand::PlayMode::Still,
         },
         bytes: [operand::PlayMode::Still as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::Play as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1918,19 +1706,7 @@ mod test_give_tuner_device_status {
             request: operand::StatusRequest::Once,
         },
         bytes: [operand::StatusRequest::Once as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::GiveTunerDeviceStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1953,19 +1729,7 @@ mod test_select_analogue_service {
             0x34,
             operand::BroadcastSystem::PalBG as u8
         ],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SelectAnalogueService as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -1991,19 +1755,7 @@ mod test_select_digital_service {
             0xAB,
             0xCD,
         ],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SelectDigitalService as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(8),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2031,18 +1783,7 @@ mod test_tuner_device_status {
             0x34,
             operand::BroadcastSystem::PalBG as u8
         ],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::TunerDeviceStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![6, 9]),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Empty],
     }
 }
 
@@ -2056,19 +1797,7 @@ mod test_device_vendor_id {
             vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
         },
         bytes: [0x12, 0x34, 0x56],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::DeviceVendorId as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2358,19 +2087,7 @@ mod test_menu_request {
             request_type: operand::MenuRequestType::Query,
         },
         bytes: [operand::MenuRequestType::Query as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::MenuRequest as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2384,19 +2101,7 @@ mod test_menu_state {
             state: operand::MenuState::Deactivated,
         },
         bytes: [operand::MenuState::Deactivated as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::MenuStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2410,19 +2115,7 @@ mod test_user_control_pressed {
             ui_command: operand::UiCommand::Play,
         },
         bytes: [operand::UiCommand::Play as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::UserControlPressed as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2436,19 +2129,7 @@ mod test_report_power_status {
             status: operand::PowerStatus::ToOn,
         },
         bytes: [operand::PowerStatus::ToOn as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportPowerStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2463,7 +2144,7 @@ mod test_feature_abort {
             abort_reason: operand::AbortReason::IncorrectMode,
         },
         bytes: [Opcode::FeatureAbort as u8, operand::AbortReason::IncorrectMode as u8],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -2473,18 +2154,6 @@ mod test_feature_abort {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::FeatureAbort as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -2501,19 +2170,7 @@ mod test_report_audio_status {
             status: operand::AudioStatus::new().with_volume(2).with_mute(true),
         },
         bytes: [0x82],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportAudioStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2654,19 +2311,7 @@ mod test_set_system_audio_mode {
             status: true,
         },
         bytes: [0x01],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetSystemAudioMode as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2680,7 +2325,7 @@ mod test_system_audio_mode_request {
             physical_address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -2690,18 +2335,6 @@ mod test_system_audio_mode_request {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SystemAudioModeRequest as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -2718,19 +2351,7 @@ mod test_system_audio_mode_status {
             status: true,
         },
         bytes: [0x01],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SystemAudioModeStatus as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2744,19 +2365,7 @@ mod test_set_audio_rate {
             audio_rate: operand::AudioRate::WideFast,
         },
         bytes: [operand::AudioRate::WideFast as u8],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::SetAudioRate as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -2775,7 +2384,7 @@ mod test_cdc_message {
             },
         },
         bytes: [0x01, 0x23, CdcOpcode::HecRequestDeactivation as u8, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -2814,18 +2423,6 @@ mod test_cdc_message {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::CdcMessage as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -3030,7 +2627,7 @@ mod test_report_features {
     #[test]
     fn test_decoding_missing_operand_3() {
         assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportFeatures as u8, operand::Version::V2_0 as u8,]),
+            Message::try_from_bytes(&[Opcode::ReportFeatures as u8, operand::Version::V2_0 as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 2,
@@ -3042,7 +2639,7 @@ mod test_report_features {
     #[test]
     fn test_decoding_missing_operands() {
         assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportFeatures as u8,]),
+            Message::try_from_bytes(&[Opcode::ReportFeatures as u8]),
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 1,
@@ -3062,7 +2659,7 @@ mod test_request_current_latency {
             physical_address: 0x1234,
         },
         bytes: [0x12, 0x34],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -3072,18 +2669,6 @@ mod test_request_current_latency {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(3),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::RequestCurrentLatency as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(3),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -3105,7 +2690,7 @@ mod test_report_current_latency {
             audio_output_delay: Some(operand::Delay::try_from(0x78).unwrap()),
         },
         bytes: [0x12, 0x34, 0x56, 0x07, 0x78],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     message_test! {
@@ -3153,18 +2738,6 @@ mod test_report_current_latency {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::ReportCurrentLatency as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
-                got: 1,
                 quantity: "bytes",
             })
         );

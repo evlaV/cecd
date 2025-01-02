@@ -12,9 +12,9 @@ use linux_cec_macros::{BitfieldSpecifier, MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::operand::OperandEncodable;
-use crate::{constants, operand, PhysicalAddress, Range, Result};
 #[cfg(test)]
 use crate::Error;
+use crate::{constants, operand, PhysicalAddress, Range, Result};
 
 #[derive(BitfieldSpecifier, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[bits = 2]
@@ -328,7 +328,7 @@ mod test_hec_inquire_state {
             terminating_address2: 0x5678,
         },
         bytes: [0x12, 0x34, 0x56, 0x78],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -362,18 +362,6 @@ mod test_hec_inquire_state {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(5),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::HecInquireState as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(5),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -500,7 +488,7 @@ mod test_hec_set_state_adjacent {
             state: true,
         },
         bytes: [0x12, 0x34, 0x01],
-        extra: [Overfull],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -522,18 +510,6 @@ mod test_hec_set_state_adjacent {
             Err(Error::OutOfRange {
                 expected: Range::AtLeast(4),
                 got: 2,
-                quantity: "bytes",
-            })
-        );
-    }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::HecSetStateAdjacent as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(4),
-                got: 1,
                 quantity: "bytes",
             })
         );
@@ -683,6 +659,7 @@ mod test_hec_request_deactivation {
             terminating_address3: 0x9ABC,
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC],
+        extra: [Overfull, Empty],
     }
 
     #[test]
@@ -757,18 +734,6 @@ mod test_hec_request_deactivation {
             })
         );
     }
-
-    #[test]
-    fn test_decoding_missing_operands() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::HecRequestDeactivation as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(7),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
-    }
 }
 
 #[cfg(test)]
@@ -781,19 +746,7 @@ mod test_hpd_set_state {
             .with_input_port(0xA)
             .with_state(HpdState::EdidDisableEnable)),
         bytes: [0xA5],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::HpdSetState as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
 
@@ -807,18 +760,6 @@ mod test_hpd_report_state {
             .with_state(HpdState::EdidDisableEnable)
             .with_error_code(HpdErrorCode::InitiatorNotCapable)),
         bytes: [0x51],
-        extra: [Overfull],
-    }
-
-    #[test]
-    fn test_decoding_missing_operand() {
-        assert_eq!(
-            Message::try_from_bytes(&[Opcode::HpdReportState as u8]),
-            Err(Error::OutOfRange {
-                expected: Range::AtLeast(2),
-                got: 1,
-                quantity: "bytes",
-            })
-        );
+        extra: [Overfull, Empty],
     }
 }
