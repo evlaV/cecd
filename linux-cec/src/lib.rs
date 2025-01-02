@@ -6,13 +6,14 @@
 use linux_cec_sys::constants;
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::io;
 use std::ops::Add;
 use std::string::ToString;
 use std::time::Duration;
 use strum::{Display, EnumString};
 use thiserror::Error;
+use tinyvec::{Array, ArrayVec};
 
 pub mod cdc;
 pub mod device;
@@ -144,11 +145,15 @@ pub enum FollowerMode {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Range<T: PartialOrd + Display> {
+pub enum Range<T: PartialOrd + Clone + Display + Default + Debug, const S: usize = 4>
+where
+    [T; S]: Array,
+    <[T; S] as Array>::Item: Clone + Debug + Eq,
+{
     AtMost(T),
     AtLeast(T),
     Exact(T),
-    Only(Vec<T>),
+    Only(ArrayVec<[T; S]>),
     Interval { min: T, max: T },
 }
 
@@ -170,7 +175,7 @@ impl Range<usize> {
     }
 }
 
-impl<T: PartialOrd + Display> Display for Range<T> {
+impl<T: PartialOrd + Clone + Display + Default + Debug + Eq> Display for Range<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Range::AtMost(max) => f.write_fmt(format_args!("at most {max}")),
@@ -194,7 +199,9 @@ impl<T: PartialOrd + Display> Display for Range<T> {
     }
 }
 
-impl<T: PartialOrd + Display + Add<Output = T> + Copy> Add<T> for Range<T> {
+impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + Copy> Add<T>
+    for Range<T>
+{
     type Output = Range<T>;
 
     fn add(self, rhs: T) -> Self::Output {

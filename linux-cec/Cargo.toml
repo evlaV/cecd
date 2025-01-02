@@ -27,5 +27,6 @@ linux-cec-sys = { path = "../linux-cec-sys" }
 num_enum = "0.7"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "2.0"
+tinyvec = "1.8"
 tracing = { version = "0.1", default-features = false, optional = true }
 tokio = { version = "1", default-features = false, features = ["fs", "macros", "rt-multi-thread", "sync"], optional = true }

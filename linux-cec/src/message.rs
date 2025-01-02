@@ -11,6 +11,8 @@ use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[cfg(test)]
 use std::str::FromStr;
+#[cfg(test)]
+use tinyvec::array_vec;
 
 use crate::operand::OperandEncodable;
 use crate::{cdc, constants, operand, PhysicalAddress, Result};
@@ -970,7 +972,7 @@ mod test_clear_ext_timer {
                 constants::CEC_OP_REC_SEQ_SUNDAY,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(vec![9, 10]),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 8,
                 quantity: "bytes",
             })
@@ -1446,7 +1448,7 @@ mod test_set_ext_timer {
                 constants::CEC_OP_REC_SEQ_SUNDAY,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(vec![9, 10]),
+                expected: Range::Only(array_vec![9, 10]),
                 got: 8,
                 quantity: "bytes",
             })
@@ -2036,7 +2038,7 @@ mod test_tuner_device_status {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::TunerDeviceStatus as u8]),
             Err(Error::OutOfRange {
-                expected: Range::Only(vec![6, 9]),
+                expected: Range::Only(array_vec![6, 9]),
                 got: 1,
                 quantity: "bytes",
             })

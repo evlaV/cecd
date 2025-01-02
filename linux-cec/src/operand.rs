@@ -18,6 +18,7 @@ use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 use strum::{Display, EnumString};
+use tinyvec::array_vec;
 
 use crate::{constants, Error, PhysicalAddress, Range, Result};
 
@@ -3626,7 +3627,7 @@ impl OperandEncodable for TunerDeviceInfo {
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 5 {
             return Err(crate::Error::OutOfRange {
-                expected: Range::Only(vec![5, 8]),
+                expected: Range::Only(array_vec![5, 8]),
                 got: bytes.len(),
                 quantity: "bytes",
             });
@@ -3640,7 +3641,7 @@ impl OperandEncodable for TunerDeviceInfo {
             l => {
                 return Err(Error::OutOfRange {
                     got: l,
-                    expected: Range::Only(vec![5, 8]),
+                    expected: Range::Only(array_vec![5, 8]),
                     quantity: "bytes",
                 })
             }
@@ -3715,7 +3716,7 @@ mod test_tuner_device_info {
             TunerDeviceInfo::try_from_bytes(&[]),
             Err(Error::OutOfRange {
                 got: 0,
-                expected: Range::Only(vec![5, 8]),
+                expected: Range::Only(array_vec![5, 8]),
                 quantity: "bytes"
             })
         );
@@ -3727,7 +3728,7 @@ mod test_tuner_device_info {
             TunerDeviceInfo::try_from_bytes(&[0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]),
             Err(Error::OutOfRange {
                 got: 6,
-                expected: Range::Only(vec![5, 8]),
+                expected: Range::Only(array_vec![5, 8]),
                 quantity: "bytes"
             })
         );
@@ -3739,7 +3740,7 @@ mod test_tuner_device_info {
             TunerDeviceInfo::try_from_bytes(&[0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD]),
             Err(Error::OutOfRange {
                 got: 7,
-                expected: Range::Only(vec![5, 8]),
+                expected: Range::Only(array_vec![5, 8]),
                 quantity: "bytes"
             })
         );
@@ -3753,7 +3754,7 @@ mod test_tuner_device_info {
             ]),
             Err(Error::OutOfRange {
                 got: 9,
-                expected: Range::Only(vec![5, 8]),
+                expected: Range::Only(array_vec![5, 8]),
                 quantity: "bytes"
             })
         );
@@ -3793,7 +3794,7 @@ impl OperandEncodable for ExternalSource {
             )),
             l => Err(Error::OutOfRange {
                 got: l,
-                expected: crate::Range::Only(vec![1, 2]),
+                expected: crate::Range::Only(array_vec![1, 2]),
                 quantity: "bytes",
             }),
         }
@@ -3831,7 +3832,7 @@ mod test_external_source {
             ExternalSource::try_from_bytes(&[0x12, 0x34, 0x56]),
             Err(Error::OutOfRange {
                 got: 3,
-                expected: Range::Only(vec![1, 2]),
+                expected: Range::Only(array_vec![1, 2]),
                 quantity: "bytes"
             })
         );
@@ -3843,7 +3844,7 @@ mod test_external_source {
             ExternalSource::try_from_bytes(&[]),
             Err(Error::OutOfRange {
                 got: 0,
-                expected: Range::Only(vec![1, 2]),
+                expected: Range::Only(array_vec![1, 2]),
                 quantity: "bytes"
             })
         );
