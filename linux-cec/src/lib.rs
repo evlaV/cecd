@@ -289,6 +289,7 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
 pub struct PhysicalAddress(pub(crate) u16);
 
 impl Display for PhysicalAddress {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "{:x}.{:x}.{:x}.{:x}",
@@ -301,18 +302,21 @@ impl Display for PhysicalAddress {
 }
 
 impl Default for PhysicalAddress {
+    #[inline]
     fn default() -> PhysicalAddress {
         PhysicalAddress(0xFFFF)
     }
 }
 
 impl From<u16> for PhysicalAddress {
+    #[inline]
     fn from(val: u16) -> PhysicalAddress {
         PhysicalAddress(val)
     }
 }
 
 impl From<PhysicalAddress> for u16 {
+    #[inline]
     fn from(val: PhysicalAddress) -> u16 {
         val.0
     }
@@ -323,10 +327,12 @@ impl From<PhysicalAddress> for u16 {
 pub struct Timeout(u32);
 
 impl Timeout {
+    #[inline]
     pub fn as_ms(&self) -> u32 {
         self.0
     }
 
+    #[inline]
     pub fn from_ms(millis: u32) -> Timeout {
         Timeout(millis)
     }
@@ -335,6 +341,7 @@ impl Timeout {
 impl TryFrom<&Duration> for Timeout {
     type Error = Error;
 
+    #[inline]
     fn try_from(duration: &Duration) -> Result<Timeout> {
         let millis = duration.as_millis();
         if let Ok(millis) = u32::try_from(millis) {

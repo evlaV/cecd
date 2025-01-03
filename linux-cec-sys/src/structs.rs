@@ -110,16 +110,19 @@ bitflags! {
 
 impl cec_msg {
     /// Return the initiator's logical address.
+    #[inline]
     pub fn initiator(&self) -> u8 {
         self.msg[0] >> 4
     }
 
     /// Return the destination's logical address.
+    #[inline]
     pub fn destination(&self) -> u8 {
         self.msg[0] & 0xf
     }
 
     /// Return the opcode of the message, None for poll
+    #[inline]
     pub fn opcode(&self) -> Option<u8> {
         if self.len > 1 {
             Some(self.msg[1])
@@ -129,6 +132,7 @@ impl cec_msg {
     }
 
     /// Return true if this is a broadcast message.
+    #[inline]
     pub fn is_broadcast(&self) -> bool {
         (self.msg[0] & 0xf) == 0xf
     }
@@ -141,6 +145,7 @@ impl cec_msg {
      * The whole structure is zeroed, the len field is set to 1 (i.e. a poll
      * message) and the initiator and destination are filled in.
      */
+    #[inline]
     pub fn new(initiator: LogicalAddress, destination: LogicalAddress) -> cec_msg {
         let mut msg = cec_msg {
             tx_ts: 0,
@@ -163,11 +168,13 @@ impl cec_msg {
         msg
     }
 
+    #[inline]
     pub fn with_timeout(mut self, timeout_ms: u32) -> cec_msg {
         self.timeout = timeout_ms;
         self
     }
 
+    #[inline]
     pub fn from_timeout(timeout_ms: u32) -> cec_msg {
         cec_msg {
             tx_ts: 0,
@@ -194,6 +201,7 @@ impl cec_msg {
      * orig destination. Note that msg and orig may be the same pointer, in which
      * case the change is done in place.
      */
+    #[inline]
     pub fn set_reply_to(&mut self, orig: &cec_msg) {
         /* The destination becomes the initiator and vice versa */
         self.msg[0] = (orig.destination() << 4) | orig.initiator();
@@ -202,15 +210,18 @@ impl cec_msg {
     }
 
     /// Return true if this message contains the result of an earlier non-blocking transmit
+    #[inline]
     pub fn recv_is_tx_result(&self) -> bool {
         self.sequence != 0 && !self.tx_status.is_empty() && self.rx_status.is_empty()
     }
 
     /// Return true if this message contains the reply of an earlier non-blocking transmit
+    #[inline]
     pub fn recv_is_rx_result(&self) -> bool {
         self.sequence != 0 && self.tx_status.is_empty() && !self.rx_status.is_empty()
     }
 
+    #[inline]
     pub fn status_is_ok(&self) -> bool {
         if !self.tx_status.is_empty() && !self.tx_status.contains(CEC_TX_STATUS::OK) {
             return false;
@@ -314,6 +325,7 @@ pub struct cec_log_addrs {
 impl cec_log_addrs {
     /* Helper functions to identify the 'special' CEC devices */
 
+    #[inline]
     pub fn is_2nd_tv(&self) -> bool {
         /*
          * It is a second TV if the logical address is 14 or 15 and the
@@ -324,6 +336,7 @@ impl cec_log_addrs {
             && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_TV
     }
 
+    #[inline]
     pub fn is_processor(&self) -> bool {
         /*
          * It is a processor if the logical address is 12-15 and the
@@ -334,6 +347,7 @@ impl cec_log_addrs {
             && self.primary_device_type[0] == CEC_OP_PRIM_DEVTYPE_PROCESSOR
     }
 
+    #[inline]
     pub fn is_switch(&self) -> bool {
         /*
          * It is a switch if the logical address is 15 and the
@@ -345,6 +359,7 @@ impl cec_log_addrs {
             && !self.flags.contains(CEC_LOG_ADDRS_FL::CDC_ONLY)
     }
 
+    #[inline]
     pub fn is_cdc_only(&self) -> bool {
         /*
          * It is a CDC-only device if the logical address is 15 and the
@@ -399,6 +414,7 @@ pub struct cec_connector_info {
 }
 
 impl Default for cec_connector_info {
+    #[inline]
     fn default() -> cec_connector_info {
         cec_connector_info {
             ty: CEC_CONNECTOR_TYPE_NO_CONNECTOR,
@@ -467,6 +483,7 @@ pub struct cec_event {
 }
 
 impl Default for cec_event {
+    #[inline]
     fn default() -> cec_event {
         cec_event {
             ts: 0,
@@ -483,6 +500,7 @@ impl Default for cec_event {
 pub struct VendorId(u32);
 
 impl Default for VendorId {
+    #[inline]
     fn default() -> Self {
         VendorId(CEC_VENDOR_ID_NONE)
     }
@@ -491,6 +509,7 @@ impl Default for VendorId {
 impl TryFrom<u32> for VendorId {
     type Error = ();
 
+    #[inline]
     fn try_from(val: u32) -> Result<VendorId, ()> {
         if val < 0x1_00_00_00 || val == CEC_VENDOR_ID_NONE {
             Ok(VendorId(val))
@@ -501,16 +520,19 @@ impl TryFrom<u32> for VendorId {
 }
 
 impl From<VendorId> for u32 {
+    #[inline]
     fn from(val: VendorId) -> u32 {
         val.0
     }
 }
 
 impl VendorId {
+    #[inline]
     pub fn is_none(self) -> bool {
         self.0 == CEC_VENDOR_ID_NONE
     }
 
+    #[inline]
     pub fn is_valid(self) -> bool {
         self.0 < 0x1_00_00_00
     }

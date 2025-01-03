@@ -39,6 +39,7 @@ pub trait OperandEncodable: Sized {
 }
 
 impl From<VendorId> for SysVendorId {
+    #[inline]
     fn from(val: VendorId) -> SysVendorId {
         SysVendorId::try_from(
             ((val.0[0] as u32) << 16) | ((val.0[1] as u32) << 8) | (val.0[2] as u32),
@@ -113,6 +114,7 @@ impl OperandEncodable for PhysicalAddress {
 pub struct Delay(u8);
 
 impl From<Delay> for u8 {
+    #[inline]
     fn from(val: Delay) -> u8 {
         val.0
     }
@@ -1632,6 +1634,7 @@ bitflags! {
 }
 
 impl From<DeviceFeatures1> for u8 {
+    #[inline]
     fn from(flags: DeviceFeatures1) -> u8 {
         flags.bits()
     }
@@ -2329,6 +2332,7 @@ impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
 }
 
 impl<const MIN: u8, const MAX: u8> From<BcdByte<MIN, MAX>> for u8 {
+    #[inline]
     fn from(bcd: BcdByte<MIN, MAX>) -> u8 {
         (bcd.0 >> 4) * 10 + (bcd.0 & 0xF)
     }
@@ -2933,6 +2937,7 @@ pub enum RcProfile1 {
 }
 
 impl From<RcProfile1> for u8 {
+    #[inline]
     fn from(profile: RcProfile1) -> u8 {
         match profile {
             RcProfile1::Source(profile_source) => profile_source.bits(),
