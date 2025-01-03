@@ -128,7 +128,8 @@ impl MessageEnum {
                                         crate::Range::AtLeast(x + y),
                                     (crate::Range::AtLeast(x), crate::Range::Only(ys)) =>
                                         crate::Range::Only(ys.into_iter().map(|y| x + y).collect()),
-                                    _ => todo!(),
+                                    (crate::Range::AtLeast(_), y) => todo!("Unimplemented opcode length: {y:?}"),
+                                    (x, _) => todo!("Unimplemented opcode following length: {x:?}"),
                                 }
                             })
                     }
@@ -759,7 +760,7 @@ impl Parse for CodecTest {
                                     ));
                                 }
                             }
-                            _ => todo!(),
+                            _ => todo!("Extras must be an identifier"),
                         }
                     }
                 }
