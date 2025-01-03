@@ -40,6 +40,7 @@ use crate::{
 #[cfg(feature = "async")]
 pub use crate::async_support::Device as AsyncDevice;
 
+/// An object for interacting with system CEC devices.
 #[derive(Debug)]
 pub struct Device {
     file: File,
@@ -47,7 +48,8 @@ pub struct Device {
     internal_log_addrs: cec_log_addrs,
 }
 
-#[derive(Debug, Clone)]
+/// A representation of a received [`Message`] and its associated metadata.
+#[derive(Debug, Clone, Hash)]
 pub struct Envelope {
     pub message: Message,
     pub initiator: LogicalAddress,
@@ -55,6 +57,7 @@ pub struct Envelope {
     pub timestamp: Timestamp,
 }
 
+/// A physical pin that can be monitored via [`PinEvent`]s.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Pin {
     Cec,
@@ -62,18 +65,27 @@ pub enum Pin {
     Power5V,
 }
 
+/// The logic level of a physical pin as reported in a [`PinEvent`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PinState {
     Low,
     High,
 }
 
+/// An event representing a logic level change of a physical pin.
+///
+/// To receive `PinEvent`s from a [`Device`], it must be configured with a
+/// [`FollowerMode`] of either [`FollowerMode::MonitorPin`] or
+/// [`FollowerMode::MonitorAll`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PinEvent {
+    /// Which physical pin generated the event.
     pub pin: Pin,
+    /// The logic level of the pin.
     pub state: PinState,
 }
 
+#[derive(Debug)]
 pub struct DevicePoller {
     fd: OwnedFd,
 }
@@ -111,6 +123,8 @@ pub enum ConnectorInfo {
 }
 
 impl Device {
+    /// Open a CEC device from a given `path`. Generally, this will be of the
+    /// form `/dev/cecX`.
     pub fn open(path: impl AsRef<Path>) -> Result<Device> {
         let file = OpenOptions::new()
             .read(true)
