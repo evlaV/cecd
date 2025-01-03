@@ -27,7 +27,16 @@ mod async_support;
 pub use linux_cec_sys as sys;
 
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive, Display, EnumString,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Hash,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Display,
+    EnumString,
 )]
 #[repr(u8)]
 pub enum LogicalAddress {
@@ -125,14 +134,14 @@ impl LogicalAddress {
     pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InitiatorMode {
     Disabled,
     Enabled,
     Exclusive,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FollowerMode {
     Disabled,
     Enabled,
@@ -217,7 +226,7 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
     }
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Clone, Debug, PartialEq)]
 pub enum Error {
     #[error("Expected {expected} {quantity}, got {got} {quantity}")]
     OutOfRange {
@@ -309,7 +318,7 @@ impl From<PhysicalAddress> for u16 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Timeout(u32);
 

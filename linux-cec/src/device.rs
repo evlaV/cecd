@@ -17,7 +17,7 @@ use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
     CEC_RX_STATUS,
 };
-use linux_cec_sys::{Timestamp, VendorId as SysVendorId, PhysicalAddress as SysPhysicalAddress};
+use linux_cec_sys::{PhysicalAddress as SysPhysicalAddress, Timestamp, VendorId as SysVendorId};
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
@@ -99,14 +99,14 @@ pub enum PollStatus {
     GotAll,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum PollResult {
     Message(Envelope),
     PinEvent(PinEvent),
     LostMessages(u32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash)]
 pub enum ConnectorInfo {
     None,
     /// Tells which drm connector is associated with the CEC adapter.
