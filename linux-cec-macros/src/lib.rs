@@ -79,7 +79,7 @@ impl MessageEnum {
                         crate::operand::OperandEncodable::to_bytes(#name, &mut out_params);
                     });
                     from_params.push(quote! {
-                        let #name = <#typename as OperandEncodable>::try_from_bytes(&bytes[offset..])
+                        let #name = <#typename as crate::operand::OperandEncodable>::try_from_bytes(&bytes[offset..])
                         .map_err(crate::Error::add_offset(offset))?;
 
                         let offset = offset + #name.len();
@@ -120,7 +120,7 @@ impl MessageEnum {
 
                 self.expected_len.push(quote! {
                     #opcode::#ident => {
-                        [#(<#types as OperandEncodable>::expected_len()),*]
+                        [#(<#types as crate::operand::OperandEncodable>::expected_len()),*]
                             .into_iter()
                             .fold(crate::Range::AtLeast(1), |accum, new| {
                                 match (accum, new) {
@@ -154,7 +154,7 @@ impl MessageEnum {
 
                 self.from_bytes.push(quote! {
                     #opcode::#ident => {
-                        let x = <#typename as OperandEncodable>::try_from_bytes(&bytes[1..])
+                        let x = <#typename as crate::operand::OperandEncodable>::try_from_bytes(&bytes[1..])
                         .map_err(crate::Error::add_offset(1))?;
                         #message::#ident(x)
                     }
@@ -162,13 +162,13 @@ impl MessageEnum {
 
                 self.len.push(quote! {
                     #message::#ident(ref x) => {
-                        1 + <_ as OperandEncodable>::len(x)
+                        1 + <_ as crate::operand::OperandEncodable>::len(x)
                     }
                 });
 
                 self.expected_len.push(quote! {
                     #opcode::#ident => {
-                        <#typename as OperandEncodable>::expected_len() + 1
+                        <#typename as crate::operand::OperandEncodable>::expected_len() + 1
                     }
                 });
             }
@@ -196,7 +196,6 @@ impl MessageEnum {
                 self.tests.push(quote! {
                     #[cfg(test)]
                     mod #testname {
-                        use crate::Error;
                         use super::*;
 
                         #[test]
@@ -474,7 +473,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     len.push(quote!(::core::mem::size_of::<#typename>()));
                 }
                 let q = quote! {
-                    impl OperandEncodable for #ident {
+                    impl crate::operand::OperandEncodable for #ident {
                         fn to_bytes(&self, buf: &mut impl Extend<u8>) {
                             #(#to)*
                         }
@@ -919,7 +918,7 @@ pub fn message_test(input: TokenStream) -> TokenStream {
             fn test_decoding_missing_operands() {
                 assert_eq!(
                     Message::try_from_bytes(&[Opcode::#ty as u8]),
-                    Err(Error::OutOfRange {
+                    Err(crate::Error::OutOfRange {
                         expected: Message::expected_len(Opcode::#ty),
                         got: 1,
                         quantity: "bytes",
