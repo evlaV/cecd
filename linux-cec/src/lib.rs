@@ -277,7 +277,7 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct PhysicalAddress(pub u16);
+pub struct PhysicalAddress(pub(crate) u16);
 
 impl Display for PhysicalAddress {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

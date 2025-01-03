@@ -39,8 +39,8 @@ enum DeviceCommand {
     Drop,
     GetPoller(ResultChannel<DevicePoller>),
     SetBlocking(bool, ResultChannel<()>),
-    SetInitiator(InitiatorMode, ResultChannel<()>),
-    SetFollower(FollowerMode, ResultChannel<()>),
+    SetInitiatorMode(InitiatorMode, ResultChannel<()>),
+    SetFollowerMode(FollowerMode, ResultChannel<()>),
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
     SetPhysicalAddress(PhysicalAddress, ResultChannel<()>),
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
@@ -118,12 +118,12 @@ impl Device {
         relay! { self, GetPoller }
     }
 
-    pub async fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
-        relay! { self, SetInitiator => mode }
+    pub async fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
+        relay! { self, SetInitiatorMode => mode }
     }
 
-    pub async fn set_follower(&self, mode: FollowerMode) -> Result<()> {
-        relay! { self, SetFollower => mode }
+    pub async fn set_follower_mode(&self, mode: FollowerMode) -> Result<()> {
+        relay! { self, SetFollowerMode => mode }
     }
 
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
@@ -242,11 +242,11 @@ impl DeviceThread {
                 DeviceCommand::SetBlocking(block, tx) => {
                     let _ = tx.send(self.device.set_blocking(block));
                 }
-                DeviceCommand::SetInitiator(mode, tx) => {
-                    let _ = tx.send(self.device.set_initiator(mode));
+                DeviceCommand::SetInitiatorMode(mode, tx) => {
+                    let _ = tx.send(self.device.set_initiator_mode(mode));
                 }
-                DeviceCommand::SetFollower(mode, tx) => {
-                    let _ = tx.send(self.device.set_follower(mode));
+                DeviceCommand::SetFollowerMode(mode, tx) => {
+                    let _ = tx.send(self.device.set_follower_mode(mode));
                 }
                 DeviceCommand::GetPhysicalAddress(tx) => {
                     let _ = tx.send(self.device.get_physical_address());

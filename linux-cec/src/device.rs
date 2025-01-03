@@ -134,12 +134,12 @@ impl Device {
         Ok(())
     }
 
-    pub fn set_initiator(&self, mode: InitiatorMode) -> Result<()> {
+    pub fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
         let mode = self.get_mode()?.with_initiator(mode.into());
         self.set_mode(mode)
     }
 
-    pub fn set_follower(&self, mode: FollowerMode) -> Result<()> {
+    pub fn set_follower_mode(&self, mode: FollowerMode) -> Result<()> {
         let mode = self.get_mode()?.with_follower(mode.into());
         self.set_mode(mode)
     }

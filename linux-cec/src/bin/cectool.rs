@@ -106,53 +106,53 @@ fn main() -> Result<()> {
             }
         }
         Command::SetLogicalAddress { log_addr } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.set_logical_address(log_addr)?;
         }
         Command::ClearLogicalAddress => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.clear_logical_addresses()?;
         }
         Command::SetOsdName { name } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             let message = Message::SetOsdName {
                 name: BufferOperand::from_str(&name)?,
             };
             dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::SetActive => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             let message = Message::RequestActiveSource {};
             dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::Standby => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             let message = Message::Standby {};
             dev.tx_message(&message, LogicalAddress::Tv)?;
         }
         Command::VolumeUp { target } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(UiCommand::VolumeUp, target)?;
             dev.release_user_control(target)?;
         }
         Command::VolumeDown { target } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(UiCommand::VolumeDown, target)?;
             dev.release_user_control(target)?;
         }
         Command::Mute { target } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(UiCommand::Mute, target)?;
             dev.release_user_control(target)?;
         }
         Command::SendCommand { key, target } => {
-            dev.set_initiator(InitiatorMode::Enabled)?;
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(key, target)?;
             dev.release_user_control(target)?;
         }
         Command::Monitor { all, suppress_poll } => {
-            dev.set_initiator(InitiatorMode::Disabled)?;
-            dev.set_follower(if all {
+            dev.set_initiator_mode(InitiatorMode::Disabled)?;
+            dev.set_follower_mode(if all {
                 FollowerMode::MonitorAll
             } else {
                 FollowerMode::Monitor

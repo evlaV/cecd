@@ -179,11 +179,11 @@ impl System {
         };
 
         let device = device.lock().await;
-        device.set_initiator(InitiatorMode::Enabled).await?;
+        device.set_initiator_mode(InitiatorMode::Enabled).await?;
         device.set_osd_name(&self.osd_name).await?;
         device.set_vendor_id(self.config.vendor_id).await?;
         device.set_logical_address(log_addr).await?;
-        device.set_follower(FollowerMode::Enabled).await?;
+        device.set_follower_mode(FollowerMode::Enabled).await?;
 
         Ok(uinput)
     }
