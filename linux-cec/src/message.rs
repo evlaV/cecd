@@ -257,7 +257,7 @@ mod test_active_source {
     message_test! {
         ty: ActiveSource,
         instance: Message::ActiveSource {
-            address: 0x1234,
+            address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -283,7 +283,7 @@ mod test_inactive_source {
     message_test! {
         ty: InactiveSource,
         instance: Message::InactiveSource {
-            address: 0x1234,
+            address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -309,8 +309,8 @@ mod test_routing_change {
     message_test! {
         ty: RoutingChange,
         instance: Message::RoutingChange {
-            original_address: 0x1234,
-            new_address: 0x5678,
+            original_address: PhysicalAddress(0x1234),
+            new_address: PhysicalAddress(0x5678),
         },
         bytes: [0x12, 0x34, 0x56, 0x78],
         extra: [Overfull, Empty],
@@ -360,7 +360,7 @@ mod test_routing_information {
     message_test! {
         ty: RoutingInformation,
         instance: Message::RoutingInformation {
-            address: 0x1234,
+            address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -386,7 +386,7 @@ mod test_set_stream_path {
     message_test! {
         ty: SetStreamPath,
         instance: Message::SetStreamPath {
-            address: 0x1234,
+            address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -798,7 +798,7 @@ mod test_clear_ext_timer {
                 minutes: operand::Minute::try_from(59).unwrap(),
             },
             recording_sequence: operand::RecordingSequence::SUNDAY,
-            external_source: operand::ExternalSource::PhysicalAddress(0x1234),
+            external_source: operand::ExternalSource::PhysicalAddress(PhysicalAddress(0x1234)),
         },
         bytes: [
             operand::DayOfMonth::Day1 as u8,
@@ -1264,7 +1264,7 @@ mod test_set_ext_timer {
                 minutes: operand::Minute::try_from(59).unwrap(),
             },
             recording_sequence: operand::RecordingSequence::SUNDAY,
-            external_source: operand::ExternalSource::PhysicalAddress(0x1234),
+            external_source: operand::ExternalSource::PhysicalAddress(PhysicalAddress(0x1234)),
         },
         bytes: [
             operand::DayOfMonth::Day1 as u8,
@@ -1570,7 +1570,7 @@ mod test_report_physical_addr {
     message_test! {
         ty: ReportPhysicalAddr,
         instance: Message::ReportPhysicalAddr {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
             device_type: operand::PrimaryDeviceType::Processor,
         },
         bytes: [0x12, 0x34, operand::PrimaryDeviceType::Processor as u8],
@@ -2322,7 +2322,7 @@ mod test_system_audio_mode_request {
     message_test! {
         ty: SystemAudioModeRequest,
         instance: Message::SystemAudioModeRequest {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -2376,11 +2376,11 @@ mod test_cdc_message {
     message_test! {
         ty: CdcMessage,
         instance: Message::CdcMessage {
-            initiator: 0x0123,
+            initiator: PhysicalAddress(0x0123),
             message: CdcMessage::HecRequestDeactivation {
-                terminating_address1: 0x4567,
-                terminating_address2: 0x89AB,
-                terminating_address3: 0xCDEF
+                terminating_address1: PhysicalAddress(0x4567),
+                terminating_address2: PhysicalAddress(0x89AB),
+                terminating_address3: PhysicalAddress(0xCDEF)
             },
         },
         bytes: [0x01, 0x23, CdcOpcode::HecRequestDeactivation as u8, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF],
@@ -2656,7 +2656,7 @@ mod test_request_current_latency {
     message_test! {
         ty: RequestCurrentLatency,
         instance: Message::RequestCurrentLatency {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
         },
         bytes: [0x12, 0x34],
         extra: [Overfull, Empty],
@@ -2682,7 +2682,7 @@ mod test_report_current_latency {
     message_test! {
         ty: ReportCurrentLatency,
         instance: Message::ReportCurrentLatency {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
             video_latency: operand::Delay::try_from(0x56).unwrap(),
             flags: operand::LatencyFlags::new()
                 .with_audio_out_compensated(operand::AudioOutputCompensated::PartialDelay)
@@ -2697,7 +2697,7 @@ mod test_report_current_latency {
         name: _no_delay,
         ty: ReportCurrentLatency,
         instance: Message::ReportCurrentLatency {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
             video_latency: operand::Delay::try_from(0x56).unwrap(),
             flags: operand::LatencyFlags::new()
                 .with_audio_out_compensated(operand::AudioOutputCompensated::NoDelay)

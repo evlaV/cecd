@@ -3826,7 +3826,7 @@ mod test_external_source {
     opcode_test! {
         name: _phys_addr,
         ty: ExternalSource,
-        instance: ExternalSource::PhysicalAddress(0x5678),
+        instance: ExternalSource::PhysicalAddress(PhysicalAddress(0x5678)),
         bytes: [0x56, 0x78],
     }
 
@@ -3992,7 +3992,7 @@ mod test_record_source {
     opcode_test! {
         name: _external_phys_addr,
         ty: RecordSource,
-        instance: RecordSource::External(ExternalSource::PhysicalAddress(0x1234)),
+        instance: RecordSource::External(ExternalSource::PhysicalAddress(PhysicalAddress(0x1234))),
         bytes: [
             RecordSourceType::ExternalPhysicalAddress as u8,
             0x12,

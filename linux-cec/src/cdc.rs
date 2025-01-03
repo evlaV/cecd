@@ -324,8 +324,8 @@ mod test_hec_inquire_state {
     message_test! {
         ty: HecInquireState,
         instance: Message::HecInquireState {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
         },
         bytes: [0x12, 0x34, 0x56, 0x78],
         extra: [Overfull, Empty],
@@ -376,7 +376,7 @@ mod test_hec_report_state {
         name: _field,
         ty: HecReportState,
         instance: Message::HecReportState {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
             state: HecState::new()
                 .with_cdc_error(CdcErrorCode::NoError)
                 .with_enc_functionality(EncFunctionalityState::Inactive)
@@ -400,7 +400,7 @@ mod test_hec_report_state {
         name: _no_field,
         ty: HecReportState,
         instance: Message::HecReportState {
-            physical_address: 0x1234,
+            physical_address: PhysicalAddress(0x1234),
             state: HecState::new()
                 .with_cdc_error(CdcErrorCode::NoError)
                 .with_enc_functionality(EncFunctionalityState::Inactive)
@@ -463,7 +463,7 @@ mod test_hec_report_state {
     fn test_opcode() {
         assert_eq!(
             Message::HecReportState {
-                physical_address: 0x1234,
+                physical_address: PhysicalAddress(0x1234),
                 state: HecState::new()
                     .with_cdc_error(CdcErrorCode::NoError)
                     .with_enc_functionality(EncFunctionalityState::Inactive)
@@ -484,7 +484,7 @@ mod test_hec_set_state_adjacent {
     message_test! {
         ty: HecSetStateAdjacent,
         instance: Message::HecSetStateAdjacent {
-            terminating_address: 0x1234,
+            terminating_address: PhysicalAddress(0x1234),
             state: true,
         },
         bytes: [0x12, 0x34, 0x01],
@@ -524,8 +524,8 @@ mod test_hec_set_state {
         name: _empty,
         ty: HecSetState,
         instance: Message::HecSetState {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
             state: true,
             terminating_addresses: operand::BoundedBufferOperand::default(),
         },
@@ -536,11 +536,11 @@ mod test_hec_set_state {
         name: _1_extra,
         ty: HecSetState,
         instance: Message::HecSetState {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
             state: true,
             terminating_addresses: operand::BoundedBufferOperand::try_from(
-                [0xABCD].as_ref()).unwrap(),
+                [PhysicalAddress(0xABCD)].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD],
     }
@@ -549,11 +549,13 @@ mod test_hec_set_state {
         name: _2_extra,
         ty: HecSetState,
         instance: Message::HecSetState {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
             state: true,
-            terminating_addresses: operand::BoundedBufferOperand::try_from(
-                [0xABCD, 0xEF01].as_ref()).unwrap(),
+            terminating_addresses: operand::BoundedBufferOperand::try_from([
+                PhysicalAddress(0xABCD),
+                PhysicalAddress(0xEF01)
+            ].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01],
     }
@@ -562,11 +564,14 @@ mod test_hec_set_state {
         name: _full,
         ty: HecSetState,
         instance: Message::HecSetState {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
             state: true,
-            terminating_addresses: operand::BoundedBufferOperand::try_from(
-                [0xABCD, 0xEF01, 0x2345].as_ref()).unwrap(),
+            terminating_addresses: operand::BoundedBufferOperand::try_from([
+                PhysicalAddress(0xABCD),
+                PhysicalAddress(0xEF01),
+                PhysicalAddress(0x2345)
+            ].as_ref()).unwrap(),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x01, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45],
         extra: [Overfull],
@@ -576,8 +581,8 @@ mod test_hec_set_state {
     fn test_opcode() {
         assert_eq!(
             Message::HecSetState {
-                terminating_address1: 0x1234,
-                terminating_address2: 0x5678,
+                terminating_address1: PhysicalAddress(0x1234),
+                terminating_address2: PhysicalAddress(0x5678),
                 state: true,
                 terminating_addresses: operand::BoundedBufferOperand::default(),
             }
@@ -654,9 +659,9 @@ mod test_hec_request_deactivation {
     message_test! {
         ty: HecRequestDeactivation,
         instance: Message::HecRequestDeactivation {
-            terminating_address1: 0x1234,
-            terminating_address2: 0x5678,
-            terminating_address3: 0x9ABC,
+            terminating_address1: PhysicalAddress(0x1234),
+            terminating_address2: PhysicalAddress(0x5678),
+            terminating_address3: PhysicalAddress(0x9ABC),
         },
         bytes: [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC],
         extra: [Overfull, Empty],
