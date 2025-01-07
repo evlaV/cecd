@@ -97,13 +97,7 @@ impl System {
             let (channel, rx) = unbounded_channel();
             devs.push((CecDevice::open(&path, token.clone()).await?, rx));
             info!("Found cec device at {pathname}");
-            add.insert(
-                path,
-                DeviceHandle {
-                    token,
-                    channel,
-                },
-            );
+            add.insert(path, DeviceHandle { token, channel });
         }
         self.devs.extend(add);
         Ok(devs)
@@ -123,13 +117,8 @@ impl System {
         let (channel, rx) = unbounded_channel();
         let dev = CecDevice::open(&path, token.clone()).await?;
         info!("Found cec device at {pathname}");
-        self.devs.insert(
-            path.as_ref().to_path_buf(),
-            DeviceHandle {
-                token,
-                channel,
-            },
-        );
+        self.devs
+            .insert(path.as_ref().to_path_buf(), DeviceHandle { token, channel });
         Ok((dev, rx))
     }
 
@@ -180,6 +169,7 @@ impl System {
 
         let device = device.lock().await;
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
+        device.clear_logical_addresses().await?;
         device.set_osd_name(&self.osd_name).await?;
         device.set_vendor_id(self.config.vendor_id).await?;
         device.set_logical_address(log_addr).await?;
