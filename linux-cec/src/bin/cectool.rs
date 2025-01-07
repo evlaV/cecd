@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use linux_cec::device::Device;
 use linux_cec::message::Message;
 use linux_cec::operand::{BufferOperand, UiCommand};
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, Result};
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, Result};
 use num_enum::TryFromPrimitive;
 use std::str::FromStr;
 
@@ -36,8 +36,8 @@ enum Command {
     GetLogicalAddress,
     /// Set the logical address of the CEC adapter
     SetLogicalAddress {
-        /// The desired logical address
-        log_addr: LogicalAddress,
+        /// The desired logical address type
+        log_addr: LogicalAddressType,
     },
     /// Clear the logical address of the CEC adapter
     ClearLogicalAddress,

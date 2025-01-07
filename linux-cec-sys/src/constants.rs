@@ -59,13 +59,13 @@ pub const CEC_LOG_ADDR_UNREGISTERED: u8 = 15; /* as initiator address */
 pub const CEC_LOG_ADDR_BROADCAST: u8 = 15; /* as destination address */
 
 /* The logical address types that the CEC device wants to claim */
-pub const CEC_LOG_ADDR_TYPE_TV: u16 = 0;
-pub const CEC_LOG_ADDR_TYPE_RECORD: u16 = 1;
-pub const CEC_LOG_ADDR_TYPE_TUNER: u16 = 2;
-pub const CEC_LOG_ADDR_TYPE_PLAYBACK: u16 = 3;
-pub const CEC_LOG_ADDR_TYPE_AUDIOSYSTEM: u16 = 4;
-pub const CEC_LOG_ADDR_TYPE_SPECIFIC: u16 = 5;
-pub const CEC_LOG_ADDR_TYPE_UNREGISTERED: u16 = 6;
+pub const CEC_LOG_ADDR_TYPE_TV: u8 = 0;
+pub const CEC_LOG_ADDR_TYPE_RECORD: u8 = 1;
+pub const CEC_LOG_ADDR_TYPE_TUNER: u8 = 2;
+pub const CEC_LOG_ADDR_TYPE_PLAYBACK: u8 = 3;
+pub const CEC_LOG_ADDR_TYPE_AUDIOSYSTEM: u8 = 4;
+pub const CEC_LOG_ADDR_TYPE_SPECIFIC: u8 = 5;
+pub const CEC_LOG_ADDR_TYPE_UNREGISTERED: u8 = 6;
 /*
  * Switches should use UNREGISTERED.
  * Processors should use SPECIFIC.

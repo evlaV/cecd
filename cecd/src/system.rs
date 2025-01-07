@@ -6,7 +6,7 @@
 use anyhow::{ensure, Result};
 use linux_cec::device::AsyncDevice;
 use linux_cec::operand::VendorId;
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress};
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -145,10 +145,10 @@ impl System {
         }
         self.config = config;
 
-        let log_addr = if self.config.logical_address != LogicalAddress::UNREGISTERED {
+        let log_addr = if self.config.logical_address != LogicalAddressType::Unregistered {
             self.config.logical_address
         } else {
-            LogicalAddress::PlaybackDevice1
+            LogicalAddressType::Playback
         };
         debug!("OSD name: {}", self.osd_name);
         debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
@@ -162,10 +162,10 @@ impl System {
         &self,
         device: Arc<Mutex<AsyncDevice>>,
     ) -> Result<Option<UInputDevice>> {
-        let log_addr = if self.config.logical_address != LogicalAddress::UNREGISTERED {
+        let log_addr = if self.config.logical_address != LogicalAddressType::Unregistered {
             self.config.logical_address
         } else {
-            LogicalAddress::PlaybackDevice1
+            LogicalAddressType::Playback
         };
 
         let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {

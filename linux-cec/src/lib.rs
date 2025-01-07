@@ -132,6 +132,118 @@ impl LogicalAddress {
     pub const UNREGISTERED: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
     /** When used as destination address */
     pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
+
+    pub fn primary_device_type(self) -> Option<operand::PrimaryDeviceType> {
+        match self {
+            LogicalAddress::Tv => Some(operand::PrimaryDeviceType::Tv),
+            LogicalAddress::RecordingDevice1
+            | LogicalAddress::RecordingDevice2
+            | LogicalAddress::RecordingDevice3 => Some(operand::PrimaryDeviceType::Recording),
+            LogicalAddress::Tuner1
+            | LogicalAddress::Tuner2
+            | LogicalAddress::Tuner3
+            | LogicalAddress::Tuner4 => Some(operand::PrimaryDeviceType::Tuner),
+            LogicalAddress::PlaybackDevice1
+            | LogicalAddress::PlaybackDevice2
+            | LogicalAddress::PlaybackDevice3 => Some(operand::PrimaryDeviceType::Playback),
+            LogicalAddress::AudioSystem => Some(operand::PrimaryDeviceType::Audio),
+            LogicalAddress::Backup1 | LogicalAddress::Backup2 => None,
+            LogicalAddress::Specific => None,
+            LogicalAddress::UnregisteredOrBroadcast => None,
+        }
+    }
+
+    pub fn all_device_types(self) -> operand::AllDeviceTypes {
+        match self {
+            LogicalAddress::Tv => operand::AllDeviceTypes::TV,
+            LogicalAddress::RecordingDevice1
+            | LogicalAddress::RecordingDevice2
+            | LogicalAddress::RecordingDevice3 => operand::AllDeviceTypes::RECORDING,
+            LogicalAddress::Tuner1
+            | LogicalAddress::Tuner2
+            | LogicalAddress::Tuner3
+            | LogicalAddress::Tuner4 => operand::AllDeviceTypes::TUNER,
+            LogicalAddress::PlaybackDevice1
+            | LogicalAddress::PlaybackDevice2
+            | LogicalAddress::PlaybackDevice3 => operand::AllDeviceTypes::PLAYBACK,
+            LogicalAddress::AudioSystem => operand::AllDeviceTypes::AUDIOSYSTEM,
+            LogicalAddress::Backup1 | LogicalAddress::Backup2 => operand::AllDeviceTypes::empty(),
+            LogicalAddress::Specific => operand::AllDeviceTypes::empty(),
+            LogicalAddress::UnregisteredOrBroadcast => operand::AllDeviceTypes::empty(),
+        }
+    }
+
+    pub fn ty(self) -> Option<LogicalAddressType> {
+        match self {
+            LogicalAddress::Tv => Some(LogicalAddressType::Tv),
+            LogicalAddress::RecordingDevice1
+            | LogicalAddress::RecordingDevice2
+            | LogicalAddress::RecordingDevice3 => Some(LogicalAddressType::Record),
+            LogicalAddress::Tuner1
+            | LogicalAddress::Tuner2
+            | LogicalAddress::Tuner3
+            | LogicalAddress::Tuner4 => Some(LogicalAddressType::Tuner),
+            LogicalAddress::PlaybackDevice1
+            | LogicalAddress::PlaybackDevice2
+            | LogicalAddress::PlaybackDevice3 => Some(LogicalAddressType::Playback),
+            LogicalAddress::AudioSystem => Some(LogicalAddressType::AudioSystem),
+            LogicalAddress::Backup1 | LogicalAddress::Backup2 => None,
+            LogicalAddress::Specific => Some(LogicalAddressType::Specific),
+            LogicalAddress::UnregisteredOrBroadcast => Some(LogicalAddressType::Unregistered),
+        }
+    }
+}
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Hash,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Display,
+    EnumString,
+)]
+#[strum(serialize_all = "kebab-case")]
+#[repr(u8)]
+pub enum LogicalAddressType {
+    Tv = constants::CEC_LOG_ADDR_TYPE_TV,
+    Record = constants::CEC_LOG_ADDR_TYPE_RECORD,
+    Tuner = constants::CEC_LOG_ADDR_TYPE_TUNER,
+    Playback = constants::CEC_LOG_ADDR_TYPE_PLAYBACK,
+    AudioSystem = constants::CEC_LOG_ADDR_TYPE_AUDIOSYSTEM,
+    Specific = constants::CEC_LOG_ADDR_TYPE_SPECIFIC,
+    #[default]
+    Unregistered = constants::CEC_LOG_ADDR_TYPE_UNREGISTERED,
+}
+
+impl LogicalAddressType {
+    pub fn primary_device_type(self) -> Option<operand::PrimaryDeviceType> {
+        match self {
+            LogicalAddressType::Tv => Some(operand::PrimaryDeviceType::Tv),
+            LogicalAddressType::Record => Some(operand::PrimaryDeviceType::Recording),
+            LogicalAddressType::Tuner => Some(operand::PrimaryDeviceType::Tuner),
+            LogicalAddressType::Playback => Some(operand::PrimaryDeviceType::Playback),
+            LogicalAddressType::AudioSystem => Some(operand::PrimaryDeviceType::Audio),
+            LogicalAddressType::Specific => None,
+            LogicalAddressType::Unregistered => None,
+        }
+    }
+
+    pub fn all_device_types(self) -> operand::AllDeviceTypes {
+        match self {
+            LogicalAddressType::Tv => operand::AllDeviceTypes::TV,
+            LogicalAddressType::Record => operand::AllDeviceTypes::RECORDING,
+            LogicalAddressType::Tuner => operand::AllDeviceTypes::TUNER,
+            LogicalAddressType::Playback => operand::AllDeviceTypes::PLAYBACK,
+            LogicalAddressType::AudioSystem => operand::AllDeviceTypes::AUDIOSYSTEM,
+            LogicalAddressType::Specific => operand::AllDeviceTypes::empty(),
+            LogicalAddressType::Unregistered => operand::AllDeviceTypes::empty(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

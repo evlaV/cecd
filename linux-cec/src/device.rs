@@ -34,7 +34,8 @@ use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
 use crate::operand::{BufferOperand, UiCommand, VendorId};
 use crate::{
-    Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Range, Result, Timeout,
+    Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Range,
+    Result, Timeout,
 };
 
 #[cfg(feature = "async")]
@@ -194,11 +195,16 @@ impl Device {
         Ok(vec)
     }
 
-    pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddress]) -> Result<()> {
+    pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddressType]) -> Result<()> {
         Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
 
         for (index, log_addr) in log_addrs.iter().enumerate() {
-            self.internal_log_addrs.log_addr[index] = (*log_addr).into();
+            self.internal_log_addrs.log_addr_type[index] = (*log_addr).into();
+            if let Some(prim_dev_type) = (*log_addr).primary_device_type() {
+                self.internal_log_addrs.primary_device_type[index] = prim_dev_type.into();
+            } else {
+                self.internal_log_addrs.primary_device_type[index] = 0xFF;
+            }
         }
 
         if !log_addrs.is_empty() && self.internal_log_addrs.num_log_addrs > 0 {
@@ -218,7 +224,7 @@ impl Device {
         Ok(())
     }
 
-    pub fn set_logical_address(&mut self, log_addr: LogicalAddress) -> Result<()> {
+    pub fn set_logical_address(&mut self, log_addr: LogicalAddressType) -> Result<()> {
         self.set_logical_addresses(&[log_addr])
     }
 

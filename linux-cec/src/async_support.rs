@@ -14,7 +14,8 @@ use crate::device::{ConnectorInfo, Envelope, PollResult, PollStatus};
 use crate::message::Message;
 use crate::operand::{UiCommand, VendorId};
 use crate::{
-    device, Error, FollowerMode, InitiatorMode, LogicalAddress, PhysicalAddress, Result, Timeout,
+    device, Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType,
+    PhysicalAddress, Result, Timeout,
 };
 
 macro_rules! relay {
@@ -44,8 +45,8 @@ enum DeviceCommand {
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
     SetPhysicalAddress(PhysicalAddress, ResultChannel<()>),
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
-    SetLogicalAddresses(Vec<LogicalAddress>, ResultChannel<()>),
-    SetLogicalAddress(LogicalAddress, ResultChannel<()>),
+    SetLogicalAddresses(Vec<LogicalAddressType>, ResultChannel<()>),
+    SetLogicalAddress(LogicalAddressType, ResultChannel<()>),
     ClearLogicalAddresses(ResultChannel<()>),
     GetOsdName(ResultChannel<String>),
     SetOsdName(String, ResultChannel<()>),
@@ -138,11 +139,11 @@ impl Device {
         relay! { self, GetLogicalAddresses }
     }
 
-    pub async fn set_logical_addresses(&self, log_addrs: &[LogicalAddress]) -> Result<()> {
+    pub async fn set_logical_addresses(&self, log_addrs: &[LogicalAddressType]) -> Result<()> {
         relay! { self, SetLogicalAddresses => Vec::from(log_addrs) }
     }
 
-    pub async fn set_logical_address(&self, log_addr: LogicalAddress) -> Result<()> {
+    pub async fn set_logical_address(&self, log_addr: LogicalAddressType) -> Result<()> {
         relay! { self, SetLogicalAddress => log_addr }
     }
 
