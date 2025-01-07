@@ -362,12 +362,23 @@ impl Device {
         Ok(())
     }
 
-    pub fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
+    pub fn handle_status(&mut self, status: PollStatus) -> Result<Vec<PollResult>> {
         let mut results = Vec::new();
         if status.got_event() {
             let ev = self.dequeue_event()?;
             match ev.event {
-                CEC_EVENT_STATE_CHANGE => (), // TODO: Should we handle this?
+                CEC_EVENT_STATE_CHANGE => {
+                    unsafe {
+                        adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+                    }
+                    if self.internal_log_addrs.num_log_addrs > 0 {
+                        self.tx_logical_address =
+                            LogicalAddress::try_from_primitive(self.internal_log_addrs.log_addr[0])
+                                .unwrap_or(LogicalAddress::UNREGISTERED);
+                    } else {
+                        self.tx_logical_address = LogicalAddress::UNREGISTERED;
+                    }
+                }
                 CEC_EVENT_LOST_MSGS => results.push(PollResult::LostMessages(unsafe {
                     ev.data.lost_msgs.lost_msgs
                 })),
