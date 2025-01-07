@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, WeakUnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{Mutex, MutexGuard};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
@@ -37,7 +37,7 @@ pub(crate) struct System {
 #[derive(Debug)]
 struct DeviceHandle {
     token: CancellationToken,
-    channel: WeakUnboundedSender<SystemMessage>,
+    channel: UnboundedSender<SystemMessage>,
 }
 
 #[proxy(
@@ -101,7 +101,7 @@ impl System {
                 path,
                 DeviceHandle {
                     token,
-                    channel: channel.downgrade(),
+                    channel,
                 },
             );
         }
@@ -127,7 +127,7 @@ impl System {
             path.as_ref().to_path_buf(),
             DeviceHandle {
                 token,
-                channel: channel.downgrade(),
+                channel,
             },
         );
         Ok((dev, rx))
@@ -190,10 +190,8 @@ impl System {
 
     async fn send_message(&mut self, message: SystemMessage) {
         self.devs.retain(|_, dev| {
-            if let Some(channel) = dev.channel.upgrade() {
-                if let Ok(()) = channel.send(message) {
-                    return true;
-                }
+            if let Ok(()) = dev.channel.send(message) {
+                return true;
             }
             dev.token.cancel();
             false

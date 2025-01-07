@@ -239,6 +239,7 @@ impl PollTask {
             }
         }
         let path = self.path;
+        info!("Deregistering path {path}");
         let object_server = self.connection.object_server();
         object_server.remove::<CecDevice, String>(path).await?;
         Ok(())
