@@ -10,7 +10,7 @@ use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::{ConnectorInfo, Envelope, PollResult, PollStatus};
+use crate::device::{Capabilities, ConnectorInfo, Envelope, PollResult, PollStatus};
 use crate::message::Message;
 use crate::operand::{UiCommand, VendorId};
 use crate::{
@@ -42,6 +42,7 @@ enum DeviceCommand {
     SetBlocking(bool, ResultChannel<()>),
     SetInitiatorMode(InitiatorMode, ResultChannel<()>),
     SetFollowerMode(FollowerMode, ResultChannel<()>),
+    GetCapabilities(ResultChannel<Capabilities>),
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
     SetPhysicalAddress(PhysicalAddress, ResultChannel<()>),
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
@@ -125,6 +126,10 @@ impl Device {
 
     pub async fn set_follower_mode(&self, mode: FollowerMode) -> Result<()> {
         relay! { self, SetFollowerMode => mode }
+    }
+
+    pub async fn get_capabilities(&self) -> Result<Capabilities> {
+        relay! { self, GetCapabilities }
     }
 
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
@@ -248,6 +253,9 @@ impl DeviceThread {
                 }
                 DeviceCommand::SetFollowerMode(mode, tx) => {
                     let _ = tx.send(self.device.set_follower_mode(mode));
+                }
+                DeviceCommand::GetCapabilities(tx) => {
+                    let _ = tx.send(self.device.get_capabilities());
                 }
                 DeviceCommand::GetPhysicalAddress(tx) => {
                     let _ = tx.send(self.device.get_physical_address());

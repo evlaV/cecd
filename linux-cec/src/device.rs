@@ -28,6 +28,7 @@ use std::str::FromStr;
 #[cfg(feature = "tracing")]
 use tracing::{debug, warn};
 
+pub use linux_cec_sys::structs::CEC_CAP as Capabilities;
 pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
@@ -159,13 +160,16 @@ impl Device {
         self.set_mode(mode)
     }
 
-    #[allow(unused)] // This isn't used yet
-    pub(crate) fn get_capabilities(&self) -> Result<cec_caps> {
+    pub fn get_raw_capabilities(&self) -> Result<cec_caps> {
         let mut caps = cec_caps::default();
         unsafe {
             adapter_get_capabilities(self.file.as_raw_fd(), &mut caps)?;
         }
         Ok(caps)
+    }
+
+    pub fn get_capabilities(&self) -> Result<Capabilities> {
+        self.get_raw_capabilities().map(|caps| caps.capabilities)
     }
 
     pub fn get_physical_address(&self) -> Result<PhysicalAddress> {
