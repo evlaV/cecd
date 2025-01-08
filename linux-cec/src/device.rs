@@ -381,7 +381,10 @@ impl Device {
             match ev.event {
                 CEC_EVENT_STATE_CHANGE => {
                     unsafe {
-                        adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
+                        adapter_get_logical_addresses(
+                            self.file.as_raw_fd(),
+                            &mut self.internal_log_addrs,
+                        )?;
                     }
                     if self.internal_log_addrs.num_log_addrs > 0 {
                         self.tx_logical_address =
