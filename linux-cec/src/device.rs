@@ -53,17 +53,28 @@ pub struct Device {
 /// A representation of a received [`Message`] and its associated metadata.
 #[derive(Debug, Clone, Hash)]
 pub struct Envelope {
+    /// The received message data.
     pub message: Message,
+    /// The logical address of the CEC device that sent the message.
     pub initiator: LogicalAddress,
+    /// The logical address to which this message was sent. Unless the [`Device`]
+    /// has the [`FollowerMode`] set to either [`FollowerMode::Monitor`] or
+    /// [`FollowerMode::MonitorAll`], this value will either be the logical address
+    /// of the `Device` itself or [`LogicalAddress::BROADCAST`].
     pub destination: LogicalAddress,
+    /// The time at which this message was received. This may be different
+    /// from the time at which the message was read out of the kernel.
     pub timestamp: Timestamp,
 }
 
 /// A physical pin that can be monitored via [`PinEvent`]s.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Pin {
+    /// The CEC data pin (13)
     Cec,
+    /// The hot plug detect (HPD) pin (19)
     HotPlugDetect,
+    /// The +5 V power pin (18)
     Power5V,
 }
 
@@ -87,6 +98,8 @@ pub struct PinEvent {
     pub state: PinState,
 }
 
+/// An object used for polling the status of the event and message queues in the
+/// kernel without borrowing the [`Device`], created by [`Device::get_poller`].
 #[derive(Debug)]
 pub struct DevicePoller {
     fd: OwnedFd,
@@ -101,11 +114,22 @@ pub enum PollStatus {
     GotAll,
 }
 
+/// A return result of [`Device::handle_status`], containing
+/// about a single message or event was returned from the kernel.
 #[derive(Debug, Clone, Hash)]
 pub enum PollResult {
+    /// The device received a [`Message`].
     Message(Envelope),
+    /// A monitored pin changed state.
     PinEvent(PinEvent),
+    /// The message queue was full and a number of messages were
+    /// received and lost. To avoid this, make sure to poll as
+    /// frequently as possible.
     LostMessages(u32),
+    /// The device state changed. Usually this means the device was configured, unconfigured,
+    /// or the physical address changed. If the caller has cached any properties like logical
+    /// address or physical address, these values should be refreshed.
+    StateChange,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -136,6 +160,13 @@ impl Device {
         Device::try_from(file)
     }
 
+    /// Get a new [`DevicePoller`] object that can be used to poll the status
+    /// of the kernel queue without having to borrow the `Device` object itself.
+    ///
+    /// While the poller can return a [`PollStatus`] to say which kinds of
+    /// events or messages are available, it must be passed to
+    /// [`handle_status`](Device::handle_status), which will require borrowing
+    /// the `Device`, to get the actual data.
     pub fn get_poller(&self) -> Result<DevicePoller> {
         Ok(DevicePoller {
             fd: self.file.as_fd().try_clone_to_owned()?,
@@ -374,6 +405,10 @@ impl Device {
         Ok(())
     }
 
+    /// Handle the [`PollStatus`] returned from [`DevicePoller::poll`]. This
+    /// will dequeue any indicated messages or events, handle any internal
+    /// processing, and return information about the events or [`Envelope`]s
+    /// containing [`Message`]s.
     pub fn handle_status(&mut self, status: PollStatus) -> Result<Vec<PollResult>> {
         let mut results = Vec::new();
         if status.got_event() {
@@ -393,6 +428,7 @@ impl Device {
                     } else {
                         self.tx_logical_address = LogicalAddress::UNREGISTERED;
                     }
+                    results.push(PollResult::StateChange);
                 }
                 CEC_EVENT_LOST_MSGS => results.push(PollResult::LostMessages(unsafe {
                     ev.data.lost_msgs.lost_msgs
@@ -508,6 +544,9 @@ impl TryFrom<File> for Device {
 }
 
 impl DevicePoller {
+    /// Poll the kernel queues for the [`Device`]. The returned [`PollStatus`]
+    /// must be passed to [`Device::handle_status`] to dequeue the events or
+    /// messages that the status may indicate are present.
     pub fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
         let mut pollfd = [PollFd::new(
             self.fd.as_fd(),
