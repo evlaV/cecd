@@ -173,6 +173,12 @@ impl Device {
         })
     }
 
+    pub fn poll(&mut self, timeout: PollTimeout) -> Result<Vec<PollResult>> {
+        let poller = self.get_poller()?;
+        let status = poller.poll(timeout)?;
+        self.handle_status(status)
+    }
+
     pub fn set_blocking(&self, blocking: bool) -> Result<()> {
         let rawfd = self.file.as_raw_fd();
         let mut flags = OFlag::from_bits_retain(fcntl(rawfd, FcntlArg::F_GETFL)?);

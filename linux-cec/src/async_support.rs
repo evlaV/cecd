@@ -120,6 +120,12 @@ impl Device {
         relay! { self, GetPoller }
     }
 
+    pub async fn poll(&self, timeout: PollTimeout) -> Result<Vec<PollResult>> {
+        let poller = self.get_poller().await?;
+        let status = poller.poll(timeout).await?;
+        self.handle_status(status).await
+    }
+
     pub async fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
         relay! { self, SetInitiatorMode => mode }
     }
