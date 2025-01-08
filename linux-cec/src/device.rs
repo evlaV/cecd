@@ -180,6 +180,8 @@ impl Device {
         Ok(PhysicalAddress(phys_addr))
     }
 
+    /// Set the [`PhysicalAddress`] of the device. This function will only work if the capability
+    /// [`Capabilities::PHYS_ADDR`] is present.
     pub fn set_physical_address(&self, phys_addr: PhysicalAddress) -> Result<()> {
         unsafe {
             adapter_set_physical_address(self.file.as_raw_fd(), &phys_addr.0)?;
@@ -199,6 +201,8 @@ impl Device {
         Ok(vec)
     }
 
+    /// Set the [`LogicalAddress`]es of the device. This function will only work if the capability
+    /// [`Capabilities::LOG_ADDRS`] is present.
     pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddressType]) -> Result<()> {
         Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
 
@@ -228,10 +232,14 @@ impl Device {
         Ok(())
     }
 
+    /// Set the single [`LogicalAddress`] of the device. This function will only work if the capability
+    /// [`Capabilities::LOG_ADDRS`] is present.
     pub fn set_logical_address(&mut self, log_addr: LogicalAddressType) -> Result<()> {
         self.set_logical_addresses(&[log_addr])
     }
 
+    /// Clear the [`LogicalAddress`]es of the device. This function will only work if the capability
+    /// [`Capabilities::LOG_ADDRS`] is present.
     pub fn clear_logical_addresses(&mut self) -> Result<()> {
         self.internal_log_addrs.num_log_addrs = 0;
         self.tx_logical_address = LogicalAddress::UNREGISTERED;

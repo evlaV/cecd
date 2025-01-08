@@ -4,7 +4,7 @@
  */
 
 use anyhow::{ensure, Result};
-use linux_cec::device::AsyncDevice;
+use linux_cec::device::{AsyncDevice, Capabilities};
 use linux_cec::operand::VendorId;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType};
 use std::collections::HashMap;
@@ -169,10 +169,16 @@ impl System {
 
         let device = device.lock().await;
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
-        device.clear_logical_addresses().await?;
-        device.set_osd_name(&self.osd_name).await?;
-        device.set_vendor_id(self.config.vendor_id).await?;
-        device.set_logical_address(log_addr).await?;
+        if device
+            .get_capabilities()
+            .await?
+            .contains(Capabilities::LOG_ADDRS)
+        {
+            device.clear_logical_addresses().await?;
+            device.set_osd_name(&self.osd_name).await?;
+            device.set_vendor_id(self.config.vendor_id).await?;
+            device.set_logical_address(log_addr).await?;
+        }
         device.set_follower_mode(FollowerMode::Enabled).await?;
 
         Ok(uinput)

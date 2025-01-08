@@ -246,21 +246,47 @@ impl LogicalAddressType {
     }
 }
 
+/// An initiator mode specifies how a given [`Device`](device::Device) should
+/// handle acting an initiator; that is, how sending messages should be handled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InitiatorMode {
+    /// Do not act as an initiator.
     Disabled,
+    /// Act as an initiator.
     Enabled,
+    /// Act as an initiator and disallow other processes
+    /// acting as an initiator while the device is open.
     Exclusive,
 }
 
+/// A follower mode specifies how a given [`Device`](device::Device) should
+/// handle acting a follower; that is, how receiving messages should be handled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FollowerMode {
+    /// Do not act as a follower.
     Disabled,
+    /// Act as a follower.
     Enabled,
+    /// Act as a follower and disallow other processes
+    /// acting as an follower while the device is open.
     Exclusive,
+    /// Act as a follower and pass through all messages, bypassing
+    /// any in-kernel processing that would normally be done.
     ExclusivePassthru,
+    /// Enable monitoring of applicable [`Pin`](device::Pin)s. This mode requires
+    /// [`Capabilities::MONITOR_PIN`](device::Capabilities::MONITOR_PIN) to be
+    /// present on the device.
     MonitorPin,
+    /// Enable monitoring of all messages on the CEC bus, not just messages
+    /// addressed to this device and broadcast messages. This requires
+    /// [`Capabilities::MONITOR_ALL`](device::Capabilities::MONITOR_ALL) to be
+    /// present on the device.
     Monitor,
+    /// Enable monitoring of applicable [`Pin`](device::Pin)s and all messages on the
+    /// CEC bus, not just messages addressed to this device and broadcast messages.
+    /// This requires [`Capabilities::MONITOR_PIN`](device::Capabilities::MONITOR_PIN)
+    /// and [`Capabilities::MONITOR_ALL`](device::Capabilities::MONITOR_ALL) to be
+    /// present on the device.
     MonitorAll,
 }
 
