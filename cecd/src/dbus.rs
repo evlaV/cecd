@@ -4,7 +4,7 @@
  */
 
 use anyhow::{anyhow, Result};
-use linux_cec::device::{AsyncDevice, PollResult, PollStatus};
+use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, UiCommand};
 use linux_cec::LogicalAddress;
@@ -38,6 +38,8 @@ pub struct CecDevice {
     pub token: CancellationToken,
     poller: Option<JoinHandle<Result<()>>>,
     path: PathBuf,
+    cached_phys_addr: u16,
+    cached_log_addrs: Vec<u8>,
 }
 
 struct PollTask {
@@ -61,6 +63,8 @@ impl CecDevice {
             token,
             path,
             poller: None,
+            cached_phys_addr: 0xFFFF,
+            cached_log_addrs: Vec::new(),
         })
     }
 
@@ -136,6 +140,16 @@ impl CecDevice {
         signal_emitter: &SignalEmitter<'_>,
         initiator: u8,
     ) -> zbus::Result<()>;
+
+    #[zbus(property)]
+    async fn logical_addresses(&self) -> Vec<u8> {
+        self.cached_log_addrs.clone()
+    }
+
+    #[zbus(property)]
+    async fn physical_address(&self) -> u16 {
+        self.cached_phys_addr
+    }
 
     async fn activate_source(&self, text_view: bool) -> fdo::Result<()> {
         self.device
@@ -242,7 +256,7 @@ impl PollTask {
                     let Some(message) = message else {
                         break;
                     };
-                    if let Err(err) = self.handle_message(message).await {
+                    if let Err(err) = self.handle_system_message(message).await {
                         error!("Message handling failed: {err}");
                     }
                 }
@@ -257,10 +271,35 @@ impl PollTask {
     }
 
     async fn handle_poll_result(&mut self, result: PollResult) -> Result<()> {
-        let PollResult::Message(envelope) = result else {
-            return Ok(());
-        };
+        match result {
+            PollResult::Message(envelope) => self.handle_message(envelope).await?,
+            PollResult::PinEvent(_) => (),
+            PollResult::LostMessages(n) => warn!("Lost {n} messages!"),
+            PollResult::StateChange => {
+                let device = self.device.lock().await;
+                let phys_addr = device.get_physical_address().await?.into();
+                let log_addrs = device
+                    .get_logical_addresses()
+                    .await?
+                    .into_iter()
+                    .map(|v| v.into())
+                    .collect();
+                let emitter = self.interface.signal_emitter();
+                let mut iface = self.interface.get_mut().await;
+                if iface.cached_phys_addr != phys_addr {
+                    iface.cached_phys_addr = phys_addr;
+                    iface.physical_address_changed(emitter).await?;
+                }
+                if iface.cached_log_addrs != log_addrs {
+                    iface.cached_log_addrs = log_addrs;
+                    iface.logical_addresses_changed(emitter).await?;
+                }
+            }
+        }
+        Ok(())
+    }
 
+    async fn handle_message(&mut self, envelope: Envelope) -> Result<()> {
         let initiator = envelope.initiator;
         let destination = envelope.destination;
         debug!(
@@ -335,7 +374,7 @@ impl PollTask {
         Ok(())
     }
 
-    async fn handle_message(&mut self, message: SystemMessage) -> Result<()> {
+    async fn handle_system_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
             SystemMessage::Wake => {
                 let _ = self
