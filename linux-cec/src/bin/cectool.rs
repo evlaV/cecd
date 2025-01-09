@@ -69,8 +69,7 @@ enum Command {
         target: LogicalAddress,
     },
     /// Send a specified user command key
-    #[allow(clippy::enum_variant_names)]
-    SendCommand {
+    SendUserControl {
         /// The name of the specified command key
         key: UiCommand,
         /// The logical address of the target device
@@ -145,7 +144,7 @@ fn main() -> Result<()> {
             dev.press_user_control(UiCommand::Mute, target)?;
             dev.release_user_control(target)?;
         }
-        Command::SendCommand { key, target } => {
+        Command::SendUserControl { key, target } => {
             dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(key, target)?;
             dev.release_user_control(target)?;
