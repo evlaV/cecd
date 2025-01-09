@@ -40,6 +40,7 @@ pub struct CecDevice {
     path: PathBuf,
     cached_phys_addr: u16,
     cached_log_addrs: Vec<u8>,
+    cached_vendor_id: i32,
 }
 
 struct PollTask {
@@ -65,6 +66,7 @@ impl CecDevice {
             poller: None,
             cached_phys_addr: 0xFFFF,
             cached_log_addrs: Vec::new(),
+            cached_vendor_id: -1,
         })
     }
 
@@ -149,6 +151,11 @@ impl CecDevice {
     #[zbus(property)]
     async fn physical_address(&self) -> u16 {
         self.cached_phys_addr
+    }
+
+    #[zbus(property)]
+    async fn vendor_id(&self) -> i32 {
+        self.cached_vendor_id
     }
 
     async fn set_osd_name(&self, name: &str) -> fdo::Result<()> {
@@ -293,6 +300,12 @@ impl PollTask {
                     .into_iter()
                     .map(|v| v.into())
                     .collect();
+                let vendor_id = device
+                    .get_vendor_id()
+                    .await?
+                    .map(|v| ((v.0[0] as i32) << 16) | ((v.0[1] as i32) << 8) | (v.0[2] as i32))
+                    .unwrap_or(-1);
+
                 let emitter = self.interface.signal_emitter();
                 let mut iface = self.interface.get_mut().await;
                 if iface.cached_phys_addr != phys_addr {
@@ -302,6 +315,10 @@ impl PollTask {
                 if iface.cached_log_addrs != log_addrs {
                     iface.cached_log_addrs = log_addrs;
                     iface.logical_addresses_changed(emitter).await?;
+                }
+                if iface.cached_vendor_id != vendor_id {
+                    iface.cached_vendor_id = vendor_id;
+                    iface.vendor_id_changed(emitter).await?;
                 }
             }
         }
