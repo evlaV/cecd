@@ -151,6 +151,15 @@ impl CecDevice {
         self.cached_phys_addr
     }
 
+    async fn set_osd_name(&self, name: &str) -> fdo::Result<()> {
+        self.device
+            .lock()
+            .await
+            .set_osd_name(name)
+            .await
+            .map_err(into_fdo_error)
+    }
+
     async fn activate_source(&self, text_view: bool) -> fdo::Result<()> {
         self.device
             .lock()
