@@ -214,6 +214,7 @@ impl Device {
         self.get_raw_capabilities().map(|caps| caps.capabilities)
     }
 
+    /// Get the currently configured [`PhysicalAddress`] of the device.
     pub fn get_physical_address(&self) -> Result<PhysicalAddress> {
         let mut phys_addr: SysPhysicalAddress = 0;
         unsafe {
@@ -231,6 +232,7 @@ impl Device {
         Ok(())
     }
 
+    /// Get the currently configured [`LogicalAddress`]es of the device.
     pub fn get_logical_addresses(&mut self) -> Result<Vec<LogicalAddress>> {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
@@ -326,6 +328,7 @@ impl Device {
         Ok(())
     }
 
+    /// Get the [`VendorId`] of this device, if configured.
     pub fn get_vendor_id(&mut self) -> Result<Option<VendorId>> {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
@@ -333,6 +336,9 @@ impl Device {
         VendorId::try_from_sys(self.internal_log_addrs.vendor_id)
     }
 
+    /// Set the advertised [`VendorId`] of the device. You should generally
+    /// use the OUI assigned to your organization, if applicable. You must call
+    /// this function *before* calling [`Device::set_logical_addresses`].
     pub fn set_vendor_id(&mut self, vendor_id: Option<VendorId>) -> Result<()> {
         if let Some(vendor_id) = vendor_id {
             self.internal_log_addrs.vendor_id = vendor_id.into();
@@ -538,11 +544,19 @@ impl Device {
         self.tx_message(&standby, target)
     }
 
+    /// Convenience method for sending a user control command to a given [`LogicalAddress`]
+    /// by generating a [`UserControlPressed`](Message::UserControlPressed) message.
+    /// These generally correspond to the buttons on a remote control that are relayed to other
+    /// devices. This must be matched with a call to [`Device::release_user_control`].
     pub fn press_user_control(&self, ui_command: UiCommand, target: LogicalAddress) -> Result<()> {
         let user_control = Message::UserControlPressed { ui_command };
         self.tx_message(&user_control, target)
     }
 
+    /// Convenience method for terminating a user control command, as started with
+    /// [`Device::press_user_control`]. Internally, this just creates and sends a
+    /// [`UserControlReleased`](Message::UserControlReleased) message to the given
+    /// [`LogicalAddress`].
     pub fn release_user_control(&self, target: LogicalAddress) -> Result<()> {
         let user_control = Message::UserControlReleased {};
         self.tx_message(&user_control, target)

@@ -471,6 +471,12 @@ impl From<PhysicalAddress> for u16 {
     }
 }
 
+/// A 24-bit [MA-L/OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier)
+/// identifying a device's vendor or manufacturer. These IDs
+/// are obtained from the IEEE, and a current list of OUIs can be queried from
+/// [their website](https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries).
+/// A full list is also available as [plain text](https://standards-oui.ieee.org/oui/oui.txt) or
+/// [CSV](https://standards-oui.ieee.org/oui/oui.csv).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct VendorId(pub [u8; 3]);
 
@@ -511,6 +517,10 @@ impl Display for VendorId {
 }
 
 impl VendorId {
+    /// Convert a [`linux_cec_sys::VendorId`] into a `VendorId`. Since `linux_cec_sys::VendorId` is just
+    /// a convenience type around `u32`, not all values are valid, so this conversion can fail: the
+    /// reserved value 0xFFFFFFFF is treated as `Ok(None)`, and all over values outside of the valid range
+    /// return [`Error::InvalidData`].
     pub fn try_from_sys(vendor_id: SysVendorId) -> Result<Option<VendorId>> {
         match vendor_id {
             x if x.is_none() => Ok(None),
@@ -527,6 +537,8 @@ impl VendorId {
     }
 }
 
+/// A convenience type for an unsigned 32-bit millisecond-granularity
+/// timeout, as used in the kernel interface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Timeout(u32);
