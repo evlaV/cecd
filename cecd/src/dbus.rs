@@ -356,7 +356,7 @@ impl PollTask {
                     uinput.key_down(ui_command)?;
                 }
                 self.active_key = Some(ui_command);
-                None
+                return Ok(());
             }
             Message::UserControlReleased => {
                 self.interface
@@ -368,7 +368,7 @@ impl PollTask {
                     }
                     self.active_key = None;
                 }
-                None
+                return Ok(());
             }
             Message::SetStreamPath { address } => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
@@ -380,6 +380,10 @@ impl PollTask {
                     None
                 }
             }
+            _ if envelope.destination != LogicalAddress::BROADCAST => Some(Message::FeatureAbort {
+                opcode: envelope.message.opcode(),
+                abort_reason: AbortReason::UnrecognizedOp,
+            }),
             _ => None,
         };
 
@@ -388,16 +392,6 @@ impl PollTask {
                 .lock()
                 .await
                 .tx_message(&reply, envelope.initiator)
-                .await?;
-        } else if envelope.destination != LogicalAddress::BROADCAST {
-            let abort = Message::FeatureAbort {
-                opcode: envelope.message.opcode(),
-                abort_reason: AbortReason::UnrecognizedOp,
-            };
-            self.device
-                .lock()
-                .await
-                .tx_message(&abort, envelope.initiator)
                 .await?;
         }
         Ok(())
