@@ -6,7 +6,7 @@
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
-use linux_cec::operand::{AbortReason, UiCommand};
+use linux_cec::operand::{AbortReason, PowerStatus, UiCommand};
 use linux_cec::LogicalAddress;
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
@@ -342,6 +342,9 @@ impl PollTask {
             .await?;
 
         let reply = match envelope.message {
+            Message::GiveDevicePowerStatus => Some(Message::ReportPowerStatus {
+                status: PowerStatus::On,
+            }),
             Message::UserControlPressed { ui_command } => {
                 self.interface
                     .user_control_pressed(ui_command as u8, initiator as u8)
