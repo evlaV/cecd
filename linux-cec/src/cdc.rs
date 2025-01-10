@@ -292,6 +292,7 @@ pub enum Message {
 }
 
 impl Message {
+    #[must_use]
     pub fn opcode(&self) -> Opcode {
         let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
         Opcode::try_from_primitive(opcode).unwrap()

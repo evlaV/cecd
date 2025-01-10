@@ -34,7 +34,9 @@ pub struct VendorId(pub [u8; 3]);
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
     fn try_from_bytes(bytes: &[u8]) -> Result<Self>;
+    #[must_use]
     fn len(&self) -> usize;
+    #[must_use]
     fn expected_len() -> Range<usize>;
 }
 
@@ -124,6 +126,7 @@ impl Delay {
     const MIN: u8 = 1;
     const MAX: u8 = 251;
 
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         Range::Interval {
             min: Delay::MIN as usize,
@@ -529,12 +532,15 @@ pub trait TaggedLengthBuffer: Sized {
 
     fn try_new(first: Self::FixedParam, extra: &[u8]) -> Result<Self>;
 
+    #[must_use]
     fn fixed_param(&self) -> Self::FixedParam;
 
+    #[must_use]
     fn extra_params(&self) -> &[u8] {
         &[] as &[u8; 0]
     }
 
+    #[must_use]
     fn expected_len() -> Range<usize> {
         Range::AtLeast(1)
     }
@@ -852,6 +858,7 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> TryFrom<&[T]>
 }
 
 impl<const S: usize, T: OperandEncodable + Default + Copy> BoundedBufferOperand<S, T> {
+    #[must_use]
     pub fn new() -> BoundedBufferOperand<S, T> {
         BoundedBufferOperand::default()
     }
@@ -1675,6 +1682,7 @@ bitflags! {
 impl RecordingSequence {
     pub const ONCE_ONLY: RecordingSequence = RecordingSequence::empty();
 
+    #[must_use]
     pub fn is_once_only(&self) -> bool {
         self.is_empty()
     }
@@ -2703,6 +2711,7 @@ pub struct DeviceFeatures {
 }
 
 impl DeviceFeatures {
+    #[must_use]
     pub fn new(device_features_1: DeviceFeatures1) -> DeviceFeatures {
         DeviceFeatures {
             device_features_1,
@@ -2903,6 +2912,7 @@ pub struct RcProfile {
 }
 
 impl RcProfile {
+    #[must_use]
     pub fn new(rc_profile_1: RcProfile1) -> RcProfile {
         RcProfile {
             rc_profile_1,

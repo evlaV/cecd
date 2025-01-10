@@ -133,6 +133,7 @@ impl LogicalAddress {
     /** When used as destination address */
     pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
 
+    #[must_use]
     pub fn primary_device_type(self) -> Option<operand::PrimaryDeviceType> {
         match self {
             LogicalAddress::Tv => Some(operand::PrimaryDeviceType::Tv),
@@ -153,6 +154,7 @@ impl LogicalAddress {
         }
     }
 
+    #[must_use]
     pub fn all_device_types(self) -> operand::AllDeviceTypes {
         match self {
             LogicalAddress::Tv => operand::AllDeviceTypes::TV,
@@ -173,6 +175,7 @@ impl LogicalAddress {
         }
     }
 
+    #[must_use]
     pub fn ty(self) -> Option<LogicalAddressType> {
         match self {
             LogicalAddress::Tv => Some(LogicalAddressType::Tv),
@@ -221,6 +224,7 @@ pub enum LogicalAddressType {
 }
 
 impl LogicalAddressType {
+    #[must_use]
     pub fn primary_device_type(self) -> Option<operand::PrimaryDeviceType> {
         match self {
             LogicalAddressType::Tv => Some(operand::PrimaryDeviceType::Tv),
@@ -233,6 +237,7 @@ impl LogicalAddressType {
         }
     }
 
+    #[must_use]
     pub fn all_device_types(self) -> operand::AllDeviceTypes {
         match self {
             LogicalAddressType::Tv => operand::AllDeviceTypes::TV,
@@ -350,6 +355,7 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
 {
     type Output = Range<T>;
 
+    #[must_use]
     fn add(self, rhs: T) -> Self::Output {
         match self {
             Range::AtMost(max) => Range::AtMost(max + rhs),
@@ -465,11 +471,13 @@ impl From<PhysicalAddress> for u16 {
 pub struct Timeout(u32);
 
 impl Timeout {
+    #[must_use]
     #[inline]
     pub fn as_ms(&self) -> u32 {
         self.0
     }
 
+    #[must_use]
     #[inline]
     pub fn from_ms(millis: u32) -> Timeout {
         Timeout(millis)

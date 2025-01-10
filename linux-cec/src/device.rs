@@ -580,10 +580,12 @@ impl DevicePoller {
 }
 
 impl PollStatus {
+    #[must_use]
     pub fn got_message(&self) -> bool {
         matches!(self, PollStatus::GotMessage | PollStatus::GotAll)
     }
 
+    #[must_use]
     pub fn got_event(&self) -> bool {
         matches!(self, PollStatus::GotEvent | PollStatus::GotAll)
     }
