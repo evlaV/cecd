@@ -15,7 +15,7 @@ use linux_cec_sys::ioctls::{
 };
 use linux_cec_sys::structs::{
     cec_caps, cec_connector_info, cec_drm_connector_info, cec_event, cec_log_addrs, cec_msg,
-    CEC_RX_STATUS,
+    CEC_RX_STATUS, CEC_TX_STATUS,
 };
 use linux_cec_sys::{PhysicalAddress as SysPhysicalAddress, Timestamp, VendorId as SysVendorId};
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
@@ -366,7 +366,12 @@ impl Device {
             "Sending message {message:#?} to {destination} ({:x})",
             destination as u8
         );
-        self.tx_raw_message(&mut raw_message)
+        self.tx_raw_message(&mut raw_message)?;
+        if !raw_message.tx_status.contains(CEC_TX_STATUS::OK) {
+            #[cfg(feature = "tracing")]
+            warn!("Message failed to send: {:?}", raw_message.tx_status);
+        }
+        Ok(())
     }
 
     pub fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {

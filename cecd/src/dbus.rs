@@ -293,30 +293,48 @@ impl PollTask {
             PollResult::LostMessages(n) => warn!("Lost {n} messages!"),
             PollResult::StateChange => {
                 let device = self.device.lock().await;
-                let phys_addr = device.get_physical_address().await?.into();
+                let phys_addr = device
+                    .get_physical_address()
+                    .await
+                    .unwrap_or_default()
+                    .into();
                 let log_addrs = device
                     .get_logical_addresses()
-                    .await?
+                    .await
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|v| v.into())
                     .collect();
                 let vendor_id = device
                     .get_vendor_id()
-                    .await?
+                    .await
+                    .unwrap_or_default()
                     .map(|v| ((v.0[0] as i32) << 16) | ((v.0[1] as i32) << 8) | (v.0[2] as i32))
                     .unwrap_or(-1);
 
                 let emitter = self.interface.signal_emitter();
                 let mut iface = self.interface.get_mut().await;
                 if iface.cached_phys_addr != phys_addr {
+                    info!(
+                        "Physical address changed from {:?} to {phys_addr:?}",
+                        iface.cached_phys_addr
+                    );
                     iface.cached_phys_addr = phys_addr;
                     iface.physical_address_changed(emitter).await?;
                 }
                 if iface.cached_log_addrs != log_addrs {
+                    info!(
+                        "Logical addresses changed from {:?} to {log_addrs:?}",
+                        iface.cached_log_addrs
+                    );
                     iface.cached_log_addrs = log_addrs;
                     iface.logical_addresses_changed(emitter).await?;
                 }
                 if iface.cached_vendor_id != vendor_id {
+                    info!(
+                        "Vendor ID changed from {:?} to {vendor_id:?}",
+                        iface.cached_vendor_id
+                    );
                     iface.cached_vendor_id = vendor_id;
                     iface.vendor_id_changed(emitter).await?;
                 }
