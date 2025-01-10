@@ -10,11 +10,9 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{FollowerMode, InitiatorMode};
 
-pub use linux_cec_sys::Timestamp;
-
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
-pub enum CecEventType {
+pub(crate) enum CecEventType {
     /// Event that occurs when the adapter state changes
     StateChange = constants::CEC_EVENT_STATE_CHANGE,
     /**

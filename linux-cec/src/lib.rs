@@ -19,14 +19,16 @@ use tinyvec::{Array, ArrayVec};
 
 pub mod cdc;
 pub mod device;
-pub mod ioctls;
 pub mod message;
 pub mod operand;
 
 #[cfg(feature = "async")]
 mod async_support;
 
+pub(crate) mod ioctls;
+
 pub use linux_cec_sys as sys;
+pub use linux_cec_sys::Timestamp;
 
 #[derive(
     Clone,
