@@ -173,6 +173,9 @@ impl Device {
         })
     }
 
+    /// Wait up to `timeout` for a message or event and process the results.
+    /// This is a convenience method that combines using a `DevicePoller`
+    /// and calling `handle_status` internally.
     pub fn poll(&mut self, timeout: PollTimeout) -> Result<Vec<PollResult>> {
         let poller = self.get_poller()?;
         let status = poller.poll(timeout)?;
@@ -187,11 +190,13 @@ impl Device {
         Ok(())
     }
 
+    /// Set the [`InitiatorMode`] of the device.
     pub fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
         let mode = self.get_mode()?.with_initiator(mode.into());
         self.set_mode(mode)
     }
 
+    /// Set the [`FollowerMode`] of the device.
     pub fn set_follower_mode(&self, mode: FollowerMode) -> Result<()> {
         let mode = self.get_mode()?.with_follower(mode.into());
         self.set_mode(mode)
@@ -239,7 +244,8 @@ impl Device {
     }
 
     /// Set the [`LogicalAddress`]es of the device. This function will only work if the capability
-    /// [`Capabilities::LOG_ADDRS`] is present.
+    /// [`Capabilities::LOG_ADDRS`] is present. Note that the device must be configured to act as
+    /// an initiator via [`Device::set_initiator_mode`], otherwise this function will return an error.
     pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddressType]) -> Result<()> {
         Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
 
@@ -270,7 +276,8 @@ impl Device {
     }
 
     /// Set the single [`LogicalAddress`] of the device. This function will only work if the capability
-    /// [`Capabilities::LOG_ADDRS`] is present.
+    /// [`Capabilities::LOG_ADDRS`] is present. Note that the device must be configured to act as
+    /// an initiator via [`Device::set_initiator_mode`], otherwise this function will return an error.
     pub fn set_logical_address(&mut self, log_addr: LogicalAddressType) -> Result<()> {
         self.set_logical_addresses(&[log_addr])
     }
@@ -286,6 +293,7 @@ impl Device {
         Ok(())
     }
 
+    /// Get the configured OSD name.
     pub fn get_osd_name(&mut self) -> Result<String> {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
@@ -293,6 +301,19 @@ impl Device {
         Ok(String::from_utf8_lossy(&self.internal_log_addrs.osd_name).to_string())
     }
 
+    /// Set the advertised OSD name. This is used by TV sets to display the name
+    /// of connected devices. The maximum length allowed is only 14 bytes, and is
+    /// defined by the specification to be only ASCII. However, some TV sets will
+    /// properly display UTF-8 text as well. Note that the encoding *does not*
+    /// affect the allowable length of bytes, so using any multi-byte characters
+    /// will effectively decrease the maximum number of characters.
+    ///
+    /// For the kernel to properly advertise the OSD name on query, you must call
+    /// this function *before* calling [`Device::set_logical_addresses`].
+    ///
+    /// # Errors
+    /// This function will raise an [`Error::OutOfRange`] error if the name passed
+    /// exceeds 14 bytes.
     pub fn set_osd_name(&mut self, name: &str) -> Result<()> {
         let name_buffer = BufferOperand::from_str(name)?;
         #[cfg(feature = "tracing")]
@@ -511,6 +532,7 @@ impl Device {
         self.tx_message(&active_source, LogicalAddress::BROADCAST)
     }
 
+    /// Tell a device with the given [`LogicalAddress`] to enter standby mode.
     pub fn standby(&self, target: LogicalAddress) -> Result<()> {
         let standby = Message::Standby {};
         self.tx_message(&standby, target)

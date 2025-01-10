@@ -245,14 +245,15 @@ impl LogicalAddressType {
             LogicalAddressType::Tuner => operand::AllDeviceTypes::TUNER,
             LogicalAddressType::Playback => operand::AllDeviceTypes::PLAYBACK,
             LogicalAddressType::AudioSystem => operand::AllDeviceTypes::AUDIOSYSTEM,
-            LogicalAddressType::Specific => operand::AllDeviceTypes::empty(),
-            LogicalAddressType::Unregistered => operand::AllDeviceTypes::empty(),
+            LogicalAddressType::Specific | LogicalAddressType::Unregistered => {
+                operand::AllDeviceTypes::empty()
+            }
         }
     }
 }
 
-/// An initiator mode specifies how a given [`Device`](device::Device) should
-/// handle acting an initiator; that is, how sending messages should be handled.
+/// An initiator mode specifies how a given [`Device`](device::Device) should handle
+/// acting an initiator; that is, if the device should be able to send messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InitiatorMode {
     /// Do not act as an initiator.
