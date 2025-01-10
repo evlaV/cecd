@@ -149,14 +149,14 @@ pub enum Message {
     TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
     TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
     DeviceVendorId {
-        vendor_id: operand::VendorId,
+        vendor_id: crate::VendorId,
     } = constants::CEC_MSG_DEVICE_VENDOR_ID,
     GiveDeviceVendorId = constants::CEC_MSG_GIVE_DEVICE_VENDOR_ID,
     VendorCommand {
         command: operand::BufferOperand,
     } = constants::CEC_MSG_VENDOR_COMMAND,
     VendorCommandWithId {
-        vendor_id: operand::VendorId,
+        vendor_id: crate::VendorId,
         vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
     } = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
     VendorRemoteButtonDown {
@@ -1795,7 +1795,7 @@ mod test_device_vendor_id {
     message_test! {
         ty: DeviceVendorId,
         instance: Message::DeviceVendorId {
-            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+            vendor_id: crate::VendorId([0x12, 0x34, 0x56]),
         },
         bytes: [0x12, 0x34, 0x56],
         extra: [Overfull, Empty],
@@ -1859,7 +1859,7 @@ mod test_vendor_command_with_id {
         name: _empty,
         ty: VendorCommandWithId,
         instance: Message::VendorCommandWithId {
-            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+            vendor_id: crate::VendorId([0x12, 0x34, 0x56]),
             vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("").unwrap(),
         },
         bytes: [0x12, 0x34, 0x56],
@@ -1869,7 +1869,7 @@ mod test_vendor_command_with_id {
         name: _full,
         ty: VendorCommandWithId,
         instance: Message::VendorCommandWithId {
-            vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+            vendor_id: crate::VendorId([0x12, 0x34, 0x56]),
             vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("12345678901").unwrap(),
         },
         bytes: [
@@ -1894,7 +1894,7 @@ mod test_vendor_command_with_id {
     fn test_opcode() {
         assert_eq!(
             Message::VendorCommandWithId {
-                vendor_id: operand::VendorId([0x12, 0x34, 0x56]),
+                vendor_id: crate::VendorId([0x12, 0x34, 0x56]),
                 vendor_specific_data: operand::BoundedBufferOperand::<11, u8>::from_str("")
                     .unwrap(),
             }

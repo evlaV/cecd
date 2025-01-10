@@ -33,10 +33,10 @@ pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
 use crate::message::Message;
-use crate::operand::{BufferOperand, UiCommand, VendorId};
+use crate::operand::{BufferOperand, UiCommand};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Range,
-    Result, Timeout,
+    Result, Timeout, VendorId,
 };
 
 #[cfg(feature = "async")]

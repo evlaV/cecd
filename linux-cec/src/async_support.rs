@@ -12,10 +12,10 @@ use tokio::sync::oneshot;
 
 use crate::device::{Capabilities, ConnectorInfo, Envelope, PollResult, PollStatus};
 use crate::message::Message;
-use crate::operand::{UiCommand, VendorId};
+use crate::operand::UiCommand;
 use crate::{
     device, Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType,
-    PhysicalAddress, Result, Timeout,
+    PhysicalAddress, Result, Timeout, VendorId,
 };
 
 macro_rules! relay {

@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use linux_cec_sys::constants;
+use linux_cec_macros::Operand;
+use linux_cec_sys::{constants, VendorId as SysVendorId};
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::io;
 use std::ops::Add;
+use std::str::FromStr;
 use std::string::ToString;
 use std::time::Duration;
 use strum::{Display, EnumString};
@@ -464,6 +466,62 @@ impl From<PhysicalAddress> for u16 {
     #[inline]
     fn from(val: PhysicalAddress) -> u16 {
         val.0
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
+pub struct VendorId(pub [u8; 3]);
+
+impl From<VendorId> for SysVendorId {
+    #[inline]
+    fn from(val: VendorId) -> SysVendorId {
+        SysVendorId::try_from(
+            ((val.0[0] as u32) << 16) | ((val.0[1] as u32) << 8) | (val.0[2] as u32),
+        )
+        .unwrap()
+    }
+}
+
+impl FromStr for VendorId {
+    type Err = Error;
+
+    fn from_str(val: &str) -> Result<VendorId> {
+        let parts: Vec<&str> = val.split('-').collect();
+        if parts.len() != 3 {
+            return Err(Error::InvalidData);
+        }
+
+        let mut id = [0; 3];
+        for (idx, part) in parts.into_iter().enumerate() {
+            if part.len() != 2 {
+                return Err(Error::InvalidData);
+            }
+            id[idx] = u8::from_str_radix(part, 16).map_err(|_| Error::InvalidData)?
+        }
+        Ok(VendorId(id))
+    }
+}
+
+impl Display for VendorId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:02x}-{:02x}-{:02x}", self.0[0], self.0[1], self.0[2])
+    }
+}
+
+impl VendorId {
+    pub fn try_from_sys(vendor_id: SysVendorId) -> Result<Option<VendorId>> {
+        match vendor_id {
+            x if x.is_none() => Ok(None),
+            x if x.is_valid() => {
+                let val: u32 = x.into();
+                Ok(Some(VendorId([
+                    ((val >> 16) & 0xFF).try_into().unwrap(),
+                    ((val >> 8) & 0xFF).try_into().unwrap(),
+                    (val & 0xFF).try_into().unwrap(),
+                ])))
+            }
+            _ => Err(Error::InvalidData),
+        }
     }
 }
 

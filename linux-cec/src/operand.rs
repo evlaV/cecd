@@ -12,10 +12,8 @@ use bitflags::bitflags;
 #[cfg(test)]
 use linux_cec_macros::opcode_test;
 use linux_cec_macros::{BitfieldSpecifier, Operand};
-use linux_cec_sys::VendorId as SysVendorId;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryFrom;
-use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 use strum::{Display, EnumString};
 use tinyvec::array_vec;
@@ -28,9 +26,6 @@ pub type Hour = BcdByte<0, 23>;
 pub type Minute = BcdByte<0, 59>;
 pub type ShortAudioDescriptor = [u8; 3];
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
-pub struct VendorId(pub [u8; 3]);
-
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
     fn try_from_bytes(bytes: &[u8]) -> Result<Self>;
@@ -38,59 +33,6 @@ pub trait OperandEncodable: Sized {
     fn len(&self) -> usize;
     #[must_use]
     fn expected_len() -> Range<usize>;
-}
-
-impl From<VendorId> for SysVendorId {
-    #[inline]
-    fn from(val: VendorId) -> SysVendorId {
-        SysVendorId::try_from(
-            ((val.0[0] as u32) << 16) | ((val.0[1] as u32) << 8) | (val.0[2] as u32),
-        )
-        .unwrap()
-    }
-}
-
-impl FromStr for VendorId {
-    type Err = Error;
-
-    fn from_str(val: &str) -> Result<VendorId> {
-        let parts: Vec<&str> = val.split('-').collect();
-        if parts.len() != 3 {
-            return Err(Error::InvalidData);
-        }
-
-        let mut id = [0; 3];
-        for (idx, part) in parts.into_iter().enumerate() {
-            if part.len() != 2 {
-                return Err(Error::InvalidData);
-            }
-            id[idx] = u8::from_str_radix(part, 16).map_err(|_| Error::InvalidData)?
-        }
-        Ok(VendorId(id))
-    }
-}
-
-impl Display for VendorId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:02x}-{:02x}-{:02x}", self.0[0], self.0[1], self.0[2])
-    }
-}
-
-impl VendorId {
-    pub fn try_from_sys(vendor_id: SysVendorId) -> Result<Option<VendorId>> {
-        match vendor_id {
-            x if x.is_none() => Ok(None),
-            x if x.is_valid() => {
-                let val: u32 = x.into();
-                Ok(Some(VendorId([
-                    ((val >> 16) & 0xFF).try_into().unwrap(),
-                    ((val >> 8) & 0xFF).try_into().unwrap(),
-                    (val & 0xFF).try_into().unwrap(),
-                ])))
-            }
-            _ => Err(Error::InvalidData),
-        }
-    }
 }
 
 impl OperandEncodable for PhysicalAddress {

@@ -5,8 +5,7 @@
 
 use anyhow::{ensure, Result};
 use linux_cec::device::{AsyncDevice, Capabilities};
-use linux_cec::operand::VendorId;
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType};
+use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, VendorId};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

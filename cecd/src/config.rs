@@ -10,8 +10,8 @@ use config::{
     AsyncSource, ConfigBuilder, ConfigError, FileFormat, FileStoredFormat, Format, Map, Value,
 };
 use input_linux::Key;
-use linux_cec::operand::{UiCommand, VendorId};
-use linux_cec::LogicalAddressType;
+use linux_cec::operand::UiCommand;
+use linux_cec::{LogicalAddressType, VendorId};
 use serde::de::{self, Unexpected};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
