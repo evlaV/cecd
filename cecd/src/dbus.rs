@@ -433,6 +433,10 @@ impl PollTask {
                 }
                 None
             }
+            Message::RequestActiveSource if self.awaiting_wake => {
+                let address = self.device.lock().await.get_physical_address().await?;
+                Some(Message::ActiveSource { address })
+            }
             _ => None,
         };
 
@@ -449,7 +453,7 @@ impl PollTask {
     async fn wake(&mut self) -> Result<()> {
         self.awaiting_wake = true;
         for _ in 0..WAKE_TRIES {
-            let result = self.device.lock().await.activate_source(true).await;
+            let result = self.device.lock().await.activate_source(false).await;
             match result {
                 Ok(()) => {
                     sleep(WAKE_DELAY).await;
