@@ -7,9 +7,11 @@ use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, PowerStatus, UiCommand};
-use linux_cec::LogicalAddress;
+use linux_cec::{Error, LogicalAddress};
+use nix::errno::Errno;
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
+use std::mem::drop;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,6 +20,7 @@ use tokio::select;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle};
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 use zbus::object_server::{InterfaceRef, SignalEmitter};
@@ -31,6 +34,9 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
 }
 
 const PATH: &str = "/com/steampowered/CecDaemon1";
+const LOG_ADDR_RETRIES: i32 = 10;
+const WAKE_TRIES: i32 = 10;
+const WAKE_DELAY: Duration = Duration::from_millis(500);
 
 #[derive(Debug)]
 pub struct CecDevice {
@@ -53,6 +59,8 @@ struct PollTask {
     channel: UnboundedReceiver<SystemMessage>,
     connection: Connection,
     path: String,
+    log_addr_try: i32,
+    awaiting_wake: bool,
 }
 
 impl CecDevice {
@@ -96,6 +104,8 @@ impl CecDevice {
             channel,
             connection,
             path: path.clone(),
+            log_addr_try: LOG_ADDR_RETRIES,
+            awaiting_wake: false,
         };
         interface.get_mut().await.poller = Some(spawn(poll_task.run()));
         info!("Device {path} registered");
@@ -322,14 +332,6 @@ impl PollTask {
                     iface.cached_phys_addr = phys_addr;
                     iface.physical_address_changed(emitter).await?;
                 }
-                if iface.cached_log_addrs != log_addrs {
-                    info!(
-                        "Logical addresses changed from {:?} to {log_addrs:?}",
-                        iface.cached_log_addrs
-                    );
-                    iface.cached_log_addrs = log_addrs;
-                    iface.logical_addresses_changed(emitter).await?;
-                }
                 if iface.cached_vendor_id != vendor_id {
                     info!(
                         "Vendor ID changed from {:?} to {vendor_id:?}",
@@ -337,6 +339,28 @@ impl PollTask {
                     );
                     iface.cached_vendor_id = vendor_id;
                     iface.vendor_id_changed(emitter).await?;
+                }
+                if iface.cached_log_addrs != log_addrs {
+                    info!(
+                        "Logical addresses changed from {:?} to {log_addrs:?}",
+                        iface.cached_log_addrs
+                    );
+                    iface.cached_log_addrs = log_addrs;
+                    if iface.cached_log_addrs.is_empty() {
+                        self.log_addr_try = LOG_ADDR_RETRIES;
+                    }
+                    iface.logical_addresses_changed(emitter).await?;
+                } else if log_addrs.is_empty() && phys_addr != 0xFFFF {
+                    if self.log_addr_try > 0 {
+                        info!("Did not get logical address, retrying registration");
+                        self.log_addr_try -= 1;
+                        drop(device);
+                        self.system
+                            .lock()
+                            .await
+                            .configure_dev(self.device.clone())
+                            .await?;
+                    }
                 }
             }
         }
@@ -402,6 +426,13 @@ impl PollTask {
                 opcode: envelope.message.opcode(),
                 abort_reason: AbortReason::UnrecognizedOp,
             }),
+            Message::RoutingChange { new_address, .. } => {
+                let this_address = self.device.lock().await.get_physical_address().await?;
+                if new_address == this_address {
+                    self.awaiting_wake = false;
+                }
+                None
+            }
             _ => None,
         };
 
@@ -415,16 +446,49 @@ impl PollTask {
         Ok(())
     }
 
+    async fn wake(&mut self) -> Result<()> {
+        self.awaiting_wake = true;
+        for _ in 0..WAKE_TRIES {
+            let result = self.device.lock().await.activate_source(true).await;
+            match result {
+                Ok(()) => {
+                    sleep(WAKE_DELAY).await;
+                    if !self.awaiting_wake {
+                        return Ok(());
+                    }
+                    continue;
+                }
+                Err(Error::Errno(Errno::ENONET)) => {
+                    debug!("Lost logical address. Retrying configuring.");
+                    let Err(err) = self.system
+                        .lock()
+                        .await
+                        .configure_dev(self.device.clone())
+                        .await else {
+                            continue;
+                    };
+                    if matches!(err.downcast::<Error>(), Ok(Error::Errno(Errno::ENODEV))) {
+                        self.awaiting_wake = false;
+                        debug!("Device was disconnected.");
+                        return Err(Error::Errno(Errno::ENODEV).into());
+                    }
+                }
+                Err(Error::Errno(Errno::ENODEV)) => {
+                    self.awaiting_wake = false;
+                    result?;
+                }
+                Err(e) => warn!("Failed to activate source: {e}"),
+            };
+            sleep(WAKE_DELAY).await;
+        }
+        warn!("Failed to wake TV");
+        Ok(())
+    }
+
     async fn handle_system_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
             SystemMessage::Wake => {
-                let _ = self
-                    .device
-                    .lock()
-                    .await
-                    .activate_source(true)
-                    .await
-                    .inspect_err(|e| warn!("Failed to activate source: {e}"));
+                self.wake().await
             }
             SystemMessage::ReloadConfig => {
                 self.uinput = None; // Drop old UInputDevice before opening a new one
@@ -434,8 +498,8 @@ impl PollTask {
                     .await
                     .configure_dev(self.device.clone())
                     .await?;
+                Ok(())
             }
         }
-        Ok(())
     }
 }
