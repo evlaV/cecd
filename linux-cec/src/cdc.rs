@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+//! Capability Discovery and Control support
+
 #![allow(clippy::len_without_is_empty)]
 
 use bitfield_struct::bitfield;

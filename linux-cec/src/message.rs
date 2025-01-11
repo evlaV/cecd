@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+//! Message encoding, decoding and handling
+
 #![allow(clippy::len_without_is_empty)]
 
 #[cfg(test)]

@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+//! Message operand encoding, decoding and handling
+
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::len_without_is_empty)]
 #![allow(clippy::len_zero)]

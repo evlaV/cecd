@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+//! Hardware devices interfaces
+
 use linux_cec_sys::constants::{
     CEC_CONNECTOR_TYPE_DRM, CEC_CONNECTOR_TYPE_NO_CONNECTOR, CEC_EVENT_LOST_MSGS,
     CEC_EVENT_PIN_5V_HIGH, CEC_EVENT_PIN_5V_LOW, CEC_EVENT_PIN_CEC_HIGH, CEC_EVENT_PIN_CEC_LOW,
@@ -202,6 +204,7 @@ impl Device {
         self.set_mode(mode)
     }
 
+    /// Get the raw [`cec_caps`] struct for the device from the kernel.
     pub fn get_raw_capabilities(&self) -> Result<cec_caps> {
         let mut caps = cec_caps::default();
         unsafe {
@@ -210,6 +213,8 @@ impl Device {
         Ok(caps)
     }
 
+    /// Get the [`Capabilities`] of the device, informing the quirks of
+    /// the specific device.
     pub fn get_capabilities(&self) -> Result<Capabilities> {
         self.get_raw_capabilities().map(|caps| caps.capabilities)
     }
@@ -506,6 +511,8 @@ impl Device {
         Ok(results)
     }
 
+    /// Get information about the connector for the device, which is usually a card handled
+    /// by Linux's [DRM](https://en.wikipedia.org/wiki/Direct_Rendering_Manager) subsystem.
     pub fn get_connector_info(&self) -> Result<ConnectorInfo> {
         let mut conn_info = cec_connector_info::default();
         unsafe {
@@ -530,6 +537,12 @@ impl Device {
         }
     }
 
+    /// Tell the TV to make this device the active source via the One Touch Play feature.
+    ///
+    /// HDMI CEC specifies two messages for how to handle device switching: Image View
+    /// and Text View. The Image View is simply the video input, with the possibility of
+    /// menus or infoboxes (the Text View) displayed over it. If `text_view` is set to
+    /// `true`, the device will request both and the TV should dismiss any active menus.
     pub fn activate_source(&self, text_view: bool) -> Result<()> {
         let address = self.get_physical_address()?;
         let active_source = Message::ActiveSource { address };

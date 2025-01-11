@@ -30,6 +30,8 @@ pub(crate) mod ioctls;
 pub use linux_cec_sys as sys;
 pub use linux_cec_sys::Timestamp;
 
+/// A CEC logical address, used for identifying devices
+/// attached to the CEC bus.
 #[derive(
     Clone,
     Copy,
@@ -201,6 +203,8 @@ impl LogicalAddress {
     }
 }
 
+/// The type of a CEC logical address, used for determining what type
+/// type of device is at the given address and for requesting an address.
 #[derive(
     Clone,
     Copy,
@@ -256,8 +260,8 @@ impl LogicalAddressType {
     }
 }
 
-/// An initiator mode specifies how a given [`Device`](device::Device) should handle
-/// acting an initiator; that is, if the device should be able to send messages.
+/// An mode specifying how a given [`Device`](device::Device) should act as
+/// an initiator; that is, if the device should be able to send messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InitiatorMode {
     /// Do not act as an initiator.
@@ -269,8 +273,8 @@ pub enum InitiatorMode {
     Exclusive,
 }
 
-/// A follower mode specifies how a given [`Device`](device::Device) should
-/// handle acting a follower; that is, how receiving messages should be handled.
+/// A mode specifying how a given [`Device`](device::Device) should act as
+/// a follower; that is, how receiving messages should be handled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FollowerMode {
     /// Do not act as a follower.
@@ -433,6 +437,8 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
     }
 }
 
+/// A unique 16-bit value that refers to a single
+/// device in the topology of the CDC network.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct PhysicalAddress(pub(crate) u16);
@@ -472,8 +478,9 @@ impl From<PhysicalAddress> for u16 {
 }
 
 /// A 24-bit [MA-L/OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier)
-/// identifying a device's vendor or manufacturer. These IDs
-/// are obtained from the IEEE, and a current list of OUIs can be queried from
+/// identifying a device's vendor or manufacturer.
+///
+/// These IDs are obtained from the IEEE, and a current list of OUIs can be queried from
 /// [their website](https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries).
 /// A full list is also available as [plain text](https://standards-oui.ieee.org/oui/oui.txt) or
 /// [CSV](https://standards-oui.ieee.org/oui/oui.csv).
