@@ -493,8 +493,10 @@ impl PollTask {
 
     async fn handle_system_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
-            SystemMessage::Wake => {
-                self.wake().await
+            SystemMessage::Wake => self.wake().await,
+            SystemMessage::Standby => {
+                self.device.lock().await.standby(LogicalAddress::Tv).await?;
+                Ok(())
             }
             SystemMessage::ReloadConfig => {
                 self.uinput = None; // Drop old UInputDevice before opening a new one

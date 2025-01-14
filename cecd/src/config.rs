@@ -82,6 +82,8 @@ pub(crate) struct Config {
     #[serde(default)]
     pub wake_tv: bool,
     #[serde(default)]
+    pub suspend_tv: bool,
+    #[serde(default)]
     pub disable_uinput: bool,
 }
 
