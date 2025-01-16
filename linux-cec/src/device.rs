@@ -184,6 +184,7 @@ impl Device {
         self.handle_status(status)
     }
 
+    /// Set or clear `O_NONBLOCK` on the underlying fd.
     pub fn set_blocking(&self, blocking: bool) -> Result<()> {
         let rawfd = self.file.as_raw_fd();
         let mut flags = OFlag::from_bits_retain(fcntl(rawfd, FcntlArg::F_GETFL)?);
@@ -386,6 +387,7 @@ impl Device {
         Ok(())
     }
 
+    /// Transmit a raw system [`cec_msg`] directly through the CEC_TRANSMIT ioctl.
     pub fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
         unsafe {
             transmit_message(self.file.as_raw_fd(), message)?;
@@ -427,6 +429,7 @@ impl Device {
         Ok(envelope)
     }
 
+    /// Receive a raw system [`cec_msg`] directly through the CEC_RECEIVE ioctl.
     pub fn rx_raw_message(&self, timeout_ms: u32) -> Result<cec_msg> {
         let mut message = cec_msg::from_timeout(timeout_ms);
         unsafe {
