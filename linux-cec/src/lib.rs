@@ -393,6 +393,8 @@ pub enum Error {
     InvalidData,
     #[error("A timeout occurred")]
     Timeout,
+    #[error("The request was aborted")]
+    Abort,
     #[error("Got unexpected result from system")]
     SystemError,
     #[error("Errno {0}")]

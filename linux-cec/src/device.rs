@@ -375,6 +375,13 @@ impl Device {
         if !raw_message.tx_status.contains(CEC_TX_STATUS::OK) {
             #[cfg(feature = "tracing")]
             warn!("Message failed to send: {:?}", raw_message.tx_status);
+            if raw_message.tx_status.contains(CEC_TX_STATUS::TIMEOUT) {
+                return Err(Error::Timeout);
+            }
+            if raw_message.tx_status.contains(CEC_TX_STATUS::ABORTED) {
+                return Err(Error::Abort);
+            }
+            return Err(Error::UnknownError(format!("{:?}", raw_message.tx_status)));
         }
         Ok(())
     }
@@ -390,6 +397,9 @@ impl Device {
         let message = self.rx_raw_message(timeout.as_ms())?;
         if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
             return Err(Error::Timeout);
+        }
+        if message.rx_status.contains(CEC_RX_STATUS::ABORTED) {
+            return Err(Error::Abort);
         }
         if message.len > 15 {
             return Err(Error::InvalidData);
