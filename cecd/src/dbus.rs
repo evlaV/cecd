@@ -464,12 +464,14 @@ impl PollTask {
                 }
                 Err(Error::Errno(Errno::ENONET)) => {
                     debug!("Lost logical address. Retrying configuring.");
-                    let Err(err) = self.system
+                    let Err(err) = self
+                        .system
                         .lock()
                         .await
                         .configure_dev(self.device.clone())
-                        .await else {
-                            continue;
+                        .await
+                    else {
+                        continue;
                     };
                     if matches!(err.downcast::<Error>(), Ok(Error::Errno(Errno::ENODEV))) {
                         self.awaiting_wake = false;
