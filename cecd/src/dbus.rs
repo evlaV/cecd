@@ -235,13 +235,13 @@ impl CecDevice {
             .map_err(into_fdo_error)
     }
 
-    async fn send_raw_message(&self, message: &[u8], target: u8) -> fdo::Result<()> {
+    async fn send_raw_message(&self, raw_message: &[u8], target: u8) -> fdo::Result<()> {
         let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        let message = Message::try_from_bytes(message).map_err(into_fdo_error)?;
+        let raw_message = Message::try_from_bytes(raw_message).map_err(into_fdo_error)?;
         self.device
             .lock()
             .await
-            .tx_message(&message, target)
+            .tx_message(&raw_message, target)
             .await
             .map_err(into_fdo_error)
     }
