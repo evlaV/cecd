@@ -107,6 +107,11 @@ pub struct DevicePoller {
     fd: OwnedFd,
 }
 
+/// Information from a [`DevicePoller`] about which information is available
+/// from the kernel, to be passed to [`Device::handle_status`].
+///
+/// As this is a representation of what data is available and not used for
+/// requesting data manually, it should not be constructed directly.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PollStatus {
     Nothing,
@@ -134,6 +139,7 @@ pub enum PollResult {
     StateChange,
 }
 
+/// Information about how the CEC device is connected to the system.
 #[derive(Debug, Clone, Hash)]
 pub enum ConnectorInfo {
     None,
@@ -361,6 +367,8 @@ impl Device {
         Ok(())
     }
 
+    /// Transmit a [`Message`] to a given [`LogicalAddress`]. Use [`LogicalAddress::BROADCAST`]
+    /// for broadcasting to all attached devices.
     pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
         let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
         let bytes = message.to_bytes();
@@ -395,6 +403,9 @@ impl Device {
         Ok(())
     }
 
+    /// Receive a message, waiting up to a [`Timeout`] if one is not available
+    /// in the kernel buffer already. The resulting [`Envelope`] will contain the
+    /// message and associated metadata.
     pub fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
         let message = self.rx_raw_message(timeout.as_ms())?;
         if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
