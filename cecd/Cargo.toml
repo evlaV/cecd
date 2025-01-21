@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "LGPL-2.1-or-later"
+description = "Daemon for userspace interactions with HDMI CEC on Linux"
 
 [dependencies]
 anyhow = "1"
