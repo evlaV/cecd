@@ -350,17 +350,15 @@ impl PollTask {
                         self.log_addr_try = LOG_ADDR_RETRIES;
                     }
                     iface.logical_addresses_changed(emitter).await?;
-                } else if log_addrs.is_empty() && phys_addr != 0xFFFF {
-                    if self.log_addr_try > 0 {
-                        info!("Did not get logical address, retrying registration");
-                        self.log_addr_try -= 1;
-                        drop(device);
-                        self.system
-                            .lock()
-                            .await
-                            .configure_dev(self.device.clone())
-                            .await?;
-                    }
+                } else if log_addrs.is_empty() && phys_addr != 0xFFFF && self.log_addr_try > 0 {
+                    info!("Did not get logical address, retrying registration");
+                    self.log_addr_try -= 1;
+                    drop(device);
+                    self.system
+                        .lock()
+                        .await
+                        .configure_dev(self.device.clone())
+                        .await?;
                 }
             }
         }

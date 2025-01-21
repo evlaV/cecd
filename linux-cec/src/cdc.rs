@@ -203,7 +203,7 @@ impl OperandEncodable for HecField {
             .input
             .iter()
             .enumerate()
-            .fold(word, |accum, (idx, bit)| accum | (*bit as u16) << idx);
+            .fold(word, |accum, (idx, bit)| accum | ((*bit as u16) << idx));
         word.to_bytes(buf);
     }
 
