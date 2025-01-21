@@ -1,0 +1,28 @@
+stages:
+  - test
+
+image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:base-devel
+
+test:
+  stage: test
+  tags:
+    - x86_64-linux-kvm-docker
+  script:
+    - pacman -Sy --noconfirm --needed rust
+    - cargo test
+
+fmt:
+  stage: test
+  tags:
+    - x86_64-linux-kvm-docker
+  script:
+    - pacman -Sy --noconfirm --needed rust
+    - cargo fmt --check
+
+clippy:
+  stage: test
+  tags:
+    - x86_64-linux-kvm-docker
+  script:
+    - pacman -Sy --noconfirm --needed rust
+    - cargo clippy
