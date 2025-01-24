@@ -38,7 +38,7 @@ use crate::message::Message;
 use crate::operand::{BufferOperand, UiCommand};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Range,
-    Result, Timeout, VendorId,
+    Result, RxError, Timeout, TxError, VendorId,
 };
 
 #[cfg(feature = "async")]
@@ -393,6 +393,18 @@ impl Device {
             if raw_message.tx_status.contains(CEC_TX_STATUS::ABORTED) {
                 return Err(Error::Abort);
             }
+            if raw_message.tx_status.contains(CEC_TX_STATUS::ARB_LOST) {
+                return Err(TxError::ArbLost.into());
+            }
+            if raw_message.tx_status.contains(CEC_TX_STATUS::NACK) {
+                return Err(TxError::Nack.into());
+            }
+            if raw_message.tx_status.contains(CEC_TX_STATUS::LOW_DRIVE) {
+                return Err(TxError::LowDrive.into());
+            }
+            if raw_message.tx_status.contains(CEC_TX_STATUS::MAX_RETRIES) {
+                return Err(TxError::MaxRetries.into());
+            }
             return Err(Error::UnknownError(format!("{:?}", raw_message.tx_status)));
         }
         Ok(())
@@ -416,6 +428,9 @@ impl Device {
         }
         if message.rx_status.contains(CEC_RX_STATUS::ABORTED) {
             return Err(Error::Abort);
+        }
+        if message.rx_status.contains(CEC_RX_STATUS::FEATURE_ABORT) {
+            return Err(RxError::FeatureAbort.into());
         }
         if message.len > 15 {
             return Err(Error::InvalidData);

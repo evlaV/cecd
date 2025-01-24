@@ -399,8 +399,42 @@ pub enum Error {
     SystemError,
     #[error("Errno {0}")]
     Errno(#[from] Errno),
+    #[error("{0}")]
+    TxError(#[from] TxError),
+    #[error("{0}")]
+    RxError(#[from] RxError),
     #[error("Unknown error: {0}")]
     UnknownError(String),
+}
+
+#[derive(Error, Clone, Debug, PartialEq)]
+#[repr(u8)]
+pub enum TxError {
+    #[error("Arbitration was lost")]
+    ArbLost = constants::CEC_TX_STATUS_ARB_LOST,
+    #[error("Negative acknowledgement")]
+    Nack = constants::CEC_TX_STATUS_NACK,
+    #[error("Low drive on bus")]
+    LowDrive = constants::CEC_TX_STATUS_LOW_DRIVE,
+    #[error("An unknown error occurred")]
+    UnknownError = constants::CEC_TX_STATUS_ERROR,
+    #[error("Maximum retries hit")]
+    MaxRetries = constants::CEC_TX_STATUS_MAX_RETRIES,
+    #[error("The request was aborted")]
+    Aborted = constants::CEC_TX_STATUS_ABORTED,
+    #[error("The request timed out")]
+    Timeout = constants::CEC_TX_STATUS_TIMEOUT,
+}
+
+#[derive(Error, Clone, Debug, PartialEq)]
+#[repr(u8)]
+pub enum RxError {
+    #[error("The request timed out")]
+    Timeout = constants::CEC_RX_STATUS_TIMEOUT,
+    #[error("The requested feature was not present")]
+    FeatureAbort = constants::CEC_RX_STATUS_FEATURE_ABORT,
+    #[error("The request was aborted")]
+    Aborted = constants::CEC_RX_STATUS_ABORTED,
 }
 
 impl Error {
