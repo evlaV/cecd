@@ -169,9 +169,9 @@ impl System {
 
         let device = device.lock().await;
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
-        if device
-            .get_capabilities()
-            .await?
+        let caps = device.get_capabilities().await?;
+        debug!("Device has caps: {caps:?}");
+        if caps
             .contains(Capabilities::LOG_ADDRS)
         {
             device.clear_logical_addresses().await?;

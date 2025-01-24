@@ -263,6 +263,9 @@ impl Device {
     pub fn set_logical_addresses(&mut self, log_addrs: &[LogicalAddressType]) -> Result<()> {
         Range::AtMost(CEC_MAX_LOG_ADDRS).check(log_addrs.len(), "logical addresses")?;
 
+        #[cfg(feature = "tracing")]
+        debug!("Attempting to set logical addresses: {log_addrs:?}");
+
         for (index, log_addr) in log_addrs.iter().enumerate() {
             self.internal_log_addrs.log_addr_type[index] = (*log_addr).into();
             if let Some(prim_dev_type) = (*log_addr).primary_device_type() {
