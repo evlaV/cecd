@@ -171,9 +171,7 @@ impl System {
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
         let caps = device.get_capabilities().await?;
         debug!("Device has caps: {caps:?}");
-        if caps
-            .contains(Capabilities::LOG_ADDRS)
-        {
+        if caps.contains(Capabilities::LOG_ADDRS) {
             device.clear_logical_addresses().await?;
             device.set_osd_name(&self.osd_name).await?;
             device.set_vendor_id(self.config.vendor_id).await?;
