@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "BSD-3-Clause"
 description = "Rust bindings for the Linux CEC subsystem"
+repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
 
 [features]
 default = ["std"]
