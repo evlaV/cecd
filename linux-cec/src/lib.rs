@@ -379,40 +379,54 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
     }
 }
 
+/// A set of common errors.
 #[derive(Error, Clone, Debug, PartialEq)]
 pub enum Error {
+    /// A value of a given `quantity` was outside of the `expected` range.
     #[error("Expected {expected} {quantity}, got {got} {quantity}")]
     OutOfRange {
         expected: Range<usize>,
         got: usize,
         quantity: &'static str,
     },
+    /// Got a `value` for a given type that was invalid for that `ty`.
     #[error("Invalid value {value} for type {ty}")]
     InvalidValueForType { ty: &'static str, value: String },
+    /// Got generic invalid data.
     #[error("The provided data was not valid")]
     InvalidData,
+    /// A timeout occurred.
     #[error("A timeout occurred")]
     Timeout,
+    /// A request was aborted.
     #[error("The request was aborted")]
     Abort,
+    /// A generic system error occurred.
     #[error("Got unexpected result from system")]
     SystemError,
+    /// Got an unhandled [`Errno`]-type error.
     #[error("Errno {0}")]
     Errno(#[from] Errno),
+    /// Got an error while transmitting a [`Message`](crate::message::Message)
+    /// that did not correspond to one of the other error types.
     #[error("{0}")]
     TxError(#[from] TxError),
+    /// Got an error while receiving a [`Message`](crate::message::Message)
+    /// that did not correspond to one of the other error types.
     #[error("{0}")]
     RxError(#[from] RxError),
+    /// Got an error that does not map to any of the other error types.
     #[error("Unknown error: {0}")]
     UnknownError(String),
 }
 
+/// A set of error codes that correspond to [`CEC_TX_STATUS`](sys::CEC_TX_STATUS).
 #[derive(Error, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TxError {
     #[error("Arbitration was lost")]
     ArbLost = constants::CEC_TX_STATUS_ARB_LOST,
-    #[error("Negative acknowledgement")]
+    #[error("No acknowledgement")]
     Nack = constants::CEC_TX_STATUS_NACK,
     #[error("Low drive on bus")]
     LowDrive = constants::CEC_TX_STATUS_LOW_DRIVE,
@@ -426,6 +440,7 @@ pub enum TxError {
     Timeout = constants::CEC_TX_STATUS_TIMEOUT,
 }
 
+/// A set of error codes that correspond to [`CEC_RX_STATUS`](sys::CEC_RX_STATUS).
 #[derive(Error, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum RxError {
