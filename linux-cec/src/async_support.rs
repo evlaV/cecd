@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+use linux_cec_sys::structs::cec_msg;
 use nix::poll::PollTimeout;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
@@ -19,19 +20,19 @@ use crate::{
 };
 
 macro_rules! relay {
-    ($self:expr, $message:ident) => {
+    ($self:expr, $message:ident) => {{
         let (tx, rx) = oneshot::channel();
         $self.tx
             .send(DeviceCommand::$message(tx))?;
         rx.await?
-    };
+    }};
 
-    ($self:expr, $message:ident => $($args:expr),*) => {
+    ($self:expr, $message:ident => $($args:expr),*) => {{
         let (tx, rx) = oneshot::channel();
         $self.tx
             .send(DeviceCommand::$message($($args,)* tx))?;
         rx.await?
-    };
+    }};
 }
 
 type ResultChannel<T> = oneshot::Sender<Result<T>>;
@@ -54,7 +55,9 @@ enum DeviceCommand {
     GetVendorId(ResultChannel<Option<VendorId>>),
     SetVendorId(Option<VendorId>, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
+    TransmitRawMessage(cec_msg, ResultChannel<cec_msg>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
+    ReceiveRawMessage(u32, ResultChannel<cec_msg>),
     HandleStatus(PollStatus, ResultChannel<Vec<PollResult>>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
     ActivateSource(bool, ResultChannel<()>),
@@ -182,8 +185,18 @@ impl Device {
         relay! { self, TransmitMessage => *message, destination }
     }
 
+    pub async fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
+        let new_message = relay! { self, TransmitRawMessage => message.clone() }?;
+        *message = new_message;
+        Ok(())
+    }
+
     pub async fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
         relay! { self, ReceiveMessage => timeout }
+    }
+
+    pub async fn rx_raw_message(&self, timeout: u32) -> Result<cec_msg> {
+        relay! { self, ReceiveRawMessage => timeout }
     }
 
     pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
@@ -296,8 +309,15 @@ impl DeviceThread {
                 DeviceCommand::TransmitMessage(message, dest, tx) => {
                     let _ = tx.send(self.device.tx_message(&message, dest));
                 }
+                DeviceCommand::TransmitRawMessage(msg, tx) => {
+                    let mut msg = msg.clone();
+                    let _ = tx.send(self.device.tx_raw_message(&mut msg).map(|_| msg));
+                }
                 DeviceCommand::ReceiveMessage(timeout, tx) => {
                     let _ = tx.send(self.device.rx_message(timeout));
+                }
+                DeviceCommand::ReceiveRawMessage(timeout, tx) => {
+                    let _ = tx.send(self.device.rx_raw_message(timeout));
                 }
                 DeviceCommand::HandleStatus(status, tx) => {
                     let _ = tx.send(self.device.handle_status(status));
