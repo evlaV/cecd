@@ -8,6 +8,7 @@ description = "Daemon for userspace interactions with HDMI CEC on Linux"
 repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
 readme = "../README.md"
 keywords = ["cec"]
+categories = ["hardware-support"]
 
 [dependencies]
 anyhow = "1"

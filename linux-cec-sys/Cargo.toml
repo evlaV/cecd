@@ -8,6 +8,7 @@ description = "Rust bindings for the Linux CEC subsystem"
 repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
 readme = "../README.md"
 keywords = ["cec"]
+categories = ["api-bindings", "external-ffi-bindings", "hardware-support"]
 
 [features]
 default = ["std"]

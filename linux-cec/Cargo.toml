@@ -8,6 +8,7 @@ description = "Library for userspace interactions with HDMI CEC on Linux"
 repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
 readme = "../README.md"
 keywords = ["cec"]
+categories = ["api-bindings", "hardware-support"]
 
 [features]
 default = ["async", "cectool", "tracing"]
