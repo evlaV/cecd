@@ -42,7 +42,7 @@ use crate::{
 };
 
 #[cfg(feature = "async")]
-pub use crate::async_support::Device as AsyncDevice;
+pub use crate::async_support::AsyncDevice;
 
 /// An object for interacting with system CEC devices.
 #[derive(Debug)]

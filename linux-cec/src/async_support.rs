@@ -3,15 +3,17 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use linux_cec_sys::structs::cec_msg;
+use linux_cec_sys::structs::{cec_caps, cec_msg};
 use nix::poll::PollTimeout;
+use std::fs::File;
+use std::panic::resume_unwind;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
 use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::{Capabilities, ConnectorInfo, Envelope, PollResult, PollStatus};
+use crate::device::{Capabilities, ConnectorInfo, Device, Envelope, PollResult, PollStatus};
 use crate::message::Message;
 use crate::operand::UiCommand;
 use crate::{
@@ -43,6 +45,7 @@ enum DeviceCommand {
     SetBlocking(bool, ResultChannel<()>),
     SetInitiatorMode(InitiatorMode, ResultChannel<()>),
     SetFollowerMode(FollowerMode, ResultChannel<()>),
+    GetRawCapabilities(ResultChannel<cec_caps>),
     GetCapabilities(ResultChannel<Capabilities>),
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
     SetPhysicalAddress(PhysicalAddress, ResultChannel<()>),
@@ -66,8 +69,12 @@ enum DeviceCommand {
     ReleaseUserControl(LogicalAddress, ResultChannel<()>),
 }
 
+/// An asynchronous version of [`Device`].
+///
+/// As this is simply an asynchronous interface for the standard [`Device`] struct,
+/// refer to the documentation there for information about the individual methods.
 #[derive(Debug)]
-pub struct Device {
+pub struct AsyncDevice {
     thread: Option<JoinHandle<Result<()>>>,
     tx: Sender<DeviceCommand>,
 }
@@ -84,12 +91,12 @@ enum PollerCommand {
 }
 
 struct DeviceThread {
-    device: device::Device,
+    device: Device,
     rx: Receiver<DeviceCommand>,
 }
 
-impl Device {
-    pub async fn open(path: impl AsRef<Path>) -> Result<Device> {
+impl AsyncDevice {
+    pub async fn open(path: impl AsRef<Path>) -> Result<AsyncDevice> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -97,22 +104,8 @@ impl Device {
             .open(path)
             .await?;
 
-        let (tx, rx) = channel();
-        let (start_tx, start_rx) = oneshot::channel();
         let file = file.into_std().await;
-
-        let thread = thread::spawn(move || {
-            let device = device::Device::try_from(file)?;
-            let mut thread = DeviceThread { device, rx };
-            let _ = start_tx.send(());
-            thread.run()
-        });
-        start_rx.await?;
-
-        Ok(Device {
-            thread: Some(thread),
-            tx,
-        })
+        AsyncDevice::try_from(file)
     }
 
     pub async fn set_blocking(&self, blocking: bool) -> Result<()> {
@@ -139,6 +132,10 @@ impl Device {
 
     pub async fn get_capabilities(&self) -> Result<Capabilities> {
         relay! { self, GetCapabilities }
+    }
+
+    pub async fn get_raw_capabilities(&self) -> Result<cec_caps> {
+        relay! { self, GetRawCapabilities }
     }
 
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
@@ -227,32 +224,49 @@ impl Device {
         relay! { self, ReleaseUserControl => target }
     }
 
+    /// Clean up the underlying [`Device`] struct. This is safer than just dropping it,
+    /// as you can handle any errors that may occur.
     pub async fn close(mut self) -> Result<()> {
         self.tx.send(DeviceCommand::Drop)?;
-        let Some(thread) = self.thread.take() else {
+        let Some(thread): Option<JoinHandle<Result<()>>> = self.thread.take() else {
             return Ok(());
         };
-        thread.join().unwrap()
+        match thread.join() {
+            Ok(r) => r,
+            Err(e) => resume_unwind(e),
+        }
     }
 }
 
-impl From<device::Device> for Device {
-    fn from(device: device::Device) -> Device {
+impl From<Device> for AsyncDevice {
+    fn from(device: Device) -> AsyncDevice {
         let (tx, rx) = channel();
         let mut thread = DeviceThread { device, rx };
 
         let thread = thread::spawn(move || thread.run());
-        Device {
+        AsyncDevice {
             thread: Some(thread),
             tx,
         }
     }
 }
 
-impl Drop for Device {
+impl TryFrom<File> for AsyncDevice {
+    type Error = Error;
+
+    fn try_from(file: File) -> Result<AsyncDevice> {
+        let device = Device::try_from(file)?;
+        Ok(AsyncDevice::from(device))
+    }
+}
+
+impl Drop for AsyncDevice {
     fn drop(&mut self) {
+        let Some(thread) = self.thread.take() else {
+            return;
+        };
         let _ = self.tx.send(DeviceCommand::Drop);
-        let _ = self.thread.take().unwrap().join();
+        let _ = thread.join();
     }
 }
 
@@ -275,6 +289,9 @@ impl DeviceThread {
                 }
                 DeviceCommand::GetCapabilities(tx) => {
                     let _ = tx.send(self.device.get_capabilities());
+                }
+                DeviceCommand::GetRawCapabilities(tx) => {
+                    let _ = tx.send(self.device.get_raw_capabilities());
                 }
                 DeviceCommand::GetPhysicalAddress(tx) => {
                     let _ = tx.send(self.device.get_physical_address());
