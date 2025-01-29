@@ -6,6 +6,8 @@ authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "LGPL-2.1-or-later"
 description = "Private macros for implementing the linux-cec crate"
 repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
+readme = "../README.md"
+keywords = ["cec"]
 
 [lib]
 proc-macro = true
