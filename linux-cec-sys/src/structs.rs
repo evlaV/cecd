@@ -15,6 +15,7 @@ use crate::constants::*;
 use crate::{LogicalAddress, PhysicalAddress, Timestamp};
 
 /// CEC message structure.
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct cec_msg {
     /// Timestamp in nanoseconds using `CLOCK_MONOTONIC`. Set by the
@@ -287,8 +288,8 @@ bitflags! {
 }
 
 /// CEC capabilities structure.
+#[derive(Debug, Clone, Default)]
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Default)]
 pub struct cec_caps {
     /// Name of the CEC device driver.
     pub driver: [c_char; 32],
@@ -303,8 +304,8 @@ pub struct cec_caps {
 }
 
 /// CEC logical addresses structure
+#[derive(Debug, Clone, Default)]
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Default)]
 pub struct cec_log_addrs {
     /// The claimed logical addresses. Set by the driver.
     pub log_addr: [u8; CEC_MAX_LOG_ADDRS],
@@ -400,8 +401,8 @@ bitflags! {
 }
 
 /// Tells which drm connector is associated with the CEC adapter.
-#[repr(C)]
 #[derive(Debug, Copy, Clone, Default)]
+#[repr(C)]
 pub struct cec_drm_connector_info {
     /// drm card number
     pub card_no: u32,
@@ -409,8 +410,8 @@ pub struct cec_drm_connector_info {
     pub connector_id: u32,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub union cec_connector_info_union {
     /// drm connector info
     pub drm: cec_drm_connector_info,
@@ -419,8 +420,8 @@ pub union cec_connector_info_union {
 }
 
 /// Tells if and which connector is associated with the CEC adapter.
+#[derive(Clone)]
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct cec_connector_info {
     /// Connector type (if any)
     pub ty: u32,
@@ -447,8 +448,8 @@ bitflags! {
 }
 
 /// Used when the CEC adapter changes state.
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub struct cec_event_state_change {
     /// The current physical address
     pub phys_addr: PhysicalAddress,
@@ -465,15 +466,15 @@ pub struct cec_event_state_change {
 }
 
 /// Tells you how many messages were lost.
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub struct cec_event_lost_msgs {
     /// How many messages were lost.
     pub lost_msgs: u32,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub union cec_event_union {
     /// The event payload for CEC_EVENT_STATE_CHANGE.
     pub state_change: cec_event_state_change,
@@ -484,8 +485,8 @@ pub union cec_event_union {
 }
 
 /// CEC event structure
+#[derive(Clone)]
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct cec_event {
     /// The timestamp of when the event was sent.
     pub ts: Timestamp,
@@ -509,8 +510,8 @@ impl Default for cec_event {
 }
 
 /// Convenience type for the non-zero null vendor ID
-#[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct VendorId(u32);
 
 impl Default for VendorId {
