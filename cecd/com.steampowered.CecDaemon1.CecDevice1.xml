@@ -1,0 +1,162 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <!--
+      com.steampowered.CecDaemon1.CecDaemon1
+      @short_description: An HDMI CEC device.
+
+  -->
+  <interface name="com.steampowered.CecDaemon1.CecDevice1">
+    <!--
+        ReceivedMessage:
+        @initiator: The initiating logical address.
+        @destination: The destination logical address.
+        @timestamp: A 64-bit timestamp when the message was received. This
+        timestamp is CLOCK_MONOTONIC so it will not correspond with the wall clock.
+        @message: The raw bytes of the message.
+
+        Emitted when a message is received by the device.
+    -->
+    <signal name="ReceivedMessage">
+      <arg name="initiator" type="y"/>
+      <arg name="destination" type="y"/>
+      <arg name="timestamp" type="t"/>
+      <arg name="message" type="ay"/>
+    </signal>
+
+    <!--
+        UserControlPressed:
+        @button: The [UI Command] value corresponding to the button.
+        @initiator: The initiating logical address.
+
+        Emitted when a button is pressed on a remote control or similar.
+    -->
+    <signal name="UserControlPressed">
+      <arg name="button" type="y"/>
+      <arg name="initiator" type="y"/>
+    </signal>
+
+    <!--
+        UserControlReleased:
+        @initiator: The initiating logical address.
+
+        Emitted when a button is released on a remote control or similar.
+    -->
+    <signal name="UserControlReleased">
+      <arg name="initiator" type="y"/>
+    </signal>
+
+    <!--
+        SetOsdName:
+        @name: The desired name. This must be no longer than 14 bytes.
+
+        Set the name shown on a TV's OSD
+    -->
+    <method name="SetOsdName">
+      <arg name="name" type="s" direction="in"/>
+    </method>
+
+    <!--
+        SetActiveSource:
+        @phys_addr: The desired physical address, or negative for the physical
+        address of this device.
+
+        Tell the TV to set a given physical address as the active source.
+    -->
+    <method name="SetActiveSource">
+      <arg name="phys_addr" type="i" direction="in"/>
+    </method>
+
+    <!--
+        Wake:
+
+        Convenience method to attempt to wake a connected TV and change the
+        source to this device.
+    -->
+    <method name="Wake">
+    </method>
+
+    <!--
+        Standby:
+        @target: The logical address of the target device.
+
+        Tell a device to enter standby.
+    -->
+    <method name="Standby">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        VolumeUp:
+        @target: The logical address of the target device.
+
+        Convenience method to send <User Control Pressed> [Volume Up]/<User
+        Control Released> to a given device.
+    -->
+    <method name="VolumeUp">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        VolumeDown:
+        @target: The logical address of the target device.
+
+        Convenience method to send <User Control Pressed> [Volume Down]/<User
+        Control Released> to a given device.
+    -->
+    <method name="VolumeDown">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        VolumeDown:
+        @target: The logical address of the target device.
+
+        Convenience method to send <User Control Pressed> [Mute]/<User Control
+        Released> to a given device.
+    -->
+    <method name="Mute">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        SendRawMessage:
+        @raw_message: The raw bytes making up this message. This must be no
+        more than 15 bytes.
+        @target: The logical address of the target device.
+
+        Send a message to a given device. If the message is invalid, this
+        method will fail before it sends it to the device.
+    -->
+    <method name="SendRawMessage">
+      <arg name="raw_message" type="ay" direction="in"/>
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        LogicalAddresses:
+
+        An array of the logical addresses assigned to this device. Generally,
+        this will contain either 0 or 1 entries, however it is possible for it
+        to contain more.
+    -->
+    <property name="LogicalAddresses" type="ay" access="read"/>
+
+    <!--
+        PhysicalAddress:
+
+        The physical address of this device. In the case that there is no valid
+        physical address, this will read 0xFFFF, per the specification.
+    -->
+    <property name="PhysicalAddress" type="q" access="read"/>
+
+    <!--
+        VendorId:
+
+        The vendor ID of this device. If no vendor ID is available, this value
+        will be negative.
+    -->
+    <property name="VendorId" type="i" access="read"/>
+  </interface>
+</node>
+
