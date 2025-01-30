@@ -75,7 +75,15 @@ impl System {
         })
     }
 
-    async fn find_devs(&mut self) -> Result<Vec<(CecDevice, UnboundedReceiver<SystemMessage>)>> {
+    async fn find_devs(
+        &mut self,
+    ) -> Result<
+        Vec<(
+            CecDevice,
+            UnboundedSender<SystemMessage>,
+            UnboundedReceiver<SystemMessage>,
+        )>,
+    > {
         let mut devs = Vec::new();
         let mut add = HashMap::new();
         let mut dir = read_dir("/dev").await?;
@@ -95,7 +103,11 @@ impl System {
 
             let token = self.token.child_token();
             let (channel, rx) = unbounded_channel();
-            devs.push((CecDevice::open(&path, token.clone()).await?, rx));
+            devs.push((
+                CecDevice::open(&path, token.clone()).await?,
+                channel.clone(),
+                rx,
+            ));
             info!("Found cec device at {pathname}");
             add.insert(path, DeviceHandle { token, channel });
         }
@@ -106,7 +118,11 @@ impl System {
     async fn find_dev(
         &mut self,
         path: impl AsRef<Path>,
-    ) -> Result<(CecDevice, UnboundedReceiver<SystemMessage>)> {
+    ) -> Result<(
+        CecDevice,
+        UnboundedSender<SystemMessage>,
+        UnboundedReceiver<SystemMessage>,
+    )> {
         let pathname = path.as_ref().display();
         debug!("Scanning cec device {pathname}");
         ensure!(
@@ -117,9 +133,14 @@ impl System {
         let (channel, rx) = unbounded_channel();
         let dev = CecDevice::open(&path, token.clone()).await?;
         info!("Found cec device at {pathname}");
-        self.devs
-            .insert(path.as_ref().to_path_buf(), DeviceHandle { token, channel });
-        Ok((dev, rx))
+        self.devs.insert(
+            path.as_ref().to_path_buf(),
+            DeviceHandle {
+                token,
+                channel: channel.clone(),
+            },
+        );
+        Ok((dev, channel, rx))
     }
 
     pub(crate) fn close_dev(&mut self, path: impl AsRef<Path>) {
@@ -219,9 +240,10 @@ impl SystemHandle {
             devs = system.find_devs().await?;
             connection = system.connection.clone();
         }
-        for (dev, rx) in devs {
+        for (dev, tx, rx) in devs {
             tokens.push(dev.token.clone());
-            dev.register(connection.clone(), self.clone(), rx).await?;
+            dev.register(connection.clone(), self.clone(), tx, rx)
+                .await?;
         }
         Ok(tokens)
     }
@@ -229,14 +251,16 @@ impl SystemHandle {
     pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<CancellationToken> {
         let dev;
         let rx;
+        let tx;
         let connection;
         {
             let mut system = self.lock().await;
-            (dev, rx) = system.find_dev(path).await?;
+            (dev, tx, rx) = system.find_dev(path).await?;
             connection = system.connection.clone();
         }
         let token = dev.token.clone();
-        dev.register(connection.clone(), self.clone(), rx).await?;
+        dev.register(connection.clone(), self.clone(), tx, rx)
+            .await?;
         Ok(token)
     }
 
