@@ -543,6 +543,26 @@ impl From<PhysicalAddress> for u16 {
     }
 }
 
+#[cfg(test)]
+mod test_physical_address {
+    use super::PhysicalAddress;
+
+    #[test]
+    fn test_fmt() {
+        assert_eq!(format!("{}", PhysicalAddress::from(0x12AB)), "1.2.a.b");
+    }
+
+    #[test]
+    fn test_from() {
+        assert_eq!(PhysicalAddress::from(0x12AB), PhysicalAddress(0x12AB));
+    }
+
+    #[test]
+    fn test_into() {
+        assert_eq!(<_ as Into<u16>>::into(PhysicalAddress(0x12AB)), 0x12AB);
+    }
+}
+
 /// A 24-bit [MA-L/OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier)
 /// identifying a device's vendor or manufacturer.
 ///
@@ -610,6 +630,57 @@ impl VendorId {
     }
 }
 
+#[cfg(test)]
+mod test_vendor_id {
+    use super::*;
+
+    #[test]
+    fn test_parsing() {
+        assert_eq!(
+            VendorId::from_str("01-ab-2c"),
+            Ok(VendorId([0x01, 0xAB, 0x2C]))
+        );
+        assert_eq!(
+            VendorId::from_str("01-23-45"),
+            Ok(VendorId([0x01, 0x23, 0x45]))
+        );
+    }
+
+    #[test]
+    fn test_invalid_parsing() {
+        assert_eq!(VendorId::from_str("01-ab-2g"), Err(Error::InvalidData));
+        assert_eq!(VendorId::from_str("01-ab"), Err(Error::InvalidData));
+        assert_eq!(VendorId::from_str("01ab2c"), Err(Error::InvalidData));
+        assert_eq!(VendorId::from_str("01:ab:2c"), Err(Error::InvalidData));
+    }
+
+    #[test]
+    fn test_fmt() {
+        assert_eq!(format!("{}", VendorId([0x01, 0xAB, 0x2C])), "01-ab-2c");
+    }
+
+    #[test]
+    fn test_from_sys() {
+        assert_eq!(
+            VendorId::try_from_sys(SysVendorId::try_from(0x01ab2c).unwrap()),
+            Ok(Some(VendorId([0x01, 0xAB, 0x2C])))
+        );
+
+        assert_eq!(
+            VendorId::try_from_sys(SysVendorId::try_from(0xFFFFFFFF).unwrap()),
+            Ok(None)
+        );
+    }
+
+    #[test]
+    fn test_into_sys() {
+        assert_eq!(
+            <_ as Into<SysVendorId>>::into(VendorId([0x01, 0xAB, 0x2C])),
+            SysVendorId::try_from(0x01ab2c).unwrap()
+        );
+    }
+}
+
 /// A convenience type for an unsigned 32-bit millisecond-granularity
 /// timeout, as used in the kernel interface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -649,6 +720,21 @@ impl TryFrom<&Duration> for Timeout {
                 quantity: "milliseconds",
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod test_timeout {
+    use super::*;
+
+    #[test]
+    fn test_from_duration() {
+        assert_eq!(Timeout::try_from(&Duration::from_secs(2)), Ok(Timeout::from_ms(2000)));
+        assert_eq!(Timeout::try_from(&Duration::from_millis(0x1_0000_0000)), Err(Error::OutOfRange {
+            expected: Range::AtMost(0xFFFFFFFF),
+            got: 0x1_0000_0000,
+            quantity: "milliseconds",
+        }));
     }
 }
 
