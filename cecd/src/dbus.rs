@@ -34,7 +34,7 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
 }
 
 const PATH: &str = "/com/steampowered/CecDaemon1";
-const LOG_ADDR_RETRIES: i32 = 10;
+const LOG_ADDR_RETRIES: i32 = 20;
 const WAKE_TRIES: i32 = 10;
 const WAKE_DELAY: Duration = Duration::from_millis(500);
 
@@ -452,9 +452,9 @@ impl PollTask {
         self.awaiting_wake = true;
         for _ in 0..WAKE_TRIES {
             let result = self.device.lock().await.activate_source(false).await;
+            sleep(WAKE_DELAY).await;
             match result {
                 Ok(()) => {
-                    sleep(WAKE_DELAY).await;
                     if !self.awaiting_wake {
                         return Ok(());
                     }
