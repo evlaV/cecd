@@ -177,11 +177,15 @@ impl CecDevice {
             .map_err(into_fdo_error)
     }
 
-    async fn activate_source(&self, text_view: bool) -> fdo::Result<()> {
+    async fn set_active_source(&self, phys_addr: i32) -> fdo::Result<()> {
+        let phys_addr = match <_ as TryInto<u16>>::try_into(phys_addr) {
+            Ok(phys_addr) => Some(PhysicalAddress::from(phys_addr)),
+            Err(_) => None,
+        };
         self.device
             .lock()
             .await
-            .activate_source(text_view)
+            .set_active_source(phys_addr)
             .await
             .map_err(into_fdo_error)
     }
@@ -449,16 +453,15 @@ impl PollTask {
     }
 
     async fn wake(&mut self) -> Result<()> {
+        self.device.lock().await.wake(false, false).await?;
         self.awaiting_wake = true;
         for _ in 0..WAKE_TRIES {
-            let result = self.device.lock().await.activate_source(false).await;
-            sleep(WAKE_DELAY).await;
+            let result = self.device.lock().await.set_active_source(None).await;
             match result {
                 Ok(()) => {
                     if !self.awaiting_wake {
                         return Ok(());
                     }
-                    continue;
                 }
                 Err(Error::Errno(Errno::ENONET)) => {
                     debug!("Lost logical address. Retrying configuring.");
@@ -485,7 +488,7 @@ impl PollTask {
             };
             sleep(WAKE_DELAY).await;
         }
-        warn!("Failed to wake TV");
+        info!("TV did not respond to wake immediately");
         Ok(())
     }
 

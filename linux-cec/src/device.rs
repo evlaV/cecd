@@ -579,15 +579,25 @@ impl Device {
         }
     }
 
-    /// Tell the TV to make this device the active source via the One Touch Play feature.
+    /// Tell the TV to switch to the given phyiscal address for its input. If
+    /// the address is None, it uses the physical address of the device itself.
+    pub fn set_active_source(&self, address: Option<PhysicalAddress>) -> Result<()> {
+        let address = match address {
+            Some(address) => address,
+            None => self.get_physical_address()?,
+        };
+        let active_source = Message::ActiveSource { address };
+        self.tx_message(&active_source, LogicalAddress::BROADCAST)
+    }
+
+    /// Wake the TV and optionally tell the TV to make this device the active source via
+    /// the One Touch Play feature.
     ///
     /// HDMI CEC specifies two messages for how to handle device switching: Image View
     /// and Text View. The Image View is simply the video input, with the possibility of
     /// menus or infoboxes (the Text View) displayed over it. If `text_view` is set to
     /// `true`, the device will request both and the TV should dismiss any active menus.
-    pub fn activate_source(&self, text_view: bool) -> Result<()> {
-        let address = self.get_physical_address()?;
-        let active_source = Message::ActiveSource { address };
+    pub fn wake(&self, set_active: bool, text_view: bool) -> Result<()> {
         if text_view {
             let text_view_on = Message::TextViewOn {};
             self.tx_message(&text_view_on, LogicalAddress::Tv)?;
@@ -595,7 +605,12 @@ impl Device {
             let image_view_on = Message::ImageViewOn {};
             self.tx_message(&image_view_on, LogicalAddress::Tv)?;
         }
-        self.tx_message(&active_source, LogicalAddress::BROADCAST)
+        if set_active {
+            let address = self.get_physical_address()?;
+            let active_source = Message::ActiveSource { address };
+            self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
+        }
+        Ok(())
     }
 
     /// Tell a device with the given [`LogicalAddress`] to enter standby mode.

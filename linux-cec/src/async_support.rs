@@ -63,7 +63,8 @@ enum DeviceCommand {
     ReceiveRawMessage(u32, ResultChannel<cec_msg>),
     HandleStatus(PollStatus, ResultChannel<Vec<PollResult>>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
-    ActivateSource(bool, ResultChannel<()>),
+    SetActiveSource(Option<PhysicalAddress>, ResultChannel<()>),
+    Wake(bool, bool, ResultChannel<()>),
     Standby(LogicalAddress, ResultChannel<()>),
     PressUserControl(UiCommand, LogicalAddress, ResultChannel<()>),
     ReleaseUserControl(LogicalAddress, ResultChannel<()>),
@@ -204,8 +205,12 @@ impl AsyncDevice {
         relay! { self, GetConnectorInfo }
     }
 
-    pub async fn activate_source(&self, text_view: bool) -> Result<()> {
-        relay! { self, ActivateSource => text_view }
+    pub async fn set_active_source(&self, address: Option<PhysicalAddress>) -> Result<()> {
+        relay! { self, SetActiveSource => address }
+    }
+
+    pub async fn wake(&self, set_active: bool, text_view: bool) -> Result<()> {
+        relay! { self, Wake => set_active, text_view }
     }
 
     pub async fn standby(&self, target: LogicalAddress) -> Result<()> {
@@ -342,8 +347,11 @@ impl DeviceThread {
                 DeviceCommand::GetConnectorInfo(tx) => {
                     let _ = tx.send(self.device.get_connector_info());
                 }
-                DeviceCommand::ActivateSource(text_view, tx) => {
-                    let _ = tx.send(self.device.activate_source(text_view));
+                DeviceCommand::SetActiveSource(address, tx) => {
+                    let _ = tx.send(self.device.set_active_source(address));
+                }
+                DeviceCommand::Wake(set_active, text_view, tx) => {
+                    let _ = tx.send(self.device.wake(set_active, text_view));
                 }
                 DeviceCommand::Standby(target, tx) => {
                     let _ = tx.send(self.device.standby(target));
