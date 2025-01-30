@@ -542,7 +542,7 @@ impl Device {
                     pin: Pin::Power5V,
                     state: PinState::High,
                 })),
-                _ => return Err(Error::SystemError),
+                _ => return Err(Error::InvalidData),
             }
         }
 

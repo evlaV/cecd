@@ -401,12 +401,15 @@ pub enum Error {
     /// A request was aborted.
     #[error("The request was aborted")]
     Abort,
+    /// The request failed because the device doesn't have a logical address.
+    #[error("The device does not have a logical address")]
+    NoLogicalAddress,
+    /// The device was disconnected from the system.
+    #[error("The device was disconnected")]
+    Disconnected,
     /// A generic system error occurred.
-    #[error("Got unexpected result from system")]
-    SystemError,
-    /// Got an unhandled [`Errno`]-type error.
-    #[error("Errno {0}")]
-    Errno(#[from] Errno),
+    #[error("Got unexpected result from system: {0}")]
+    SystemError(Errno),
     /// Got an error while transmitting a [`Message`](crate::message::Message)
     /// that did not correspond to one of the other error types.
     #[error("{0}")]
@@ -475,6 +478,18 @@ impl From<io::Error> for Error {
             Errno::from_raw(raw).into()
         } else {
             Error::UnknownError(format!("{val}"))
+        }
+    }
+}
+
+impl From<Errno> for Error {
+    fn from(val: Errno) -> Error {
+        match val {
+            Errno::EINVAL => Error::InvalidData,
+            Errno::ETIMEDOUT => Error::Timeout,
+            Errno::ENODEV => Error::Disconnected,
+            Errno::ENONET => Error::NoLogicalAddress,
+            x => Error::SystemError(x),
         }
     }
 }

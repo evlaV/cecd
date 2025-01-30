@@ -8,7 +8,6 @@ use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress, PhysicalAddress};
-use nix::errno::Errno;
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
 use std::mem::drop;
@@ -477,7 +476,7 @@ impl PollTask {
                         return Ok(());
                     }
                 }
-                Err(Error::Errno(Errno::ENONET)) => {
+                Err(Error::NoLogicalAddress) => {
                     debug!("Lost logical address. Retrying configuring.");
                     let Err(err) = self
                         .system
@@ -488,13 +487,13 @@ impl PollTask {
                     else {
                         continue;
                     };
-                    if matches!(err.downcast::<Error>(), Ok(Error::Errno(Errno::ENODEV))) {
+                    if matches!(err.downcast::<Error>(), Ok(Error::Disconnected)) {
                         self.awaiting_wake = false;
                         debug!("Device was disconnected.");
-                        return Err(Error::Errno(Errno::ENODEV).into());
+                        return Err(Error::Disconnected.into());
                     }
                 }
-                Err(Error::Errno(Errno::ENODEV)) => {
+                Err(Error::Disconnected) => {
                     self.awaiting_wake = false;
                     result?;
                 }
