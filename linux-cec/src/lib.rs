@@ -729,12 +729,18 @@ mod test_timeout {
 
     #[test]
     fn test_from_duration() {
-        assert_eq!(Timeout::try_from(&Duration::from_secs(2)), Ok(Timeout::from_ms(2000)));
-        assert_eq!(Timeout::try_from(&Duration::from_millis(0x1_0000_0000)), Err(Error::OutOfRange {
-            expected: Range::AtMost(0xFFFFFFFF),
-            got: 0x1_0000_0000,
-            quantity: "milliseconds",
-        }));
+        assert_eq!(
+            Timeout::try_from(&Duration::from_secs(2)),
+            Ok(Timeout::from_ms(2000))
+        );
+        assert_eq!(
+            Timeout::try_from(&Duration::from_millis(0x1_0000_0000)),
+            Err(Error::OutOfRange {
+                expected: Range::AtMost(0xFFFFFFFF),
+                got: 0x1_0000_0000,
+                quantity: "milliseconds",
+            })
+        );
     }
 }
 
