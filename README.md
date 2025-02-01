@@ -2,9 +2,9 @@ linux-cec
 =========
 
 linux-cec is a collection of Rust crates intended for interfacing with Linux's
-[HDMI CEC](https://en.wikipedia.org/Consumer_Electronics_Control) (Consumer Electronics Control) userspace subsystem:
+[Consumer Electronics Control](https://en.wikipedia.org/Consumer_Electronics_Control) userspace subsystem:
 
-- linux-cec: A library for interacting with CEC devices via HDMI adapters connected to the host.
+- linux-cec: A library for interacting with CEC devices via adapters connected to the host.
 - linux-cec-sys: Interfaces relating to the underlying ioctl API for /dev/cec* nodes, translated from
   `include/linux/cec.h` into Rust. You will probably not need to use these, but they are separated out for developers
   who don't wish to use linux-cec directly.
@@ -14,7 +14,7 @@ linux-cec is a collection of Rust crates intended for interfacing with Linux's
   device for the remote control via [uinput](https://www.kernel.org/doc/html/latest/input/uinput.html).
 
 Note that most GPUs do not expose CEC to the OS, and as such you may need an adapter supported by the kernel to use
-CEC. Please see the Linux admin guide [page on HDMI CEC](https://docs.kernel.org/admin-guide/media/cec.html) for more
+CEC. Please see the Linux admin guide [page on CEC](https://docs.kernel.org/admin-guide/media/cec.html) for more
 details on supported devices. This repo also contains versions of the systemd units and udev rules to enable
 auto-binding of external adapters. These are located `data` directory and can be installed into
 `/usr/lib/systemd/system/` and `/usr/lib/udev/rules.d/` respectively.
@@ -40,7 +40,7 @@ the need for a userspace library handling it all directly has diminished since l
 
 ## cecd
 
-Many features of HDMI CEC make sense at a system-wide level instead of an application level. For example, handling
+Many features of CEC make sense at a system-wide level instead of an application level. For example, handling
 wake/suspend synchronization of the device and the TV. Furthermore, some application-level features can make sense to
 expose without directly using the library, such as mapping remote control button presses to key inputs. Cecd aims to
 support all of these features:
