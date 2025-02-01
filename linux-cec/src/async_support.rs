@@ -57,7 +57,7 @@ enum DeviceCommand {
     SetOsdName(String, ResultChannel<()>),
     GetVendorId(ResultChannel<Option<VendorId>>),
     SetVendorId(Option<VendorId>, ResultChannel<()>),
-    TransmitMessage(Message, LogicalAddress, ResultChannel<()>),
+    TransmitMessage(Message, LogicalAddress, ResultChannel<u32>),
     TransmitRawMessage(cec_msg, ResultChannel<cec_msg>),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     ReceiveRawMessage(u32, ResultChannel<cec_msg>),
@@ -179,7 +179,7 @@ impl AsyncDevice {
         relay! { self, SetVendorId => vendor_id }
     }
 
-    pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
+    pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<u32> {
         relay! { self, TransmitMessage => *message, destination }
     }
 

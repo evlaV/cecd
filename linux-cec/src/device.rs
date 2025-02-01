@@ -67,6 +67,8 @@ pub struct Envelope {
     /// The time at which this message was received. This may be different
     /// from the time at which the message was read out of the kernel.
     pub timestamp: Timestamp,
+    /// A system-tracked sequence number.
+    pub sequence: u32,
 }
 
 /// A physical pin that can be monitored via [`PinEvent`]s.
@@ -370,9 +372,10 @@ impl Device {
         Ok(())
     }
 
-    /// Transmit a [`Message`] to a given [`LogicalAddress`]. Use [`LogicalAddress::BROADCAST`]
-    /// for broadcasting to all attached devices.
-    pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<()> {
+    /// Transmit a [`Message`] to a given [`LogicalAddress`]. Use
+    /// [`LogicalAddress::BROADCAST`] for broadcasting to all attached devices.
+    /// The sequence number of the submitted message is returned.
+    pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<u32> {
         let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
         let bytes = message.to_bytes();
         let len = usize::min(bytes.len(), 15) + 1;
@@ -407,7 +410,7 @@ impl Device {
             }
             return Err(Error::UnknownError(format!("{:?}", raw_message.tx_status)));
         }
-        Ok(())
+        Ok(raw_message.sequence)
     }
 
     /// Transmit a raw system [`cec_msg`] directly through the CEC_TRANSMIT ioctl.
@@ -439,6 +442,7 @@ impl Device {
         let initiator = LogicalAddress::try_from_primitive(message.msg[0] >> 4)?;
         let destination = LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?;
         let timestamp = message.rx_ts;
+        let sequence = message.sequence;
 
         #[cfg(feature = "tracing")]
         let message = Message::try_from_bytes(bytes).inspect_err(|e| {
@@ -452,6 +456,7 @@ impl Device {
             initiator,
             destination,
             timestamp,
+            sequence,
         };
         #[cfg(feature = "tracing")]
         debug!("Got message {envelope:#?}");
@@ -587,7 +592,8 @@ impl Device {
             None => self.get_physical_address()?,
         };
         let active_source = Message::ActiveSource { address };
-        self.tx_message(&active_source, LogicalAddress::BROADCAST)
+        self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
+        Ok(())
     }
 
     /// Wake the TV and optionally tell the TV to make this device the active source via
@@ -616,7 +622,8 @@ impl Device {
     /// Tell a device with the given [`LogicalAddress`] to enter standby mode.
     pub fn standby(&self, target: LogicalAddress) -> Result<()> {
         let standby = Message::Standby {};
-        self.tx_message(&standby, target)
+        self.tx_message(&standby, target)?;
+        Ok(())
     }
 
     /// Convenience method for sending a user control command to a given [`LogicalAddress`]
@@ -625,7 +632,8 @@ impl Device {
     /// devices. This must be matched with a call to [`Device::release_user_control`].
     pub fn press_user_control(&self, ui_command: UiCommand, target: LogicalAddress) -> Result<()> {
         let user_control = Message::UserControlPressed { ui_command };
-        self.tx_message(&user_control, target)
+        self.tx_message(&user_control, target)?;
+        Ok(())
     }
 
     /// Convenience method for terminating a user control command, as started with
@@ -634,7 +642,8 @@ impl Device {
     /// [`LogicalAddress`].
     pub fn release_user_control(&self, target: LogicalAddress) -> Result<()> {
         let user_control = Message::UserControlReleased {};
-        self.tx_message(&user_control, target)
+        self.tx_message(&user_control, target)?;
+        Ok(())
     }
 }
 

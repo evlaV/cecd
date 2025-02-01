@@ -124,6 +124,7 @@
         @raw_message: The raw bytes making up this message. This must be no
         more than 15 bytes.
         @target: The logical address of the target device.
+        @sequence: The system's sequence number of the sent message.
 
         Send a message to a given device. If the message is invalid, this
         method will fail before it sends it to the device.
@@ -131,6 +132,7 @@
     <method name="SendRawMessage">
       <arg name="raw_message" type="ay" direction="in"/>
       <arg name="target" type="y" direction="in"/>
+      <arg name="sequence" type="u" direction="out"/>
     </method>
 
     <!--
