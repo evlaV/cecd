@@ -688,12 +688,17 @@ mod test_vendor_id {
 pub struct Timeout(u32);
 
 impl Timeout {
+    /// A timeout that never expires.
+    pub const NONE: Timeout = Timeout(0);
+
+    /// Return the number of milliseconds for this timeout.
     #[must_use]
     #[inline]
     pub fn as_ms(&self) -> u32 {
         self.0
     }
 
+    /// Create a timeout for a number of milliseconds.
     #[must_use]
     #[inline]
     pub fn from_ms(millis: u32) -> Timeout {
@@ -720,6 +725,12 @@ impl TryFrom<&Duration> for Timeout {
                 quantity: "milliseconds",
             })
         }
+    }
+}
+
+impl From<Timeout> for Duration {
+    fn from(val: Timeout) -> Duration {
+        Duration::from_millis(val.as_ms().into())
     }
 }
 
