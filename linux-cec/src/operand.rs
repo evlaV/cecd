@@ -39,7 +39,7 @@ pub trait OperandEncodable: Sized {
 
 impl OperandEncodable for PhysicalAddress {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        <u16 as OperandEncodable>::to_bytes(&self.0, buf)
+        <u16 as OperandEncodable>::to_bytes(&self.0, buf);
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -413,7 +413,7 @@ mod test_u16 {
 
 impl OperandEncodable for bool {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
-        buf.extend([if *self { 1 } else { 0 }]);
+        buf.extend([u8::from(*self)]);
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -2564,7 +2564,7 @@ impl OperandEncodable for ChannelId {
                 low = *minor;
             }
         }
-        let number_format = (u8::from(number_format) as u16) << 10;
+        let number_format = u16::from(u8::from(number_format)) << 10;
         let high: u16 = number_format | high;
         high.to_bytes(buf);
         low.to_bytes(buf);

@@ -261,7 +261,7 @@ impl MessageEnum {
         for variant in data.variants {
             let ident = variant.ident;
             let Some((_, discriminant)) = variant.discriminant else {
-                return Err(format!("Variant {} missing discriminant", ident));
+                return Err(format!("Variant {ident} missing discriminant"));
             };
             opcodes.push(quote!(#ident = #discriminant));
 

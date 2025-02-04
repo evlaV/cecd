@@ -577,7 +577,7 @@ impl From<VendorId> for SysVendorId {
     #[inline]
     fn from(val: VendorId) -> SysVendorId {
         SysVendorId::try_from(
-            ((val.0[0] as u32) << 16) | ((val.0[1] as u32) << 8) | (val.0[2] as u32),
+            (u32::from(val.0[0]) << 16) | (u32::from(val.0[1]) << 8) | u32::from(val.0[2]),
         )
         .unwrap()
     }
@@ -597,7 +597,7 @@ impl FromStr for VendorId {
             if part.len() != 2 {
                 return Err(Error::InvalidData);
             }
-            id[idx] = u8::from_str_radix(part, 16).map_err(|_| Error::InvalidData)?
+            id[idx] = u8::from_str_radix(part, 16).map_err(|_| Error::InvalidData)?;
         }
         Ok(VendorId(id))
     }

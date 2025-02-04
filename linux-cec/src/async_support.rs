@@ -333,7 +333,7 @@ impl DeviceThread {
                 }
                 DeviceCommand::TransmitRawMessage(msg, tx) => {
                     let mut msg = msg.clone();
-                    let _ = tx.send(self.device.tx_raw_message(&mut msg).map(|_| msg));
+                    let _ = tx.send(self.device.tx_raw_message(&mut msg).and(Ok(msg)));
                 }
                 DeviceCommand::ReceiveMessage(timeout, tx) => {
                     let _ = tx.send(self.device.rx_message(timeout));
