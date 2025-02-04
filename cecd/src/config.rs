@@ -72,17 +72,24 @@ where
 
 #[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
+    /// The default advertised OSD name for this device, max 14 bytes. Defaults to "CEC Device".
     pub osd_name: Option<String>,
+    /// The vendor OUI for this device. Defaults to `None`.
     #[serde(deserialize_with = "de_vendor_id", default)]
     pub vendor_id: Option<VendorId>,
+    /// The type of logical address this device should request. Defaults to `playback`.
     #[serde(deserialize_with = "de_logical_address", default)]
     pub logical_address: LogicalAddressType,
+    /// Desired key mappings for uinput. Defaults to none.
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,
+    /// Should cecd attempt to wake the TV when the device is woken? Defaults to false.
     #[serde(default)]
     pub wake_tv: bool,
+    /// Should cecd attempt to suspend the TV when the device is suspended? Defaults to false.
     #[serde(default)]
     pub suspend_tv: bool,
+    /// Should uinput mappings be disabled. Defaults to false.
     #[serde(default)]
     pub disable_uinput: bool,
 }
