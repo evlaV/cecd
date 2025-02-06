@@ -1002,7 +1002,9 @@ pub enum AudioRate {
 #[bits = 2]
 #[repr(u8)]
 pub enum AudioFormatId {
+    /// As defined in CEA-861-D
     CEA861 = constants::CEC_OP_AUD_FMT_ID_CEA861,
+    /// CXT (Coding Extenstion Type) field as defined in CTA-861-G
     CEA861Cxt = constants::CEC_OP_AUD_FMT_ID_CEA861_CXT,
     #[default]
     Invalid(u8),
@@ -1021,25 +1023,25 @@ pub enum AudioOutputCompensated {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum BroadcastSystem {
+    /// PAL-B/G
     PalBG = constants::CEC_OP_BCAST_SYSTEM_PAL_BG,
-    SecamLq = constants::CEC_OP_BCAST_SYSTEM_SECAM_LQ, /* SECAM L' */
+    /// SECAM-L'
+    SecamLq = constants::CEC_OP_BCAST_SYSTEM_SECAM_LQ,
+    /// PAL-M
     PalM = constants::CEC_OP_BCAST_SYSTEM_PAL_M,
+    /// NTSC-M
     NtscM = constants::CEC_OP_BCAST_SYSTEM_NTSC_M,
+    /// PAL-I
     PalI = constants::CEC_OP_BCAST_SYSTEM_PAL_I,
+    /// SECAM-D/K
     SecamDK = constants::CEC_OP_BCAST_SYSTEM_SECAM_DK,
+    /// SECAM-B/G
     SecamBG = constants::CEC_OP_BCAST_SYSTEM_SECAM_BG,
+    /// SECAM-L
     SecamL = constants::CEC_OP_BCAST_SYSTEM_SECAM_L,
+    /// PAL-D/K
     PalDK = constants::CEC_OP_BCAST_SYSTEM_PAL_DK,
     Other = constants::CEC_OP_BCAST_SYSTEM_OTHER,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum CdcErrorCode {
-    None = constants::CEC_OP_CDC_ERROR_CODE_NONE,
-    CapUnsupported = constants::CEC_OP_CDC_ERROR_CODE_CAP_UNSUPPORTED,
-    WrongState = constants::CEC_OP_CDC_ERROR_CODE_WRONG_STATE,
-    Other = constants::CEC_OP_CDC_ERROR_CODE_OTHER,
 }
 
 #[repr(u8)]
@@ -1154,55 +1156,9 @@ pub enum DisplayControl {
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum EncFunctionalityState {
-    ExtConNotSupported = constants::CEC_OP_ENC_FUNC_STATE_EXT_CON_NOT_SUPPORTED,
-    ExtConInactive = constants::CEC_OP_ENC_FUNC_STATE_EXT_CON_INACTIVE,
-    ExtConActive = constants::CEC_OP_ENC_FUNC_STATE_EXT_CON_ACTIVE,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum ExternalSourceSpecifier {
     ExternalPlug = constants::CEC_OP_EXT_SRC_PLUG,
     ExternalPhysicalAddress = constants::CEC_OP_EXT_SRC_PHYS_ADDR,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum HecFunctionalityState {
-    NotSupported = constants::CEC_OP_HEC_FUNC_STATE_NOT_SUPPORTED,
-    Inactive = constants::CEC_OP_HEC_FUNC_STATE_INACTIVE,
-    Active = constants::CEC_OP_HEC_FUNC_STATE_ACTIVE,
-    ActivationField = constants::CEC_OP_HEC_FUNC_STATE_ACTIVATION_FIELD,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum HostFunctionalityState {
-    NotSupported = constants::CEC_OP_HOST_FUNC_STATE_NOT_SUPPORTED,
-    Inactive = constants::CEC_OP_HOST_FUNC_STATE_INACTIVE,
-    Active = constants::CEC_OP_HOST_FUNC_STATE_ACTIVE,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum HpdErrorCode {
-    None = constants::CEC_OP_HPD_ERROR_NONE,
-    InitiatorNotCapable = constants::CEC_OP_HPD_ERROR_INITIATOR_NOT_CAPABLE,
-    InitiatorWrongState = constants::CEC_OP_HPD_ERROR_INITIATOR_WRONG_STATE,
-    Other = constants::CEC_OP_HPD_ERROR_OTHER,
-    NoneNoVideo = constants::CEC_OP_HPD_ERROR_NONE_NO_VIDEO,
-}
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
-pub enum HpdStateState {
-    CpEdidDisable = constants::CEC_OP_HPD_STATE_CP_EDID_DISABLE,
-    CpEdidEnable = constants::CEC_OP_HPD_STATE_CP_EDID_ENABLE,
-    CpEdidDisableEnable = constants::CEC_OP_HPD_STATE_CP_EDID_DISABLE_ENABLE,
-    EdidDisable = constants::CEC_OP_HPD_STATE_EDID_DISABLE,
-    EdidEnable = constants::CEC_OP_HPD_STATE_EDID_ENABLE,
-    EdidDisableEnable = constants::CEC_OP_HPD_STATE_EDID_DISABLE_ENABLE,
 }
 
 #[repr(u8)]
