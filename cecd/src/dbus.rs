@@ -437,6 +437,17 @@ impl PollTask {
                     None
                 }
             }
+            Message::Standby if self.system.lock().await.config.allow_standby => {
+                if let Err(e) = self.system.suspend().await {
+                    error!("Failed to standby: {e}");
+                    Some(Message::FeatureAbort {
+                        opcode: envelope.message.opcode(),
+                        abort_reason: AbortReason::IncorrectMode,
+                    })
+                } else {
+                    None
+                }
+            }
             _ if envelope.destination != LogicalAddress::BROADCAST => Some(Message::FeatureAbort {
                 opcode: envelope.message.opcode(),
                 abort_reason: AbortReason::UnrecognizedOp,

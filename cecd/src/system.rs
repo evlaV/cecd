@@ -25,7 +25,7 @@ use crate::uinput::UInputDevice;
 #[derive(Debug)]
 pub(crate) struct System {
     osd_name: String,
-    config: Config,
+    pub config: Config,
 
     connection: Connection,
     system_bus: Connection,
@@ -47,6 +47,8 @@ struct DeviceHandle {
 trait LoginManager {
     #[zbus(signal)]
     fn prepare_for_sleep(&self, sleep: bool) -> Result<()>;
+
+    fn suspend(&self, interactive: bool) -> Result<()>;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -294,5 +296,10 @@ impl SystemHandle {
                 self.lock().await.send_message(SystemMessage::Standby).await;
             }
         }
+    }
+
+    pub(crate) async fn suspend(&self) -> Result<()> {
+        let login_manager = LoginManagerProxy::new(&self.lock().await.system_bus).await?;
+        login_manager.suspend(false).await
     }
 }

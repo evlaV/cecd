@@ -89,6 +89,9 @@ pub(crate) struct Config {
     /// Should cecd attempt to suspend the TV when the device is suspended? Defaults to false.
     #[serde(default)]
     pub suspend_tv: bool,
+    /// Should cecd attempt to suspend when receiving a <Standby> command? Defaults to false.
+    #[serde(default)]
+    pub allow_standby: bool,
     /// Should uinput mappings be disabled. Defaults to false.
     #[serde(default)]
     pub disable_uinput: bool,
