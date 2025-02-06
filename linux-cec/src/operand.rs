@@ -1364,6 +1364,18 @@ pub enum ServiceId {
     Analogue(AnalogueServiceId),
 }
 
+impl From<DigitalServiceId> for ServiceId {
+    fn from(val: DigitalServiceId) -> ServiceId {
+        ServiceId::Digital(val)
+    }
+}
+
+impl From<AnalogueServiceId> for ServiceId {
+    fn from(val: AnalogueServiceId) -> ServiceId {
+        ServiceId::Analogue(val)
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
 pub enum StatusRequest {
@@ -1734,29 +1746,72 @@ pub enum DigitalServiceId {
     },
 }
 
-impl OperandEncodable for DigitalServiceId {
-    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+impl DigitalServiceId {
+    pub fn arib_data(&self) -> Option<&'_ AribData> {
+        match self {
+            DigitalServiceId::AribGeneric(ref data)
+            | DigitalServiceId::AribBs(ref data)
+            | DigitalServiceId::AribCs(ref data)
+            | DigitalServiceId::AribT(ref data) => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn atsc_data(&self) -> Option<&'_ AtscData> {
+        match self {
+            DigitalServiceId::AtscGeneric(ref data)
+            | DigitalServiceId::AtscCable(ref data)
+            | DigitalServiceId::AtscSatellite(ref data)
+            | DigitalServiceId::AtscTerrestrial(ref data) => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn dvb_data(&self) -> Option<&'_ DvbData> {
+        match self {
+            DigitalServiceId::DvbGeneric(ref data)
+            | DigitalServiceId::DvbC(ref data)
+            | DigitalServiceId::DvbS(ref data)
+            | DigitalServiceId::DvbS2(ref data)
+            | DigitalServiceId::DvbT(ref data) => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn broadcast_system(&self) -> DigitalServiceBroadcastSystem {
         use DigitalServiceBroadcastSystem as System;
         use DigitalServiceId as Id;
 
-        let (broadcast_system, service_id_method) = match self {
-            Id::AribGeneric(_) => (System::AribGeneric, ServiceIdMethod::ByDigitalId),
-            Id::AtscGeneric(_) => (System::AtscGeneric, ServiceIdMethod::ByDigitalId),
-            Id::DvbGeneric(_) => (System::DvbGeneric, ServiceIdMethod::ByDigitalId),
-            Id::AribBs(_) => (System::AribBs, ServiceIdMethod::ByDigitalId),
-            Id::AribCs(_) => (System::AribCs, ServiceIdMethod::ByDigitalId),
-            Id::AribT(_) => (System::AribT, ServiceIdMethod::ByDigitalId),
-            Id::AtscCable(_) => (System::AtscCable, ServiceIdMethod::ByDigitalId),
-            Id::AtscSatellite(_) => (System::AtscSatellite, ServiceIdMethod::ByDigitalId),
-            Id::AtscTerrestrial(_) => (System::AtscTerrestrial, ServiceIdMethod::ByDigitalId),
-            Id::DvbC(_) => (System::DvbC, ServiceIdMethod::ByDigitalId),
-            Id::DvbS(_) => (System::DvbS, ServiceIdMethod::ByDigitalId),
-            Id::DvbS2(_) => (System::DvbS2, ServiceIdMethod::ByDigitalId),
-            Id::DvbT(_) => (System::DvbT, ServiceIdMethod::ByDigitalId),
+        match self {
+            Id::AribGeneric(_) => System::AribGeneric,
+            Id::AtscGeneric(_) => System::AtscGeneric,
+            Id::DvbGeneric(_) => System::DvbGeneric,
+            Id::AribBs(_) => System::AribBs,
+            Id::AribCs(_) => System::AribCs,
+            Id::AribT(_) => System::AribT,
+            Id::AtscCable(_) => System::AtscCable,
+            Id::AtscSatellite(_) => System::AtscSatellite,
+            Id::AtscTerrestrial(_) => System::AtscTerrestrial,
+            Id::DvbC(_) => System::DvbC,
+            Id::DvbS(_) => System::DvbS,
+            Id::DvbS2(_) => System::DvbS2,
+            Id::DvbT(_) => System::DvbT,
             Id::Channel {
                 broadcast_system, ..
-            } => (*broadcast_system, ServiceIdMethod::ByChannel),
+            } => *broadcast_system,
+        }
+    }
+}
+
+impl OperandEncodable for DigitalServiceId {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        use DigitalServiceId as Id;
+
+        let service_id_method = match self {
+            Id::Channel { .. } => ServiceIdMethod::ByChannel,
+            _ => ServiceIdMethod::ByDigitalId,
         };
+        let broadcast_system = self.broadcast_system();
         buf.extend([broadcast_system as u8 | ((service_id_method as u8) << 7)]);
         match self {
             Id::AribGeneric(data) | Id::AribBs(data) | Id::AribCs(data) | Id::AribT(data) => {
@@ -2151,6 +2206,10 @@ mod test_digital_service_id {
     }
 }
 
+pub trait DurationAvailable {
+    fn duration_available(&self) -> Option<Duration>;
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ProgrammedInfo {
     EnoughSpace,
@@ -2161,6 +2220,16 @@ pub enum ProgrammedInfo {
         duration_available: Option<Duration>,
     },
     NoneAvailable,
+}
+
+impl DurationAvailable for ProgrammedInfo {
+    fn duration_available(&self) -> Option<Duration> {
+        match self {
+            ProgrammedInfo::NotEnoughSpace { duration_available }
+            | ProgrammedInfo::MayNotBeEnoughSpace { duration_available } => *duration_available,
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -2180,10 +2249,31 @@ pub enum NotProgrammedErrorInfo {
     },
 }
 
+impl DurationAvailable for NotProgrammedErrorInfo {
+    fn duration_available(&self) -> Option<Duration> {
+        match self {
+            NotProgrammedErrorInfo::Duplicate { duration_available } => *duration_available,
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TimerProgrammedInfo {
     Programmed(ProgrammedInfo),
     NotProgrammed(NotProgrammedErrorInfo),
+}
+
+impl From<ProgrammedInfo> for TimerProgrammedInfo {
+    fn from(val: ProgrammedInfo) -> TimerProgrammedInfo {
+        TimerProgrammedInfo::Programmed(val)
+    }
+}
+
+impl From<NotProgrammedErrorInfo> for TimerProgrammedInfo {
+    fn from(val: NotProgrammedErrorInfo) -> TimerProgrammedInfo {
+        TimerProgrammedInfo::NotProgrammed(val)
+    }
 }
 
 #[bitfield(u8)]
@@ -2912,6 +3002,12 @@ impl TryFrom<u8> for RcProfile1 {
                 id: RcProfileId::try_from_primitive(flags & 0xF)?,
             })
         }
+    }
+}
+
+impl From<RcProfileSource> for RcProfile1 {
+    fn from(val: RcProfileSource) -> RcProfile1 {
+        RcProfile1::Source(val)
     }
 }
 
@@ -3740,6 +3836,12 @@ pub enum ExternalSource {
     PhysicalAddress(PhysicalAddress),
 }
 
+impl From<PhysicalAddress> for ExternalSource {
+    fn from(val: PhysicalAddress) -> ExternalSource {
+        ExternalSource::PhysicalAddress(val)
+    }
+}
+
 impl OperandEncodable for ExternalSource {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         match self {
@@ -3820,6 +3922,24 @@ pub enum RecordSource {
     DigitalService(DigitalServiceId),
     AnalogueService(AnalogueServiceId),
     External(ExternalSource),
+}
+
+impl From<DigitalServiceId> for RecordSource {
+    fn from(val: DigitalServiceId) -> RecordSource {
+        RecordSource::DigitalService(val)
+    }
+}
+
+impl From<AnalogueServiceId> for RecordSource {
+    fn from(val: AnalogueServiceId) -> RecordSource {
+        RecordSource::AnalogueService(val)
+    }
+}
+
+impl From<ExternalSource> for RecordSource {
+    fn from(val: ExternalSource) -> RecordSource {
+        RecordSource::External(val)
+    }
 }
 
 impl OperandEncodable for RecordSource {
