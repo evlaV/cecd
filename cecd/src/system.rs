@@ -157,14 +157,10 @@ impl System {
         }
         self.config = config;
 
-        let log_addr = if self.config.logical_address != LogicalAddressType::Unregistered {
-            self.config.logical_address
-        } else {
-            LogicalAddressType::Playback
-        };
-        debug!("OSD name: {}", self.osd_name);
-        debug!("Logical address: {log_addr} ({:x})", log_addr as u8);
-        debug!("Vendor ID: {:?}", self.config.vendor_id);
+        if self.config.logical_address == LogicalAddressType::Unregistered {
+            self.config.logical_address = LogicalAddressType::Playback;
+        }
+        debug!("Configuration loaded: {:#?}", self.config);
 
         self.send_message(SystemMessage::ReloadConfig).await;
         Ok(())
@@ -174,12 +170,6 @@ impl System {
         &self,
         device: Arc<Mutex<AsyncDevice>>,
     ) -> Result<Option<UInputDevice>> {
-        let log_addr = if self.config.logical_address != LogicalAddressType::Unregistered {
-            self.config.logical_address
-        } else {
-            LogicalAddressType::Playback
-        };
-
         let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
             let mut uinput_dev = UInputDevice::new()?;
             uinput_dev.set_mappings(self.config.mappings.clone())?;
@@ -198,7 +188,7 @@ impl System {
             device.clear_logical_addresses().await?;
             device.set_osd_name(&self.osd_name).await?;
             device.set_vendor_id(self.config.vendor_id).await?;
-            device.set_logical_address(log_addr).await?;
+            device.set_logical_address(self.config.logical_address).await?;
         }
         device.set_follower_mode(FollowerMode::Enabled).await?;
 
