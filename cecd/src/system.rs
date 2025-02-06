@@ -188,7 +188,9 @@ impl System {
             device.clear_logical_addresses().await?;
             device.set_osd_name(&self.osd_name).await?;
             device.set_vendor_id(self.config.vendor_id).await?;
-            device.set_logical_address(self.config.logical_address).await?;
+            device
+                .set_logical_address(self.config.logical_address)
+                .await?;
         }
         device.set_follower_mode(FollowerMode::Enabled).await?;
 
