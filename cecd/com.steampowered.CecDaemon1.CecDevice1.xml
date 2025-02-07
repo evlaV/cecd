@@ -136,6 +136,26 @@
     </method>
 
     <!--
+        SendReceiveRawMessage:
+        @raw_message: The raw bytes making up this message. This must be no
+        more than 15 bytes.
+        @target: The logical address of the target device.
+        @opcode: The opcode to wait for in reply.
+        @timeout: A time in milliseconds to wait, between 1 and 1000.
+        @reply: The raw bytes of the received reply.
+
+        Send a message to a given device. If the message is invalid, this
+        method will fail before it sends it to the device.
+    -->
+    <method name="SendReceiveRawMessage">
+      <arg name="raw_message" type="ay" direction="in"/>
+      <arg name="target" type="y" direction="in"/>
+      <arg name="opcode" type="y" direction="in"/>
+      <arg name="timeout" type="q" direction="in"/>
+      <arg name="reply" type="ay" direction="out"/>
+    </method>
+
+    <!--
         LogicalAddresses:
 
         An array of the logical addresses assigned to this device. Generally,
