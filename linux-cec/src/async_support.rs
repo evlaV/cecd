@@ -14,7 +14,7 @@ use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
 use crate::device::{Capabilities, ConnectorInfo, Device, Envelope, PollResult, PollStatus};
-use crate::message::Message;
+use crate::message::{Message, Opcode};
 use crate::operand::UiCommand;
 use crate::{
     device, Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType,
@@ -59,6 +59,13 @@ enum DeviceCommand {
     SetVendorId(Option<VendorId>, ResultChannel<()>),
     TransmitMessage(Message, LogicalAddress, ResultChannel<u32>),
     TransmitRawMessage(cec_msg, ResultChannel<cec_msg>),
+    TransmitReceiveMessage(
+        Message,
+        LogicalAddress,
+        Opcode,
+        Timeout,
+        ResultChannel<Envelope>,
+    ),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     ReceiveRawMessage(u32, ResultChannel<cec_msg>),
     HandleStatus(PollStatus, ResultChannel<Vec<PollResult>>),
@@ -187,6 +194,16 @@ impl AsyncDevice {
         let new_message = relay! { self, TransmitRawMessage => message.clone() }?;
         *message = new_message;
         Ok(())
+    }
+
+    pub async fn tx_rx_message(
+        &self,
+        message: &Message,
+        destination: LogicalAddress,
+        opcode: Opcode,
+        timeout: Timeout,
+    ) -> Result<Envelope> {
+        relay! { self, TransmitReceiveMessage => *message, destination, opcode, timeout }
     }
 
     pub async fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
@@ -334,6 +351,9 @@ impl DeviceThread {
                 DeviceCommand::TransmitRawMessage(msg, tx) => {
                     let mut msg = msg.clone();
                     let _ = tx.send(self.device.tx_raw_message(&mut msg).and(Ok(msg)));
+                }
+                DeviceCommand::TransmitReceiveMessage(message, dest, opcode, timeout, tx) => {
+                    let _ = tx.send(self.device.tx_rx_message(&message, dest, opcode, timeout));
                 }
                 DeviceCommand::ReceiveMessage(timeout, tx) => {
                     let _ = tx.send(self.device.rx_message(timeout));

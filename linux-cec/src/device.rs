@@ -34,7 +34,7 @@ pub use linux_cec_sys::structs::CEC_CAP as Capabilities;
 pub use nix::poll::PollTimeout;
 
 use crate::ioctls::CecMessageHandlingMode;
-use crate::message::Message;
+use crate::message::{Message, Opcode};
 use crate::operand::{BufferOperand, UiCommand};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Range,
@@ -69,6 +69,48 @@ pub struct Envelope {
     pub timestamp: Timestamp,
     /// A system-tracked sequence number.
     pub sequence: u32,
+}
+
+impl TryFrom<cec_msg> for Envelope {
+    type Error = Error;
+
+    fn try_from(message: cec_msg) -> Result<Envelope> {
+        if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
+            return Err(Error::Timeout);
+        }
+        if message.rx_status.contains(CEC_RX_STATUS::ABORTED) {
+            return Err(Error::Abort);
+        }
+        if message.rx_status.contains(CEC_RX_STATUS::FEATURE_ABORT) {
+            return Err(RxError::FeatureAbort.into());
+        }
+        if message.len > 15 {
+            return Err(Error::InvalidData);
+        }
+        let bytes = &message.msg[1..message.len as usize];
+        let initiator = LogicalAddress::try_from_primitive(message.msg[0] >> 4)?;
+        let destination = LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?;
+        let timestamp = message.rx_ts;
+        let sequence = message.sequence;
+
+        #[cfg(feature = "tracing")]
+        let message = Message::try_from_bytes(bytes).inspect_err(|e| {
+            warn!("Failed to parse incoming message {bytes:?}: {e}");
+        })?;
+        #[cfg(not(feature = "tracing"))]
+        let message = Message::try_from_bytes(bytes)?;
+
+        let envelope = Envelope {
+            message,
+            initiator,
+            destination,
+            timestamp,
+            sequence,
+        };
+        #[cfg(feature = "tracing")]
+        debug!("Got message {envelope:#?}");
+        Ok(envelope)
+    }
 }
 
 /// A physical pin that can be monitored via [`PinEvent`]s.
@@ -376,11 +418,37 @@ impl Device {
     /// [`LogicalAddress::BROADCAST`] for broadcasting to all attached devices.
     /// The sequence number of the submitted message is returned.
     pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<u32> {
+        let reply =
+            self.tx_rx_message(message, destination, Opcode::FeatureAbort, Timeout::NONE)?;
+        Ok(reply.sequence)
+    }
+
+    /// Transmit a raw system [`cec_msg`] directly through the `CEC_TRANSMIT` ioctl.
+    pub fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
+        unsafe {
+            transmit_message(self.file.as_raw_fd(), message)?;
+        }
+        Ok(())
+    }
+
+    /// Transmit a [`Message`] to a given [`LogicalAddress`] and wait for a reply of
+    /// a given ['Opcode`]. Use [`LogicalAddress::BROADCAST`] for broadcasting to all
+    /// attached devices. Note that the timeout cannot be 0 or more than 1 second,
+    /// otherwise they will be coerced to 1 second.
+    pub fn tx_rx_message(
+        &self,
+        message: &Message,
+        destination: LogicalAddress,
+        reply: Opcode,
+        timeout: Timeout,
+    ) -> Result<Envelope> {
         let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
         let bytes = message.to_bytes();
         let len = usize::min(bytes.len(), 15) + 1;
         raw_message.len = len.try_into().unwrap();
         raw_message.msg[1..len].copy_from_slice(&bytes[..len - 1]);
+        raw_message.reply = reply.into();
+        raw_message.timeout = timeout.as_ms();
         #[cfg(feature = "tracing")]
         debug!(
             "Sending message {message:#?} to {destination} ({:x})",
@@ -410,57 +478,14 @@ impl Device {
             }
             return Err(Error::UnknownError(format!("{:?}", raw_message.tx_status)));
         }
-        Ok(raw_message.sequence)
-    }
-
-    /// Transmit a raw system [`cec_msg`] directly through the `CEC_TRANSMIT` ioctl.
-    pub fn tx_raw_message(&self, message: &mut cec_msg) -> Result<()> {
-        unsafe {
-            transmit_message(self.file.as_raw_fd(), message)?;
-        }
-        Ok(())
+        raw_message.try_into()
     }
 
     /// Receive a message, waiting up to a [`Timeout`] if one is not available
     /// in the kernel buffer already. The resulting [`Envelope`] will contain the
     /// message and associated metadata.
     pub fn rx_message(&self, timeout: Timeout) -> Result<Envelope> {
-        let message = self.rx_raw_message(timeout.as_ms())?;
-        if message.rx_status.contains(CEC_RX_STATUS::TIMEOUT) {
-            return Err(Error::Timeout);
-        }
-        if message.rx_status.contains(CEC_RX_STATUS::ABORTED) {
-            return Err(Error::Abort);
-        }
-        if message.rx_status.contains(CEC_RX_STATUS::FEATURE_ABORT) {
-            return Err(RxError::FeatureAbort.into());
-        }
-        if message.len > 15 {
-            return Err(Error::InvalidData);
-        }
-        let bytes = &message.msg[1..message.len as usize];
-        let initiator = LogicalAddress::try_from_primitive(message.msg[0] >> 4)?;
-        let destination = LogicalAddress::try_from_primitive(message.msg[0] & 0xF)?;
-        let timestamp = message.rx_ts;
-        let sequence = message.sequence;
-
-        #[cfg(feature = "tracing")]
-        let message = Message::try_from_bytes(bytes).inspect_err(|e| {
-            warn!("Failed to parse incoming message {bytes:?}: {e}");
-        })?;
-        #[cfg(not(feature = "tracing"))]
-        let message = Message::try_from_bytes(bytes)?;
-
-        let envelope = Envelope {
-            message,
-            initiator,
-            destination,
-            timestamp,
-            sequence,
-        };
-        #[cfg(feature = "tracing")]
-        debug!("Got message {envelope:#?}");
-        Ok(envelope)
+        self.rx_raw_message(timeout.as_ms())?.try_into()
     }
 
     /// Receive a raw system [`cec_msg`] directly through the `CEC_RECEIVE` ioctl.

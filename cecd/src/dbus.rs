@@ -5,9 +5,9 @@
 
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
-use linux_cec::message::Message;
+use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{AbortReason, PowerStatus, UiCommand};
-use linux_cec::{Error, LogicalAddress, PhysicalAddress};
+use linux_cec::{Error, LogicalAddress, PhysicalAddress, Timeout};
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
 use std::mem::drop;
@@ -261,6 +261,30 @@ impl CecDevice {
             .tx_message(&raw_message, target)
             .await
             .map_err(into_fdo_error)
+    }
+
+    async fn send_receive_raw_message(
+        &self,
+        raw_message: &[u8],
+        target: u8,
+        opcode: u8,
+        timeout: u16,
+    ) -> fdo::Result<Vec<u8>> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let raw_message = Message::try_from_bytes(raw_message).map_err(into_fdo_error)?;
+        let reply = self
+            .device
+            .lock()
+            .await
+            .tx_rx_message(
+                &raw_message,
+                target,
+                Opcode::try_from_primitive(opcode).map_err(into_fdo_error)?,
+                Timeout::from_ms(timeout.into()),
+            )
+            .await
+            .map_err(into_fdo_error)?;
+        Ok(reply.message.to_bytes())
     }
 }
 
