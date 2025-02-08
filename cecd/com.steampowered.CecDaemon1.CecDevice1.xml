@@ -32,7 +32,7 @@
         Emitted when a button is pressed on a remote control or similar.
     -->
     <signal name="UserControlPressed">
-      <arg name="button" type="y"/>
+      <arg name="button" type="ay"/>
       <arg name="initiator" type="y"/>
     </signal>
 

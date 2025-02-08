@@ -27,6 +27,9 @@ pub type DurationHours = BcdByte;
 pub type Hour = BcdByte<0, 23>;
 pub type Minute = BcdByte<0, 59>;
 pub type ShortAudioDescriptor = [u8; 3];
+pub type UiFunctionMedia = u8;
+pub type UiFunctionSelectAudioInput = u8;
+pub type UiFunctionSelectAvInput = u8;
 
 pub trait OperandEncodable: Sized {
     fn to_bytes(&self, buf: &mut impl Extend<u8>);
@@ -1376,19 +1379,7 @@ pub enum UiBroadcastType {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    IntoPrimitive,
-    TryFromPrimitive,
-    Operand,
-    Display,
-    EnumString,
-)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Display, EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum UiCommand {
     Select = constants::CEC_OP_UI_CMD_SELECT,
@@ -1466,22 +1457,25 @@ pub enum UiCommand {
     ElectronicProgramGuide = constants::CEC_OP_UI_CMD_ELECTRONIC_PROGRAM_GUIDE,
     TimerProgramming = constants::CEC_OP_UI_CMD_TIMER_PROGRAMMING,
     InitialConfiguration = constants::CEC_OP_UI_CMD_INITIAL_CONFIGURATION,
-    SelectBroadcastType = constants::CEC_OP_UI_CMD_SELECT_BROADCAST_TYPE,
-    SelectSoundPresentation = constants::CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION,
+    SelectBroadcastType(Option<UiBroadcastType>) = constants::CEC_OP_UI_CMD_SELECT_BROADCAST_TYPE,
+    SelectSoundPresentation(Option<UiSoundPresentationControl>) =
+        constants::CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION,
     AudioDescription = constants::CEC_OP_UI_CMD_AUDIO_DESCRIPTION,
     Internet = constants::CEC_OP_UI_CMD_INTERNET,
     ThreeDMode = constants::CEC_OP_UI_CMD_3D_MODE,
-    PlayFunction = constants::CEC_OP_UI_CMD_PLAY_FUNCTION,
+    PlayFunction(Option<PlayMode>) = constants::CEC_OP_UI_CMD_PLAY_FUNCTION,
     PausePlayFunction = constants::CEC_OP_UI_CMD_PAUSE_PLAY_FUNCTION,
     RecordFunction = constants::CEC_OP_UI_CMD_RECORD_FUNCTION,
     PauseRecordFunction = constants::CEC_OP_UI_CMD_PAUSE_RECORD_FUNCTION,
     StopFunction = constants::CEC_OP_UI_CMD_STOP_FUNCTION,
     MuteFunction = constants::CEC_OP_UI_CMD_MUTE_FUNCTION,
     RestoreVolumeFunction = constants::CEC_OP_UI_CMD_RESTORE_VOLUME_FUNCTION,
-    TuneFunction = constants::CEC_OP_UI_CMD_TUNE_FUNCTION,
-    SelectMediaFunction = constants::CEC_OP_UI_CMD_SELECT_MEDIA_FUNCTION,
-    AvInputFunction = constants::CEC_OP_UI_CMD_SELECT_AV_INPUT_FUNCTION,
-    AudioInputFunction = constants::CEC_OP_UI_CMD_SELECT_AUDIO_INPUT_FUNCTION,
+    TuneFunction(Option<ChannelId>) = constants::CEC_OP_UI_CMD_TUNE_FUNCTION,
+    SelectMediaFunction(Option<UiFunctionMedia>) = constants::CEC_OP_UI_CMD_SELECT_MEDIA_FUNCTION,
+    SelectAvInputFunction(Option<UiFunctionSelectAvInput>) =
+        constants::CEC_OP_UI_CMD_SELECT_AV_INPUT_FUNCTION,
+    SelectAudioInputFunction(Option<UiFunctionSelectAudioInput>) =
+        constants::CEC_OP_UI_CMD_SELECT_AUDIO_INPUT_FUNCTION,
     PowerToggleFunction = constants::CEC_OP_UI_CMD_POWER_TOGGLE_FUNCTION,
     PowerOffFunction = constants::CEC_OP_UI_CMD_POWER_OFF_FUNCTION,
     PowerOnFunction = constants::CEC_OP_UI_CMD_POWER_ON_FUNCTION,
@@ -1495,6 +1489,327 @@ pub enum UiCommand {
     F4Yellow = constants::CEC_OP_UI_CMD_F4_YELLOW,
     F5 = constants::CEC_OP_UI_CMD_F5,
     Data = constants::CEC_OP_UI_CMD_DATA,
+}
+
+impl OperandEncodable for UiCommand {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([unsafe { *<*const _>::from(self).cast::<u8>() }]);
+        match self {
+            UiCommand::SelectBroadcastType(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::SelectSoundPresentation(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::PlayFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::TuneFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::SelectMediaFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::SelectAvInputFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            UiCommand::SelectAudioInputFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
+            _ => (),
+        };
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<UiCommand> {
+        use constants::*;
+        use UiCommand::*;
+
+        Range::AtLeast(1).check(bytes.len(), "bytes")?;
+        Ok(match bytes[0] {
+            CEC_OP_UI_CMD_SELECT => Stop,
+            CEC_OP_UI_CMD_UP => Up,
+            CEC_OP_UI_CMD_DOWN => Down,
+            CEC_OP_UI_CMD_LEFT => Left,
+            CEC_OP_UI_CMD_RIGHT => Right,
+            CEC_OP_UI_CMD_RIGHT_UP => RightUp,
+            CEC_OP_UI_CMD_RIGHT_DOWN => RightDown,
+            CEC_OP_UI_CMD_LEFT_UP => LeftUp,
+            CEC_OP_UI_CMD_LEFT_DOWN => LeftDown,
+            CEC_OP_UI_CMD_DEVICE_ROOT_MENU => DeviceRootMenu,
+            CEC_OP_UI_CMD_DEVICE_SETUP_MENU => DeviceSetupMenu,
+            CEC_OP_UI_CMD_CONTENTS_MENU => ContentsMenu,
+            CEC_OP_UI_CMD_FAVORITE_MENU => FavoriteMenu,
+            CEC_OP_UI_CMD_BACK => Back,
+            CEC_OP_UI_CMD_MEDIA_TOP_MENU => MediaTopMenu,
+            CEC_OP_UI_CMD_MEDIA_CONTEXT_SENSITIVE_MENU => MediaContextSensitiveMenu,
+            CEC_OP_UI_CMD_NUMBER_ENTRY_MODE => NumberEntryMode,
+            CEC_OP_UI_CMD_NUMBER_11 => Number11,
+            CEC_OP_UI_CMD_NUMBER_12 => Number12,
+            CEC_OP_UI_CMD_NUMBER_0_OR_NUMBER_10 => Number0OrNumber10,
+            CEC_OP_UI_CMD_NUMBER_1 => Number1,
+            CEC_OP_UI_CMD_NUMBER_2 => Number2,
+            CEC_OP_UI_CMD_NUMBER_3 => Number3,
+            CEC_OP_UI_CMD_NUMBER_4 => Number4,
+            CEC_OP_UI_CMD_NUMBER_5 => Number5,
+            CEC_OP_UI_CMD_NUMBER_6 => Number6,
+            CEC_OP_UI_CMD_NUMBER_7 => Number7,
+            CEC_OP_UI_CMD_NUMBER_8 => Number8,
+            CEC_OP_UI_CMD_NUMBER_9 => Number9,
+            CEC_OP_UI_CMD_DOT => Dot,
+            CEC_OP_UI_CMD_ENTER => Enter,
+            CEC_OP_UI_CMD_CLEAR => Clear,
+            CEC_OP_UI_CMD_NEXT_FAVORITE => NextFavorite,
+            CEC_OP_UI_CMD_CHANNEL_UP => ChannelUp,
+            CEC_OP_UI_CMD_CHANNEL_DOWN => ChannelDown,
+            CEC_OP_UI_CMD_PREVIOUS_CHANNEL => PreviousChannel,
+            CEC_OP_UI_CMD_SOUND_SELECT => SoundSelect,
+            CEC_OP_UI_CMD_INPUT_SELECT => InputSelect,
+            CEC_OP_UI_CMD_DISPLAY_INFORMATION => DisplayInformation,
+            CEC_OP_UI_CMD_HELP => Help,
+            CEC_OP_UI_CMD_PAGE_UP => PageUp,
+            CEC_OP_UI_CMD_PAGE_DOWN => PageDown,
+            CEC_OP_UI_CMD_POWER => Power,
+            CEC_OP_UI_CMD_VOLUME_UP => VolumeUp,
+            CEC_OP_UI_CMD_VOLUME_DOWN => VolumeDown,
+            CEC_OP_UI_CMD_MUTE => Mute,
+            CEC_OP_UI_CMD_PLAY => Play,
+            CEC_OP_UI_CMD_STOP => Stop,
+            CEC_OP_UI_CMD_PAUSE => Pause,
+            CEC_OP_UI_CMD_RECORD => Record,
+            CEC_OP_UI_CMD_REWIND => Rewind,
+            CEC_OP_UI_CMD_FAST_FORWARD => FastForward,
+            CEC_OP_UI_CMD_EJECT => Eject,
+            CEC_OP_UI_CMD_SKIP_FORWARD => SkipForward,
+            CEC_OP_UI_CMD_SKIP_BACKWARD => SkipBackward,
+            CEC_OP_UI_CMD_STOP_RECORD => StopRecord,
+            CEC_OP_UI_CMD_PAUSE_RECORD => PauseRecord,
+            CEC_OP_UI_CMD_ANGLE => Angle,
+            CEC_OP_UI_CMD_SUB_PICTURE => SubPicture,
+            CEC_OP_UI_CMD_VIDEO_ON_DEMAND => VideoOnDemand,
+            CEC_OP_UI_CMD_ELECTRONIC_PROGRAM_GUIDE => ElectronicProgramGuide,
+            CEC_OP_UI_CMD_TIMER_PROGRAMMING => TimerProgramming,
+            CEC_OP_UI_CMD_INITIAL_CONFIGURATION => InitialConfiguration,
+            CEC_OP_UI_CMD_SELECT_BROADCAST_TYPE => {
+                SelectBroadcastType(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION => {
+                SelectSoundPresentation(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_AUDIO_DESCRIPTION => AudioDescription,
+            CEC_OP_UI_CMD_INTERNET => Internet,
+            CEC_OP_UI_CMD_3D_MODE => ThreeDMode,
+            CEC_OP_UI_CMD_PLAY_FUNCTION => {
+                PlayFunction(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_PAUSE_PLAY_FUNCTION => PausePlayFunction,
+            CEC_OP_UI_CMD_RECORD_FUNCTION => RecordFunction,
+            CEC_OP_UI_CMD_PAUSE_RECORD_FUNCTION => PauseRecordFunction,
+            CEC_OP_UI_CMD_STOP_FUNCTION => StopFunction,
+            CEC_OP_UI_CMD_MUTE_FUNCTION => MuteFunction,
+            CEC_OP_UI_CMD_RESTORE_VOLUME_FUNCTION => RestoreVolumeFunction,
+            CEC_OP_UI_CMD_TUNE_FUNCTION => {
+                TuneFunction(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_SELECT_MEDIA_FUNCTION => {
+                SelectMediaFunction(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_SELECT_AV_INPUT_FUNCTION => {
+                SelectAvInputFunction(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_SELECT_AUDIO_INPUT_FUNCTION => {
+                SelectAudioInputFunction(<_ as OperandEncodable>::try_from_bytes(&bytes[1..])?)
+            }
+            CEC_OP_UI_CMD_POWER_TOGGLE_FUNCTION => PowerToggleFunction,
+            CEC_OP_UI_CMD_POWER_OFF_FUNCTION => PowerOffFunction,
+            CEC_OP_UI_CMD_POWER_ON_FUNCTION => PowerOnFunction,
+            CEC_OP_UI_CMD_F1_BLUE => F1Blue,
+            CEC_OP_UI_CMD_F2_RED => F2Red,
+            CEC_OP_UI_CMD_F3_GREEN => F3Green,
+            CEC_OP_UI_CMD_F4_YELLOW => F4Yellow,
+            CEC_OP_UI_CMD_F5 => F5,
+            CEC_OP_UI_CMD_DATA => Data,
+            x => {
+                return Err(Error::InvalidValueForType {
+                    ty: "UiCommand",
+                    value: x.to_string(),
+                })
+            }
+        })
+    }
+
+    fn len(&self) -> usize {
+        (match self {
+            UiCommand::SelectBroadcastType(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::SelectSoundPresentation(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::PlayFunction(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::TuneFunction(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::SelectMediaFunction(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::SelectAvInputFunction(x) => <_ as OperandEncodable>::len(x),
+            UiCommand::SelectAudioInputFunction(x) => <_ as OperandEncodable>::len(x),
+            _ => 0,
+        }) + 1
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
+}
+
+#[cfg(test)]
+mod test_ui_command {
+    use super::*;
+
+    opcode_test! {
+        ty: UiCommand,
+        instance: UiCommand::Play,
+        bytes: [
+            constants::CEC_OP_UI_CMD_PLAY
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _select_broadcast_type_none,
+        ty: UiCommand,
+        instance: UiCommand::SelectBroadcastType(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_BROADCAST_TYPE,
+        ],
+    }
+
+    opcode_test! {
+        name: _select_broadcast_type_some,
+        ty: UiCommand,
+        instance: UiCommand::SelectBroadcastType(Some(UiBroadcastType::Ip)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_BROADCAST_TYPE,
+            UiBroadcastType::Ip as u8,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _select_sound_presentation_none,
+        ty: UiCommand,
+        instance: UiCommand::SelectSoundPresentation(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION,
+        ],
+    }
+
+    opcode_test! {
+        name: _select_sound_presentation_some,
+        ty: UiCommand,
+        instance: UiCommand::SelectSoundPresentation(Some(UiSoundPresentationControl::Karaoke)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION,
+            UiSoundPresentationControl::Karaoke as u8,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _play_function_none,
+        ty: UiCommand,
+        instance: UiCommand::PlayFunction(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_PLAY_FUNCTION,
+        ],
+    }
+
+    opcode_test! {
+        name: _play_function_some,
+        ty: UiCommand,
+        instance: UiCommand::PlayFunction(Some(PlayMode::Still)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_PLAY_FUNCTION,
+            PlayMode::Still as u8,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _tune_function_none,
+        ty: UiCommand,
+        instance: UiCommand::TuneFunction(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_TUNE_FUNCTION,
+        ],
+    }
+
+    opcode_test! {
+        name: _tune_function_one_part,
+        ty: UiCommand,
+        instance: UiCommand::TuneFunction(Some(ChannelId::OnePart(0x1234))),
+        bytes: [
+            constants::CEC_OP_UI_CMD_TUNE_FUNCTION,
+            0x04,
+            0x00,
+            0x12,
+            0x34,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _tune_function_two_part,
+        ty: UiCommand,
+        instance: UiCommand::TuneFunction(Some(ChannelId::TwoPart(0x0234, 0x5678))),
+        bytes: [
+            constants::CEC_OP_UI_CMD_TUNE_FUNCTION,
+            0x0A,
+            0x34,
+            0x56,
+            0x78,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _select_media_function_none,
+        ty: UiCommand,
+        instance: UiCommand::SelectMediaFunction(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_MEDIA_FUNCTION,
+        ],
+    }
+
+    opcode_test! {
+        name: _select_media_function_some,
+        ty: UiCommand,
+        instance: UiCommand::SelectMediaFunction(Some(0x12)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_MEDIA_FUNCTION,
+            0x12,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _select_av_input_function_none,
+        ty: UiCommand,
+        instance: UiCommand::SelectAvInputFunction(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_AV_INPUT_FUNCTION,
+        ],
+    }
+
+    opcode_test! {
+        name: _select_av_input_function_some,
+        ty: UiCommand,
+        instance: UiCommand::SelectAvInputFunction(Some(0x12)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_AV_INPUT_FUNCTION,
+            0x12,
+        ],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _select_audio_input_function_none,
+        ty: UiCommand,
+        instance: UiCommand::SelectAudioInputFunction(None),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_AUDIO_INPUT_FUNCTION,
+        ],
+    }
+
+    opcode_test! {
+        name: _select_audio_input_function_some,
+        ty: UiCommand,
+        instance: UiCommand::SelectAudioInputFunction(Some(0x12)),
+        bytes: [
+            constants::CEC_OP_UI_CMD_SELECT_AUDIO_INPUT_FUNCTION,
+            0x12,
+        ],
+        extra: [Overfull],
+    }
 }
 
 #[repr(u8)]

@@ -6,7 +6,7 @@
 use anyhow::{anyhow, Result};
 use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
 use linux_cec::message::{Message, Opcode};
-use linux_cec::operand::{AbortReason, PowerStatus, UiCommand};
+use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress, PhysicalAddress, Timeout};
 use num_enum::TryFromPrimitive;
 use std::fmt::Display;
@@ -147,7 +147,7 @@ impl CecDevice {
     #[zbus(signal)]
     async fn user_control_pressed(
         signal_emitter: &SignalEmitter<'_>,
-        button: u8,
+        button: &[u8],
         initiator: u8,
     ) -> zbus::Result<()>;
 
@@ -427,8 +427,10 @@ impl PollTask {
                 status: PowerStatus::On,
             }),
             Message::UserControlPressed { ui_command } => {
+                let mut buf = Vec::new();
+                ui_command.to_bytes(&mut buf);
                 self.interface
-                    .user_control_pressed(ui_command as u8, initiator as u8)
+                    .user_control_pressed(buf.as_ref(), initiator as u8)
                     .await?;
                 if let Some(uinput) = self.uinput.as_ref() {
                     if let Some(old_key) = self.active_key {

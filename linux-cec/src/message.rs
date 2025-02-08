@@ -2117,7 +2117,7 @@ mod test_user_control_pressed {
         instance: Message::UserControlPressed {
             ui_command: operand::UiCommand::Play,
         },
-        bytes: [operand::UiCommand::Play as u8],
+        bytes: [constants::CEC_OP_UI_CMD_PLAY as u8],
         extra: [Overfull, Empty],
     }
 }
