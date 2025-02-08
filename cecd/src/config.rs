@@ -80,7 +80,7 @@ pub(crate) struct Config {
     /// The type of logical address this device should request. Defaults to `playback`.
     #[serde(deserialize_with = "de_logical_address", default)]
     pub logical_address: LogicalAddressType,
-    /// Desired key mappings for uinput. Defaults to none.
+    /// Desired key mappings for uinput. Defaults are found in `system.rs`.
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,
     /// Should cecd attempt to wake the TV when the device is woken? Defaults to false.
@@ -89,7 +89,7 @@ pub(crate) struct Config {
     /// Should cecd attempt to suspend the TV when the device is suspended? Defaults to false.
     #[serde(default)]
     pub suspend_tv: bool,
-    /// Should cecd attempt to suspend when receiving a <Standby> command? Defaults to false.
+    /// Should cecd attempt to suspend when receiving a Standby command? Defaults to false.
     #[serde(default)]
     pub allow_standby: bool,
     /// Should uinput mappings be disabled. Defaults to false.

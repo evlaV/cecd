@@ -4,7 +4,9 @@
  */
 
 use anyhow::{ensure, Result};
+use input_linux::Key;
 use linux_cec::device::{AsyncDevice, Capabilities};
+use linux_cec::operand::UiCommand;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, VendorId};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -59,6 +61,102 @@ pub(crate) enum SystemMessage {
 }
 
 impl System {
+    // Most of these mappings match Linux's rc mapping, but a few are intentionally
+    // changed or removed in an opinionated way. These are just the defaults however,
+    // so they are easily overridden or unmapped if desired.
+    const DEFAULT_MAPPINGS: &[(UiCommand, Key)] = &[
+        (UiCommand::Select, Key::Enter),
+        (UiCommand::Up, Key::Up),
+        (UiCommand::Down, Key::Down),
+        (UiCommand::Left, Key::Left),
+        (UiCommand::Right, Key::Right),
+        (UiCommand::RightUp, Key::RightUp),
+        (UiCommand::RightDown, Key::RightDown),
+        (UiCommand::LeftUp, Key::LeftUp),
+        (UiCommand::LeftDown, Key::LeftDown),
+        (UiCommand::DeviceRootMenu, Key::RootMenu),
+        (UiCommand::DeviceSetupMenu, Key::Setup),
+        (UiCommand::ContentsMenu, Key::Menu),
+        (UiCommand::FavoriteMenu, Key::Favorites),
+        (UiCommand::Back, Key::Esc),
+        (UiCommand::MediaTopMenu, Key::MediaTopMenu),
+        (UiCommand::MediaContextSensitiveMenu, Key::ContextMenu),
+        (UiCommand::NumberEntryMode, Key::Digits),
+        (UiCommand::Number11, Key::Numeric11),
+        (UiCommand::Number12, Key::Numeric12),
+        (UiCommand::Number0OrNumber10, Key::Num0),
+        (UiCommand::Number1, Key::Num1),
+        (UiCommand::Number2, Key::Num2),
+        (UiCommand::Number3, Key::Num3),
+        (UiCommand::Number4, Key::Num4),
+        (UiCommand::Number5, Key::Num5),
+        (UiCommand::Number6, Key::Num6),
+        (UiCommand::Number7, Key::Num7),
+        (UiCommand::Number8, Key::Num8),
+        (UiCommand::Number9, Key::Num9),
+        (UiCommand::Dot, Key::Dot),
+        (UiCommand::Enter, Key::Enter),
+        (UiCommand::Clear, Key::Clear),
+        (UiCommand::NextFavorite, Key::NextFavorite),
+        (UiCommand::ChannelUp, Key::ChannelUp),
+        (UiCommand::ChannelDown, Key::ChannelDown),
+        (UiCommand::PreviousChannel, Key::Previous),
+        (UiCommand::DisplayInformation, Key::Info),
+        (UiCommand::Help, Key::Help),
+        (UiCommand::PageUp, Key::PageUp),
+        (UiCommand::PageDown, Key::PageDown),
+        (UiCommand::Power, Key::Power),
+        (UiCommand::VolumeUp, Key::VolumeUp),
+        (UiCommand::VolumeDown, Key::VolumeDown),
+        (UiCommand::Mute, Key::Mute),
+        (UiCommand::Play, Key::PlayCD),
+        (UiCommand::Stop, Key::StopCD),
+        (UiCommand::Pause, Key::PauseCD),
+        (UiCommand::Record, Key::Record),
+        (UiCommand::Rewind, Key::Rewind),
+        (UiCommand::FastForward, Key::FastForward),
+        (UiCommand::Eject, Key::EjectCD),
+        (UiCommand::SkipForward, Key::NextSong),
+        (UiCommand::SkipBackward, Key::PreviousSong),
+        (UiCommand::StopRecord, Key::StopRecord),
+        (UiCommand::PauseRecord, Key::PauseRecord),
+        (UiCommand::Angle, Key::Angle),
+        // UiCommand::SubPicture, no good mapping
+        (UiCommand::VideoOnDemand, Key::Vod),
+        (UiCommand::ElectronicProgramGuide, Key::EPG),
+        (UiCommand::TimerProgramming, Key::Time),
+        (UiCommand::InitialConfiguration, Key::Config),
+        // UiCommand::SelectBroadcastType, no good mapping
+        // UiCommand::SelectSoundPresentation, no good mapping
+        (UiCommand::AudioDescription, Key::AudioDesc),
+        (UiCommand::Internet, Key::WWW),
+        (UiCommand::ThreeDMode, Key::Audio3dMode),
+        // The "function" keys are intended for operations that have a well-
+        // defined end state, e.g. "mute function" does not toggle mute, it
+        // specifically enables mute. Since the majority aren't cleanly
+        // mappable, these are left unmapped instead of having the possibility
+        // of doing the wrong operation.
+        // UiCommand::PlayFunction
+        // UiCommand::PausePlayFunction
+        // UiCommand::RecordFunction
+        // UiCommand::PauseRecordFunction
+        // UiCommand::StopFunction
+        // UiCommand::MuteFunction
+        (UiCommand::RestoreVolumeFunction, Key::Unmute),
+        // UiCommand::TuneFunction
+        // UiCommand::SelectMediaFunction
+        // UiCommand::SelectAvInputFunction
+        // UiCommand::SelectAudioInputFunction
+        (UiCommand::PowerToggleFunction, Key::Power),
+        (UiCommand::PowerOffFunction, Key::Sleep),
+        (UiCommand::PowerOnFunction, Key::Wakeup),
+        (UiCommand::F1Blue, Key::Blue),
+        (UiCommand::F2Red, Key::Red),
+        (UiCommand::F3Green, Key::Green),
+        (UiCommand::F4Yellow, Key::Yellow),
+        (UiCommand::F5, Key::F5),
+    ];
+
     pub(crate) async fn new(token: CancellationToken) -> Result<System> {
         let connection = Builder::session()?
             .name("com.steampowered.CecDaemon1")?
@@ -160,6 +258,11 @@ impl System {
         if self.config.logical_address == LogicalAddressType::Unregistered {
             self.config.logical_address = LogicalAddressType::Playback;
         }
+
+        if self.config.mappings.is_empty() {
+            self.config.mappings = HashMap::from_iter(System::DEFAULT_MAPPINGS.iter().copied());
+        }
+
         debug!("Configuration loaded: {:#?}", self.config);
 
         self.send_message(SystemMessage::ReloadConfig).await;
