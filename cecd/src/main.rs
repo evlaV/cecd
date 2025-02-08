@@ -21,6 +21,7 @@ use crate::udev::udev_hotplug;
 
 pub(crate) mod config;
 pub(crate) mod dbus;
+pub(crate) mod device;
 pub(crate) mod system;
 pub(crate) mod udev;
 pub(crate) mod uinput;
