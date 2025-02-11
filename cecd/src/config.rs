@@ -181,7 +181,7 @@ pub(crate) async fn read_default_config() -> Result<Config> {
     ));
     let builder = read_config_directory(
         builder,
-        system_config_path.join("config.toml.d"),
+        system_config_path.join("config.d"),
         FileFormat::Toml.file_extensions(),
         FileFormat::Toml,
     )
@@ -193,7 +193,7 @@ pub(crate) async fn read_default_config() -> Result<Config> {
     ));
     let builder = read_config_directory(
         builder,
-        user_config_path.join("config.toml.d"),
+        user_config_path.join("config.d"),
         FileFormat::Toml.file_extensions(),
         FileFormat::Toml,
     )
