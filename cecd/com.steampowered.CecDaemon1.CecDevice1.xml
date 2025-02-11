@@ -87,6 +87,44 @@
     </method>
 
     <!--
+        PressUserControl:
+        @button: The [UI Command] value corresponding to the button.
+        @target: The logical address of the target device.
+
+        Send a specific button press to a target device. This must be matched
+        by a ReleaseUserControl or else the button will repeat indefinitely. If
+        you want to only send one press, use PressOnceUserControl instead.
+    -->
+    <method name="PressUserControl">
+      <arg name="button" type="ay" direction="in"/>
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        ReleaseUserControl:
+        @target: The logical address of the target device.
+
+        End key repeat for buttons presses for a given target and send a
+        message indicating the key was released.
+    -->
+    <method name="ReleaseUserControl">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
+        PressOnceUserControl:
+        @button: The [UI Command] value corresponding to the button.
+        @target: The logical address of the target device.
+
+        Send a specific button press to a target device only once. If you want
+        key repeat, use PressUserControl instead.
+    -->
+    <method name="PressOnceUserControl">
+      <arg name="button" type="ay" direction="in"/>
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
         VolumeUp:
         @target: The logical address of the target device.
 

@@ -6,9 +6,10 @@
 use anyhow::{anyhow, Result};
 use linux_cec::device::AsyncDevice;
 use linux_cec::message::{Message, Opcode};
-use linux_cec::operand::UiCommand;
+use linux_cec::operand::{OperandEncodable, UiCommand};
 use linux_cec::{LogicalAddress, PhysicalAddress, Timeout};
 use num_enum::TryFromPrimitive;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,7 +22,7 @@ use tracing::{debug, info};
 use zbus::object_server::SignalEmitter;
 use zbus::{fdo, interface, Connection};
 
-use crate::device::DeviceTask;
+use crate::device::{DeviceTask, KeyRepeat};
 use crate::system::{SystemHandle, SystemMessage};
 
 fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
@@ -40,6 +41,7 @@ pub struct CecDevice {
     pub cached_phys_addr: u16,
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
+    key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<Result<()>>)>,
 }
 
 impl CecDevice {
@@ -55,6 +57,7 @@ impl CecDevice {
             cached_phys_addr: 0xFFFF,
             cached_log_addrs: Vec::new(),
             cached_vendor_id: -1,
+            key_repeat: HashMap::new(),
         })
     }
 
@@ -173,6 +176,75 @@ impl CecDevice {
             .lock()
             .await
             .standby(target)
+            .await
+            .map_err(into_fdo_error)
+    }
+
+    async fn press_user_control(&mut self, button: &[u8], target: u8) -> fdo::Result<()> {
+        let log_addr = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let key = UiCommand::try_from_bytes(button).map_err(into_fdo_error)?;
+        if let Some((current_key, token, _)) = self.key_repeat.get(&target) {
+            if &key == current_key {
+                return Ok(());
+            }
+            token.cancel();
+            let (_, _, handle) = self.key_repeat.remove(&target).unwrap();
+            handle
+                .await
+                .map_err(into_fdo_error)?
+                .map_err(into_fdo_error)?;
+        }
+        let token = self.token.child_token();
+        let task = KeyRepeat {
+            device: self.device.clone(),
+            token: token.clone(),
+            log_addr,
+            key,
+        };
+        let handle = spawn(task.run());
+        self.key_repeat.insert(target, (key, token, handle));
+        Ok(())
+    }
+
+    async fn release_user_control(&mut self, target: u8) -> fdo::Result<()> {
+        if let Some((_, token, handle)) = self.key_repeat.remove(&target) {
+            token.cancel();
+            handle
+                .await
+                .map_err(into_fdo_error)?
+                .map_err(into_fdo_error)
+        } else {
+            let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+            self.device
+                .lock()
+                .await
+                .release_user_control(target)
+                .await
+                .map_err(into_fdo_error)
+        }
+    }
+
+    async fn press_once_user_control(&mut self, button: &[u8], target: u8) -> fdo::Result<()> {
+        let log_addr = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let key = UiCommand::try_from_bytes(button).map_err(into_fdo_error)?;
+        if let Some((current_key, token, _)) = self.key_repeat.get(&target) {
+            if &key == current_key {
+                return Ok(());
+            }
+            token.cancel();
+            let (_, _, handle) = self.key_repeat.remove(&target).unwrap();
+            handle
+                .await
+                .map_err(into_fdo_error)?
+                .map_err(into_fdo_error)?;
+        }
+        let device = self.device.lock().await;
+        device
+            .press_user_control(key, log_addr)
+            .await
+            .map_err(into_fdo_error)?;
+        device
+            .release_user_control(log_addr)
             .await
             .map_err(into_fdo_error)
     }

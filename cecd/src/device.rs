@@ -42,6 +42,14 @@ pub struct DeviceTask {
     awaiting_wake: bool,
 }
 
+#[derive(Debug)]
+pub struct KeyRepeat {
+    pub device: Arc<Mutex<AsyncDevice>>,
+    pub token: CancellationToken,
+    pub log_addr: LogicalAddress,
+    pub key: UiCommand,
+}
+
 impl DeviceTask {
     pub async fn new(
         iface: InterfaceRef<CecDevice>,
@@ -341,5 +349,30 @@ impl DeviceTask {
                 Ok(())
             }
         }
+    }
+}
+
+impl KeyRepeat {
+    pub async fn run(self) -> Result<()> {
+        loop {
+            // Recommended interval of 450ms is per H14b CEC 13.13.3,
+            // starting at the beginning of message transmission
+            let delay = sleep(Duration::from_millis(450));
+            self.device
+                .lock()
+                .await
+                .press_user_control(self.key, self.log_addr)
+                .await?;
+            select! {
+                _ = self.token.cancelled() => break,
+                _ = delay => continue,
+            }
+        }
+        Ok(self
+            .device
+            .lock()
+            .await
+            .release_user_control(self.log_addr)
+            .await?)
     }
 }
