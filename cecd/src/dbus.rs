@@ -35,7 +35,6 @@ const PATH: &str = "/com/steampowered/CecDaemon1";
 pub struct CecDevice {
     pub device: Arc<Mutex<AsyncDevice>>,
     pub token: CancellationToken,
-    task: Option<JoinHandle<Result<()>>>,
     channel: Option<UnboundedSender<SystemMessage>>,
     path: PathBuf,
     pub cached_phys_addr: u16,
@@ -52,7 +51,6 @@ impl CecDevice {
             device,
             token,
             path,
-            task: None,
             channel: None,
             cached_phys_addr: 0xFFFF,
             cached_log_addrs: Vec::new(),
@@ -76,8 +74,8 @@ impl CecDevice {
 
         let interface = object_server.interface(path.clone()).await?;
         let task = DeviceTask::new(interface.clone(), system, rx, connection).await?;
+        spawn(task.run());
         let mut interface = interface.get_mut().await;
-        interface.task = Some(spawn(task.run()));
         interface.channel = Some(tx);
         info!("Device {path} registered");
         Ok(())
