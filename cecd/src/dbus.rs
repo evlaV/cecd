@@ -4,7 +4,6 @@
  */
 
 use anyhow::{anyhow, Result};
-use linux_cec::device::AsyncDevice;
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
 use linux_cec::{LogicalAddress, PhysicalAddress, Timeout};
@@ -12,10 +11,8 @@ use num_enum::TryFromPrimitive;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tokio::fs::canonicalize;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
@@ -24,6 +21,7 @@ use zbus::{fdo, interface, Connection};
 
 use crate::device::{DeviceTask, KeyRepeat};
 use crate::system::{SystemHandle, SystemMessage};
+use crate::ArcDevice;
 
 fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
     fdo::Error::Failed(format!("{val}"))
@@ -33,7 +31,7 @@ const PATH: &str = "/com/steampowered/CecDaemon1";
 
 #[derive(Debug)]
 pub struct CecDevice {
-    pub device: Arc<Mutex<AsyncDevice>>,
+    pub device: ArcDevice,
     pub token: CancellationToken,
     channel: Option<UnboundedSender<SystemMessage>>,
     path: PathBuf,
@@ -46,7 +44,7 @@ pub struct CecDevice {
 impl CecDevice {
     pub async fn open(path: impl AsRef<Path>, token: CancellationToken) -> Result<CecDevice> {
         let path = canonicalize(path).await?;
-        let device = Arc::new(Mutex::new(AsyncDevice::open(&path).await?));
+        let device = ArcDevice::open(&path).await?;
         Ok(CecDevice {
             device,
             token,

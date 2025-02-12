@@ -5,7 +5,7 @@
 
 use anyhow::{ensure, Result};
 use input_linux::Key;
-use linux_cec::device::{AsyncDevice, Capabilities};
+use linux_cec::device::Capabilities;
 use linux_cec::operand::UiCommand;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, VendorId};
 use std::collections::HashMap;
@@ -23,6 +23,7 @@ use zbus::proxy;
 use crate::config::Config;
 use crate::dbus::CecDevice;
 use crate::uinput::UInputDevice;
+use crate::ArcDevice;
 
 #[derive(Debug)]
 pub(crate) struct System {
@@ -269,10 +270,7 @@ impl System {
         Ok(())
     }
 
-    pub(crate) async fn configure_dev(
-        &self,
-        device: Arc<Mutex<AsyncDevice>>,
-    ) -> Result<Option<UInputDevice>> {
+    pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
         let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
             let mut uinput_dev = UInputDevice::new()?;
             uinput_dev.set_mappings(self.config.mappings.clone())?;

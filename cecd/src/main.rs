@@ -5,7 +5,9 @@
 
 use anyhow::Result;
 use clap::Parser;
-use std::path::PathBuf;
+use linux_cec::device::AsyncDevice;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::select;
 use tokio::signal::ctrl_c;
@@ -25,6 +27,26 @@ pub(crate) mod device;
 pub(crate) mod system;
 pub(crate) mod udev;
 pub(crate) mod uinput;
+
+#[derive(Clone, Debug)]
+#[repr(transparent)]
+pub(crate) struct ArcDevice(Arc<Mutex<AsyncDevice>>);
+
+impl ArcDevice {
+    pub async fn open(path: impl AsRef<Path>) -> Result<ArcDevice> {
+        Ok(ArcDevice(Arc::new(Mutex::new(
+            AsyncDevice::open(&path).await?,
+        ))))
+    }
+}
+
+impl Deref for ArcDevice {
+    type Target = Arc<Mutex<AsyncDevice>>;
+
+    fn deref(&self) -> &Arc<Mutex<AsyncDevice>> {
+        &self.0
+    }
+}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

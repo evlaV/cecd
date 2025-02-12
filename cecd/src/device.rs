@@ -4,16 +4,14 @@
  */
 
 use anyhow::Result;
-use linux_cec::device::{AsyncDevice, Envelope, PollResult, PollStatus};
+use linux_cec::device::{Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress};
 use std::mem::drop;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -23,13 +21,14 @@ use zbus::Connection;
 use crate::dbus::{CecDevice, CecDeviceSignals};
 use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
+use crate::ArcDevice;
 
 const LOG_ADDR_RETRIES: i32 = 20;
 const WAKE_TRIES: i32 = 2;
 const WAKE_DELAY: Duration = Duration::from_millis(1000);
 
 pub struct DeviceTask {
-    device: Arc<Mutex<AsyncDevice>>,
+    device: ArcDevice,
     system: SystemHandle,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
@@ -44,7 +43,7 @@ pub struct DeviceTask {
 
 #[derive(Debug)]
 pub struct KeyRepeat {
-    pub device: Arc<Mutex<AsyncDevice>>,
+    pub device: ArcDevice,
     pub token: CancellationToken,
     pub log_addr: LogicalAddress,
     pub key: UiCommand,
