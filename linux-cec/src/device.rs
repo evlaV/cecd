@@ -404,7 +404,7 @@ impl Device {
             #[cfg(feature = "tracing")]
             debug!(
                 "Setting vendor ID to {:02X}-{:02X}-{:02X}",
-                vendor_id.0[0], vendor_id.0[1], vendor_id.0[2]
+                vendor_id[0], vendor_id[1], vendor_id[2]
             );
         } else {
             #[cfg(feature = "tracing")]

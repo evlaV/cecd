@@ -9,7 +9,7 @@ use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::io;
-use std::ops::Add;
+use std::ops::{Add, Deref};
 use std::str::FromStr;
 use std::string::ToString;
 use std::time::Duration;
@@ -572,6 +572,14 @@ mod test_physical_address {
 /// [CSV](https://standards-oui.ieee.org/oui/oui.csv).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Operand)]
 pub struct VendorId(pub [u8; 3]);
+
+impl Deref for VendorId {
+    type Target = [u8; 3];
+
+    fn deref(&self) -> &[u8; 3] {
+        &self.0
+    }
+}
 
 impl From<VendorId> for SysVendorId {
     #[inline]
