@@ -20,7 +20,8 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tokio::fs::{read_dir, read_to_string};
-use tracing::{debug, error, info};
+use tracing::{debug, error};
+use xdg::BaseDirectories;
 
 fn de_mappings<'de, D>(deserializer: D) -> Result<HashMap<UiCommand, Key>, D::Error>
 where
@@ -119,13 +120,14 @@ impl<F: Format + Send + Sync + Debug, P: AsRef<Path> + Sized + Send + Sync + Deb
             Ok(text) => text,
             Err(e) => {
                 if e.kind() == ErrorKind::NotFound {
-                    info!("No config file {} found", path.to_string_lossy());
+                    debug!("No config file {} found", path.to_string_lossy());
                     return Ok(Map::new());
                 }
                 return Err(ConfigError::Foreign(Box::new(e)));
             }
         };
         let path = path.to_string_lossy().to_string();
+        debug!("Config file {} read", path);
         self.format
             .parse(Some(&path), &text)
             .map_err(ConfigError::Foreign)
@@ -171,33 +173,28 @@ async fn read_config_directory<P: AsRef<Path> + Sync + Send>(
 }
 
 pub(crate) async fn read_default_config() -> Result<Config> {
-    let builder = ConfigBuilder::<AsyncState>::default();
+    let mut builder = ConfigBuilder::<AsyncState>::default();
     let system_config_path = PathBuf::from("/usr/share/cecd");
-    let user_config_path = PathBuf::from("/etc/cecd");
+    let etc_config_path = PathBuf::from("/etc/cecd");
+    let mut config_paths = vec![system_config_path, etc_config_path];
+    if let Ok(xdg) = BaseDirectories::new() {
+        config_paths.push(xdg.get_config_home().join("cecd"));
+    }
 
-    let builder = builder.add_async_source(AsyncFileSource::from(
-        system_config_path.join("config.toml"),
-        FileFormat::Toml,
-    ));
-    let builder = read_config_directory(
-        builder,
-        system_config_path.join("config.d"),
-        FileFormat::Toml.file_extensions(),
-        FileFormat::Toml,
-    )
-    .await?;
+    for config_path in config_paths.into_iter() {
+        builder = builder.add_async_source(AsyncFileSource::from(
+            config_path.join("config.toml"),
+            FileFormat::Toml,
+        ));
+        builder = read_config_directory(
+            builder,
+            config_path.join("config.d"),
+            FileFormat::Toml.file_extensions(),
+            FileFormat::Toml,
+        )
+        .await?;
+    }
 
-    let builder = builder.add_async_source(AsyncFileSource::from(
-        user_config_path.join("config.toml"),
-        FileFormat::Toml,
-    ));
-    let builder = read_config_directory(
-        builder,
-        user_config_path.join("config.d"),
-        FileFormat::Toml.file_extensions(),
-        FileFormat::Toml,
-    )
-    .await?;
     let config = builder.build().await?;
     Ok(config.try_deserialize()?)
 }

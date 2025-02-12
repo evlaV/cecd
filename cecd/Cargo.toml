@@ -27,4 +27,5 @@ tokio-stream = { version = "0.1", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
 udev = "0.9"
+xdg = "2.5"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
