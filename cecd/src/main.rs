@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle, JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
+use zbus::connection::{Builder, Connection};
 
 use crate::config::{read_config_file, read_default_config};
 use crate::system::{System, SystemHandle};
@@ -86,7 +87,11 @@ pub async fn main() -> Result<()> {
 
     let args = Arguments::parse();
     let token = CancellationToken::new();
-    let system = SystemHandle(Arc::new(Mutex::new(System::new(token.clone()).await?)));
+    let builder = Builder::session()?;
+    let system_bus = Connection::system().await?;
+    let system = SystemHandle(Arc::new(Mutex::new(
+        System::new(token.clone(), builder, system_bus).await?,
+    )));
     let config = if let Some(ref config_path) = args.config {
         read_config_file(config_path).await?
     } else {

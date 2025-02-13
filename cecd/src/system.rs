@@ -158,13 +158,12 @@ impl System {
         (UiCommand::F5, Key::F5),
     ];
 
-    pub(crate) async fn new(token: CancellationToken) -> Result<System> {
-        let connection = Builder::session()?
-            .name("com.steampowered.CecDaemon1")?
-            .build()
-            .await?;
-
-        let system_bus = Connection::system().await?;
+    pub(crate) async fn new(
+        token: CancellationToken,
+        builder: Builder<'_>,
+        system_bus: Connection,
+    ) -> Result<System> {
+        let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
 
         Ok(System {
             osd_name: String::from("CEC Device"),
