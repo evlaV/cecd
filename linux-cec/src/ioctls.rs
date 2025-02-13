@@ -8,7 +8,7 @@ use linux_cec_macros::BitfieldSpecifier;
 use linux_cec_sys::constants;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::{FollowerMode, InitiatorMode};
+use crate::{Error, FollowerMode, InitiatorMode, Result};
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
@@ -35,8 +35,6 @@ pub(crate) enum CecInitiatorModes {
     NoInitiator = constants::CEC_MODE_NO_INITIATOR,
     Initiator = constants::CEC_MODE_INITIATOR,
     ExclusiveInitiator = constants::CEC_MODE_EXCL_INITIATOR,
-    Monitor = constants::CEC_MODE_MONITOR,
-    MonitorAll = constants::CEC_MODE_MONITOR_ALL,
     #[default]
     Invalid(u32),
 }
@@ -48,6 +46,63 @@ impl From<InitiatorMode> for CecInitiatorModes {
             InitiatorMode::Enabled => CecInitiatorModes::Initiator,
             InitiatorMode::Exclusive => CecInitiatorModes::ExclusiveInitiator,
         }
+    }
+}
+
+impl TryFrom<CecInitiatorModes> for InitiatorMode {
+    type Error = Error;
+
+    fn try_from(mode: CecInitiatorModes) -> Result<InitiatorMode> {
+        match mode {
+            CecInitiatorModes::NoInitiator => Ok(InitiatorMode::Disabled),
+            CecInitiatorModes::Initiator => Ok(InitiatorMode::Enabled),
+            CecInitiatorModes::ExclusiveInitiator => Ok(InitiatorMode::Exclusive),
+            CecInitiatorModes::Invalid(x) => Err(Error::InvalidValueForType {
+                ty: "CecInitiatorModes",
+                value: x.to_string(),
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_initiator_mode {
+    use super::*;
+
+    #[test]
+    fn test_from() {
+        assert_eq!(
+            CecInitiatorModes::NoInitiator,
+            InitiatorMode::Disabled.into()
+        );
+        assert_eq!(CecInitiatorModes::Initiator, InitiatorMode::Enabled.into());
+        assert_eq!(
+            CecInitiatorModes::ExclusiveInitiator,
+            InitiatorMode::Exclusive.into()
+        );
+    }
+
+    #[test]
+    fn test_try_into() {
+        assert_eq!(
+            Ok(InitiatorMode::Disabled),
+            CecInitiatorModes::NoInitiator.try_into()
+        );
+        assert_eq!(
+            Ok(InitiatorMode::Enabled),
+            CecInitiatorModes::Initiator.try_into()
+        );
+        assert_eq!(
+            Ok(InitiatorMode::Exclusive),
+            CecInitiatorModes::ExclusiveInitiator.try_into()
+        );
+        assert_eq!(
+            <_ as TryInto<InitiatorMode>>::try_into(CecInitiatorModes::Invalid(256)),
+            Err(Error::InvalidValueForType {
+                ty: "CecInitiatorModes",
+                value: String::from("256"),
+            })
+        );
     }
 }
 
@@ -77,6 +132,93 @@ impl From<FollowerMode> for CecFollowerModes {
             FollowerMode::Monitor => CecFollowerModes::Monitor,
             FollowerMode::MonitorAll => CecFollowerModes::MonitorAll,
         }
+    }
+}
+
+impl TryFrom<CecFollowerModes> for FollowerMode {
+    type Error = Error;
+
+    fn try_from(mode: CecFollowerModes) -> Result<FollowerMode> {
+        match mode {
+            CecFollowerModes::NoFollower => Ok(FollowerMode::Disabled),
+            CecFollowerModes::Follower => Ok(FollowerMode::Enabled),
+            CecFollowerModes::ExclusiveFollower => Ok(FollowerMode::Exclusive),
+            CecFollowerModes::ExclusiveFollowerPassthru => Ok(FollowerMode::ExclusivePassthru),
+            CecFollowerModes::MonitorPin => Ok(FollowerMode::MonitorPin),
+            CecFollowerModes::Monitor => Ok(FollowerMode::Monitor),
+            CecFollowerModes::MonitorAll => Ok(FollowerMode::MonitorAll),
+            CecFollowerModes::Invalid(x) => Err(Error::InvalidValueForType {
+                ty: "CecFollowerModes",
+                value: x.to_string(),
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_follower_mode {
+    use super::*;
+
+    #[test]
+    fn test_from() {
+        assert_eq!(CecFollowerModes::NoFollower, FollowerMode::Disabled.into());
+        assert_eq!(CecFollowerModes::Follower, FollowerMode::Enabled.into());
+        assert_eq!(
+            CecFollowerModes::ExclusiveFollower,
+            FollowerMode::Exclusive.into()
+        );
+        assert_eq!(
+            CecFollowerModes::ExclusiveFollowerPassthru,
+            FollowerMode::ExclusivePassthru.into()
+        );
+        assert_eq!(
+            CecFollowerModes::MonitorPin,
+            FollowerMode::MonitorPin.into()
+        );
+        assert_eq!(CecFollowerModes::Monitor, FollowerMode::Monitor.into());
+        assert_eq!(
+            CecFollowerModes::MonitorAll,
+            FollowerMode::MonitorAll.into()
+        );
+    }
+
+    #[test]
+    fn test_try_into() {
+        assert_eq!(
+            Ok(FollowerMode::Disabled),
+            CecFollowerModes::NoFollower.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::Enabled),
+            CecFollowerModes::Follower.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::Exclusive),
+            CecFollowerModes::ExclusiveFollower.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::ExclusivePassthru),
+            CecFollowerModes::ExclusiveFollowerPassthru.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::MonitorPin),
+            CecFollowerModes::MonitorPin.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::Monitor),
+            CecFollowerModes::Monitor.try_into()
+        );
+        assert_eq!(
+            Ok(FollowerMode::MonitorAll),
+            CecFollowerModes::MonitorAll.try_into()
+        );
+        assert_eq!(
+            <_ as TryInto<FollowerMode>>::try_into(CecFollowerModes::Invalid(256)),
+            Err(Error::InvalidValueForType {
+                ty: "CecFollowerModes",
+                value: String::from("256"),
+            })
+        );
     }
 }
 

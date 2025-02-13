@@ -43,7 +43,9 @@ enum DeviceCommand {
     Drop,
     GetPoller(ResultChannel<DevicePoller>),
     SetBlocking(bool, ResultChannel<()>),
+    GetInitiatorMode(ResultChannel<InitiatorMode>),
     SetInitiatorMode(InitiatorMode, ResultChannel<()>),
+    GetFollowerMode(ResultChannel<FollowerMode>),
     SetFollowerMode(FollowerMode, ResultChannel<()>),
     GetRawCapabilities(ResultChannel<cec_caps>),
     GetCapabilities(ResultChannel<Capabilities>),
@@ -130,8 +132,16 @@ impl AsyncDevice {
         self.handle_status(status).await
     }
 
+    pub async fn get_initiator_mode(&self) -> Result<InitiatorMode> {
+        relay! { self, GetInitiatorMode }
+    }
+
     pub async fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
         relay! { self, SetInitiatorMode => mode }
+    }
+
+    pub async fn get_follower_mode(&self) -> Result<FollowerMode> {
+        relay! { self, GetFollowerMode }
     }
 
     pub async fn set_follower_mode(&self, mode: FollowerMode) -> Result<()> {
@@ -303,8 +313,14 @@ impl DeviceThread {
                 DeviceCommand::SetBlocking(block, tx) => {
                     let _ = tx.send(self.device.set_blocking(block));
                 }
+                DeviceCommand::GetInitiatorMode(tx) => {
+                    let _ = tx.send(self.device.get_initiator_mode());
+                }
                 DeviceCommand::SetInitiatorMode(mode, tx) => {
                     let _ = tx.send(self.device.set_initiator_mode(mode));
+                }
+                DeviceCommand::GetFollowerMode(tx) => {
+                    let _ = tx.send(self.device.get_follower_mode());
                 }
                 DeviceCommand::SetFollowerMode(mode, tx) => {
                     let _ = tx.send(self.device.set_follower_mode(mode));

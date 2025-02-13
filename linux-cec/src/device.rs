@@ -243,10 +243,20 @@ impl Device {
         Ok(())
     }
 
+    /// Get the [`InitiatorMode`] of the device.
+    pub fn get_initiator_mode(&self) -> Result<InitiatorMode> {
+        Ok(self.get_mode()?.initiator().try_into()?)
+    }
+
     /// Set the [`InitiatorMode`] of the device.
     pub fn set_initiator_mode(&self, mode: InitiatorMode) -> Result<()> {
         let mode = self.get_mode()?.with_initiator(mode.into());
         self.set_mode(mode)
+    }
+
+    /// Get the [`FollowerMode`] of the device.
+    pub fn get_follower_mode(&self) -> Result<FollowerMode> {
+        Ok(self.get_mode()?.follower().try_into()?)
     }
 
     /// Set the [`FollowerMode`] of the device.
