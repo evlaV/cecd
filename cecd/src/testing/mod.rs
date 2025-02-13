@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
 use zbus::connection::Builder;
+use zbus::proxy;
 
 mod dbus;
 
@@ -198,17 +199,93 @@ impl DevicePoller {
     }
 }
 
+#[proxy(
+    interface = "com.steampowered.CecDaemon1.CecDevice1",
+    default_service = "com.steampowered.CecDaemon1"
+)]
+trait CecDevice {
+    #[zbus(signal)]
+    fn received_message(
+        initiator: u8,
+        destination: u8,
+        timestamp: u64,
+        message: &[u8],
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn user_control_pressed(button: &[u8], initiator: u8) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn user_control_released(initiator: u8) -> zbus::Result<()>;
+
+    #[zbus(property)]
+    fn logical_addresses(&self) -> zbus::Result<Vec<u8>>;
+
+    #[zbus(property)]
+    fn physical_address(&self) -> zbus::Result<u16>;
+
+    #[zbus(property)]
+    fn set_physical_address(&self, address: u16) -> zbus::Result<()>;
+
+    #[zbus(property)]
+    fn vendor_id(&self) -> zbus::Result<i32>;
+
+    fn set_osd_name(&self, name: &str) -> zbus::Result<()>;
+
+    fn set_active_source(&self, phys_addr: i32) -> zbus::Result<()>;
+
+    fn wake(&self) -> zbus::Result<()>;
+
+    fn standby(&self, target: u8) -> zbus::Result<()>;
+
+    fn press_user_control(&mut self, button: &[u8], target: u8) -> zbus::Result<()>;
+
+    fn release_user_control(&mut self, target: u8) -> zbus::Result<()>;
+
+    fn press_once_user_control(&mut self, button: &[u8], target: u8) -> zbus::Result<()>;
+
+    fn volume_up(&self, target: u8) -> zbus::Result<()>;
+
+    fn volume_down(&self, target: u8) -> zbus::Result<()>;
+
+    fn mute(&self, target: u8) -> zbus::Result<()>;
+
+    fn send_raw_message(&self, raw_message: &[u8], target: u8) -> zbus::Result<u32>;
+
+    fn send_receive_raw_message(
+        &self,
+        raw_message: &[u8],
+        target: u8,
+        opcode: u8,
+        timeout: u16,
+    ) -> zbus::Result<Vec<u8>>;
+}
+
 #[tokio::test]
-async fn test() {
+async fn test_no_caps() {
     tracing_subscriber::fmt::init();
     let dbus = MockDBus::new().await.unwrap();
-    let builder = Builder::address(dbus.address()).unwrap();
-    let connection = Builder::address(dbus.address()).unwrap().build().await.unwrap();
+    let builder = Builder::address(dbus.address())
+        .unwrap()
+        .name("com.steampowered.CecDaemon1")
+        .unwrap();
+    let connection = Builder::address(dbus.address())
+        .unwrap()
+        .build()
+        .await
+        .unwrap();
 
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(
-        System::new(token.clone(), builder, connection).await.unwrap(),
+        System::new(token.clone(), builder, connection.clone())
+            .await
+            .unwrap(),
     )));
 
     let _dev = system.find_dev("/dev/null").await.unwrap();
+    let proxy = CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Null")
+        .await
+        .unwrap();
+    assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
+    assert!(proxy.set_physical_address(0xF000).await.is_err());
 }
