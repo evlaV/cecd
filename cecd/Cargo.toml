@@ -10,6 +10,9 @@ readme = "../README.md"
 keywords = ["cec"]
 categories = ["hardware-support"]
 
+[dev-dependencies]
+nix = { version = "0.29", default-features = false, features = ["fs", "signal"] }
+
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
