@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use anyhow::{anyhow, bail};
-use libc::pid_t;
 use linux_cec::device::{
     Capabilities, ConnectorInfo, Envelope, PollResult, PollStatus, PollTimeout,
 };
@@ -14,21 +12,16 @@ use linux_cec::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress,
     Result, Timeout, VendorId,
 };
-use nix::sys::signal;
-use nix::unistd::Pid;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
-use zbus::connection::{Builder, Connection};
-use zbus::Address;
+use zbus::connection::Builder;
+
+mod dbus;
 
 use crate::system::{System, SystemHandle};
+pub(crate) use crate::testing::dbus::MockDBus;
 
 #[derive(Clone, Debug)]
 struct DeviceState {
@@ -202,71 +195,6 @@ impl AsyncDevice {
 impl DevicePoller {
     pub async fn poll(&self, _timeout: PollTimeout) -> Result<PollStatus> {
         todo!();
-    }
-}
-
-pub struct MockDBus {
-    pub connection: Connection,
-    address: Address,
-    process: Child,
-}
-
-impl MockDBus {
-    pub async fn new() -> anyhow::Result<MockDBus> {
-        let mut process = Command::new("/usr/bin/dbus-daemon")
-            .args([
-                "--nofork",
-                "--print-address",
-                "--config-file=test-dbus.conf",
-            ])
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        let stdout = BufReader::new(
-            process
-                .stdout
-                .take()
-                .ok_or(anyhow!("Couldn't capture stdout"))?,
-        );
-
-        let address = stdout
-            .lines()
-            .next_line()
-            .await?
-            .ok_or(anyhow!("Failed to read address"))?;
-
-        let address = Address::from_str(address.trim_end())?;
-        let connection = Builder::address(address.clone())?.build().await?;
-
-        Ok(MockDBus {
-            connection,
-            address,
-            process,
-        })
-    }
-
-    pub fn shutdown(mut self) -> anyhow::Result<()> {
-        let pid = match self.process.id() {
-            Some(id) => id,
-            None => return Ok(()),
-        };
-        let pid: pid_t = match pid.try_into() {
-            Ok(pid) => pid,
-            Err(message) => bail!("Unable to get pid_t from command {message}"),
-        };
-        signal::kill(Pid::from_raw(pid), signal::Signal::SIGINT)?;
-        for _ in [0..10] {
-            // Wait for the process to exit synchronously, but not for too long
-            if self.process.try_wait()?.is_some() {
-                break;
-            }
-            std::thread::sleep(Duration::from_micros(100));
-        }
-        Ok(())
-    }
-
-    pub fn address(&self) -> Address {
-        self.address.clone()
     }
 }
 
