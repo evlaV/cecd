@@ -245,7 +245,7 @@ impl Device {
 
     /// Get the [`InitiatorMode`] of the device.
     pub fn get_initiator_mode(&self) -> Result<InitiatorMode> {
-        Ok(self.get_mode()?.initiator().try_into()?)
+        self.get_mode()?.initiator().try_into()
     }
 
     /// Set the [`InitiatorMode`] of the device.
@@ -256,7 +256,7 @@ impl Device {
 
     /// Get the [`FollowerMode`] of the device.
     pub fn get_follower_mode(&self) -> Result<FollowerMode> {
-        Ok(self.get_mode()?.follower().try_into()?)
+        self.get_mode()?.follower().try_into()
     }
 
     /// Set the [`FollowerMode`] of the device.
