@@ -809,6 +809,11 @@ impl<const S: usize, T: OperandEncodable + Default + Copy> BoundedBufferOperand<
     pub fn new() -> BoundedBufferOperand<S, T> {
         BoundedBufferOperand::default()
     }
+
+    #[must_use]
+    pub fn as_bytes(&self) -> &[T] {
+        &self.buffer[..self.len]
+    }
 }
 
 pub type BufferOperand = BoundedBufferOperand<14, u8>;
