@@ -62,7 +62,7 @@ pub struct Envelope {
     /// The logical address to which this message was sent. Unless the [`Device`]
     /// has the [`FollowerMode`] set to either [`FollowerMode::Monitor`] or
     /// [`FollowerMode::MonitorAll`], this value will either be the logical address
-    /// of the `Device` itself or [`LogicalAddress::BROADCAST`].
+    /// of the `Device` itself or [`LogicalAddress::Broadcast`].
     pub destination: LogicalAddress,
     /// The time at which this message was received. This may be different
     /// from the time at which the message was read out of the kernel.
@@ -341,7 +341,7 @@ impl Device {
         if !log_addrs.is_empty() {
             self.tx_logical_address =
                 LogicalAddress::try_from_primitive(self.internal_log_addrs.log_addr[0])
-                    .unwrap_or(LogicalAddress::UNREGISTERED);
+                    .unwrap_or(LogicalAddress::Unregistered);
         }
         Ok(())
     }
@@ -357,7 +357,7 @@ impl Device {
     /// [`Capabilities::LOG_ADDRS`] is present.
     pub fn clear_logical_addresses(&mut self) -> Result<()> {
         self.internal_log_addrs.num_log_addrs = 0;
-        self.tx_logical_address = LogicalAddress::UNREGISTERED;
+        self.tx_logical_address = LogicalAddress::Unregistered;
         unsafe {
             adapter_set_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
@@ -390,7 +390,7 @@ impl Device {
         #[cfg(feature = "tracing")]
         debug!("Setting OSD name to {name}");
         self.internal_log_addrs.osd_name[..14].copy_from_slice(&name_buffer.buffer);
-        if self.tx_logical_address != LogicalAddress::UNREGISTERED {
+        if self.tx_logical_address != LogicalAddress::Unregistered {
             let message = Message::SetOsdName { name: name_buffer };
             self.tx_message(&message, LogicalAddress::Tv)?;
         }
@@ -425,7 +425,7 @@ impl Device {
     }
 
     /// Transmit a [`Message`] to a given [`LogicalAddress`]. Use
-    /// [`LogicalAddress::BROADCAST`] for broadcasting to all attached devices.
+    /// [`LogicalAddress::Broadcast`] for broadcasting to all attached devices.
     /// The sequence number of the submitted message is returned.
     pub fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<u32> {
         let reply =
@@ -442,7 +442,7 @@ impl Device {
     }
 
     /// Transmit a [`Message`] to a given [`LogicalAddress`] and wait for a reply of
-    /// a given ['Opcode`]. Use [`LogicalAddress::BROADCAST`] for broadcasting to all
+    /// a given ['Opcode`]. Use [`LogicalAddress::Broadcast`] for broadcasting to all
     /// attached devices. Note that the timeout cannot be 0 or more than 1 second,
     /// otherwise they will be coerced to 1 second.
     pub fn tx_rx_message(
@@ -549,9 +549,9 @@ impl Device {
                     if self.internal_log_addrs.num_log_addrs > 0 {
                         self.tx_logical_address =
                             LogicalAddress::try_from_primitive(self.internal_log_addrs.log_addr[0])
-                                .unwrap_or(LogicalAddress::UNREGISTERED);
+                                .unwrap_or(LogicalAddress::Unregistered);
                     } else {
-                        self.tx_logical_address = LogicalAddress::UNREGISTERED;
+                        self.tx_logical_address = LogicalAddress::Unregistered;
                     }
                     results.push(PollResult::StateChange);
                 }
@@ -627,7 +627,7 @@ impl Device {
             None => self.get_physical_address()?,
         };
         let active_source = Message::ActiveSource { address };
-        self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
+        self.tx_message(&active_source, LogicalAddress::Broadcast)?;
         Ok(())
     }
 
@@ -649,7 +649,7 @@ impl Device {
         if set_active {
             let address = self.get_physical_address()?;
             let active_source = Message::ActiveSource { address };
-            self.tx_message(&active_source, LogicalAddress::BROADCAST)?;
+            self.tx_message(&active_source, LogicalAddress::Broadcast)?;
         }
         Ok(())
     }
@@ -693,7 +693,7 @@ impl TryFrom<File> for Device {
         let tx_logical_address = if internal_log_addrs.num_log_addrs > 0 {
             LogicalAddress::try_from_primitive(internal_log_addrs.log_addr[0]).unwrap_or_default()
         } else {
-            LogicalAddress::UNREGISTERED
+            LogicalAddress::Unregistered
         };
 
         Ok(Device {

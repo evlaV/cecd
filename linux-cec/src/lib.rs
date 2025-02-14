@@ -134,10 +134,11 @@ pub enum LogicalAddress {
 }
 
 impl LogicalAddress {
+    #![allow(non_upper_case_globals)]
     /** When used as initiator address */
-    pub const UNREGISTERED: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
+    pub const Unregistered: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
     /** When used as destination address */
-    pub const BROADCAST: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
+    pub const Broadcast: LogicalAddress = LogicalAddress::UnregisteredOrBroadcast;
 
     #[must_use]
     pub fn primary_device_type(self) -> Option<operand::PrimaryDeviceType> {

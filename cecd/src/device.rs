@@ -262,7 +262,7 @@ impl DeviceTask {
                     None
                 }
             }
-            _ if envelope.destination != LogicalAddress::BROADCAST => Some(Message::FeatureAbort {
+            _ if envelope.destination != LogicalAddress::Broadcast => Some(Message::FeatureAbort {
                 opcode: envelope.message.opcode(),
                 abort_reason: AbortReason::UnrecognizedOp,
             }),
