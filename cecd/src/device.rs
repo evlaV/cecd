@@ -21,7 +21,7 @@ use zbus::Connection;
 use crate::dbus::{CecDevice, CecDeviceSignals};
 use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
-use crate::ArcDevice;
+use crate::{ArcDevice, AsyncDevicePoller};
 
 const LOG_ADDR_RETRIES: i32 = 20;
 const WAKE_TRIES: i32 = 2;
@@ -39,6 +39,7 @@ pub struct DeviceTask {
     path: String,
     log_addr_try: i32,
     awaiting_wake: bool,
+    poller: AsyncDevicePoller,
 }
 
 #[derive(Debug)]
@@ -59,6 +60,7 @@ impl DeviceTask {
         let interface = iface.clone();
         let dbus_obj = iface.get().await;
         let device = dbus_obj.device.clone();
+        let poller = device.lock().await.get_poller().await?;
         let uinput = system.lock().await.configure_dev(device.clone()).await?;
         let token = dbus_obj.token.clone();
         let path = dbus_obj.dbus_path()?;
@@ -74,14 +76,14 @@ impl DeviceTask {
             path,
             log_addr_try: LOG_ADDR_RETRIES,
             awaiting_wake: false,
+            poller,
         })
     }
 
     pub async fn run(mut self) -> Result<()> {
-        let poller = self.device.lock().await.get_poller().await?;
         loop {
             select! {
-                status = poller.poll(Duration::from_secs(2).try_into().unwrap()) => {
+                status = self.poller.poll(Duration::from_secs(2).try_into().unwrap()) => {
                     let Ok(status) = status else {
                         continue
                     };

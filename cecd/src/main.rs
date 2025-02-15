@@ -6,7 +6,7 @@
 use anyhow::Result;
 use clap::Parser;
 #[cfg(not(test))]
-use linux_cec::device::AsyncDevice;
+use linux_cec::device::{AsyncDevice, AsyncDevicePoller};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -34,7 +34,7 @@ pub(crate) mod uinput;
 pub mod testing;
 
 #[cfg(test)]
-pub use testing::AsyncDevice;
+pub use testing::{AsyncDevice, AsyncDevicePoller};
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]

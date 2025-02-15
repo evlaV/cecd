@@ -30,7 +30,7 @@ pub(crate) struct System {
     osd_name: String,
     pub config: Config,
 
-    connection: Connection,
+    pub connection: Connection,
     system_bus: Connection,
     token: CancellationToken,
     devs: HashMap<PathBuf, DeviceHandle>,
@@ -175,7 +175,7 @@ impl System {
         })
     }
 
-    async fn find_devs(
+    pub(crate) async fn find_devs(
         &mut self,
     ) -> Result<
         Vec<(
@@ -215,7 +215,7 @@ impl System {
         Ok(devs)
     }
 
-    async fn find_dev(
+    pub(crate) async fn find_dev(
         &mut self,
         path: impl AsRef<Path>,
     ) -> Result<(

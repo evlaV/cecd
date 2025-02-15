@@ -16,7 +16,7 @@ use zbus::connection::{Builder, Connection};
 use zbus::Address;
 
 pub struct MockDBus {
-    pub connection: Connection,
+    _connection: Connection,
     address: Address,
     process: Child,
 }
@@ -49,13 +49,13 @@ impl MockDBus {
         let connection = Builder::address(address.clone())?.build().await?;
 
         Ok(MockDBus {
-            connection,
+            _connection: connection,
             address,
             process,
         })
     }
 
-    pub fn shutdown(mut self) -> anyhow::Result<()> {
+    pub fn _shutdown(mut self) -> anyhow::Result<()> {
         let pid = match self.process.id() {
             Some(id) => id,
             None => return Ok(()),
