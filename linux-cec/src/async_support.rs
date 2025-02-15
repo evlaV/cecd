@@ -13,12 +13,14 @@ use std::thread::{self, JoinHandle};
 use tokio::fs::OpenOptions;
 use tokio::sync::oneshot;
 
-use crate::device::{Capabilities, ConnectorInfo, Device, Envelope, PollResult, PollStatus};
+use crate::device::{
+    Capabilities, ConnectorInfo, Device, DevicePoller, Envelope, PollResult, PollStatus,
+};
 use crate::message::{Message, Opcode};
 use crate::operand::UiCommand;
 use crate::{
-    device, Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType,
-    PhysicalAddress, Result, Timeout, VendorId,
+    Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress,
+    Result, Timeout, VendorId,
 };
 
 macro_rules! relay {
@@ -41,7 +43,7 @@ type ResultChannel<T> = oneshot::Sender<Result<T>>;
 
 enum DeviceCommand {
     Drop,
-    GetPoller(ResultChannel<DevicePoller>),
+    GetPoller(ResultChannel<AsyncDevicePoller>),
     SetBlocking(bool, ResultChannel<()>),
     GetInitiatorMode(ResultChannel<InitiatorMode>),
     SetInitiatorMode(InitiatorMode, ResultChannel<()>),
@@ -90,7 +92,7 @@ pub struct AsyncDevice {
 }
 
 #[derive(Debug)]
-pub struct DevicePoller {
+pub struct AsyncDevicePoller {
     thread: Option<JoinHandle<Result<()>>>,
     tx: Sender<PollerCommand>,
 }
@@ -122,7 +124,7 @@ impl AsyncDevice {
         relay! { self, SetBlocking => blocking }
     }
 
-    pub async fn get_poller(&self) -> Result<DevicePoller> {
+    pub async fn get_poller(&self) -> Result<AsyncDevicePoller> {
         relay! { self, GetPoller }
     }
 
@@ -308,7 +310,7 @@ impl DeviceThread {
             match self.rx.recv()? {
                 DeviceCommand::Drop => break,
                 DeviceCommand::GetPoller(tx) => {
-                    let _ = tx.send(self.device.get_poller().map(DevicePoller::from));
+                    let _ = tx.send(self.device.get_poller().map(AsyncDevicePoller::from));
                 }
                 DeviceCommand::SetBlocking(block, tx) => {
                     let _ = tx.send(self.device.set_blocking(block));
@@ -422,8 +424,8 @@ impl From<oneshot::error::RecvError> for Error {
     }
 }
 
-impl From<device::DevicePoller> for DevicePoller {
-    fn from(poller: device::DevicePoller) -> DevicePoller {
+impl From<DevicePoller> for AsyncDevicePoller {
+    fn from(poller: DevicePoller) -> AsyncDevicePoller {
         let (tx, rx) = channel();
 
         let thread = thread::spawn(move || {
@@ -437,14 +439,14 @@ impl From<device::DevicePoller> for DevicePoller {
             }
             Ok(())
         });
-        DevicePoller {
+        AsyncDevicePoller {
             thread: Some(thread),
             tx,
         }
     }
 }
 
-impl DevicePoller {
+impl AsyncDevicePoller {
     pub async fn poll(&self, timeout: PollTimeout) -> Result<PollStatus> {
         let (tx, rx) = oneshot::channel();
         self.tx.send(PollerCommand::Poll(timeout, tx))?;
@@ -452,7 +454,7 @@ impl DevicePoller {
     }
 }
 
-impl Drop for DevicePoller {
+impl Drop for AsyncDevicePoller {
     fn drop(&mut self) {
         let _ = self.tx.send(PollerCommand::Drop);
         let _ = self.thread.take().unwrap().join();
