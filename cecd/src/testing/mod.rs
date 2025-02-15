@@ -384,31 +384,32 @@ where
 
 #[tokio::test]
 async fn test_no_caps() {
-    assert!(setup_dbus_test(async |_| Ok(())).await.is_err());
+    async fn cb(_dev: ArcDevice) -> anyhow::Result<()> {
+        Ok(())
+    }
+    assert!(setup_dbus_test(cb).await.is_err());
 }
 
 #[tokio::test]
 async fn test_caps_transmit_only() {
-    let (_, proxy, _guard) = setup_dbus_test(async |dev| {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
         dev.lock().await.set_caps(Capabilities::TRANSMIT);
         Ok(())
-    })
-    .await
-    .unwrap();
+    }
+    let (_, proxy, _guard) = setup_dbus_test(cb).await.unwrap();
     assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
     assert!(proxy.logical_addresses().await.unwrap().is_empty());
 }
 
 #[tokio::test]
 async fn test_caps_log_addr() {
-    let (_, proxy, _guard) = setup_dbus_test(async |dev| {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
         dev.lock()
             .await
             .set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
         Ok(())
-    })
-    .await
-    .unwrap();
+    }
+    let (_, proxy, _guard) = setup_dbus_test(cb).await.unwrap();
     assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
     assert_eq!(
         proxy.logical_addresses().await.unwrap(),
