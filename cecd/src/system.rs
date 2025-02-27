@@ -102,6 +102,8 @@ impl System {
         (UiCommand::ChannelUp, Key::ChannelUp),
         (UiCommand::ChannelDown, Key::ChannelDown),
         (UiCommand::PreviousChannel, Key::Previous),
+        (UiCommand::SoundSelect, Key::Sound),
+        // UiCommand::InputSelect, no good mapping
         (UiCommand::DisplayInformation, Key::Info),
         (UiCommand::Help, Key::Help),
         (UiCommand::PageUp, Key::PageUp),
@@ -156,6 +158,7 @@ impl System {
         (UiCommand::F3Green, Key::Green),
         (UiCommand::F4Yellow, Key::Yellow),
         (UiCommand::F5, Key::F5),
+        (UiCommand::Data, Key::Data),
     ];
 
     pub(crate) async fn new(

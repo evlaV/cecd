@@ -1387,6 +1387,7 @@ pub enum UiBroadcastType {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Display, EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum UiCommand {
+    #[strum(serialize = "select", serialize = "ok")]
     Select = constants::CEC_OP_UI_CMD_SELECT,
     Up = constants::CEC_OP_UI_CMD_UP,
     Down = constants::CEC_OP_UI_CMD_DOWN,
@@ -1400,6 +1401,7 @@ pub enum UiCommand {
     DeviceSetupMenu = constants::CEC_OP_UI_CMD_DEVICE_SETUP_MENU,
     ContentsMenu = constants::CEC_OP_UI_CMD_CONTENTS_MENU,
     FavoriteMenu = constants::CEC_OP_UI_CMD_FAVORITE_MENU,
+    #[strum(serialize = "back", serialize = "exit")]
     Back = constants::CEC_OP_UI_CMD_BACK,
     MediaTopMenu = constants::CEC_OP_UI_CMD_MEDIA_TOP_MENU,
     MediaContextSensitiveMenu = constants::CEC_OP_UI_CMD_MEDIA_CONTEXT_SENSITIVE_MENU,
@@ -1467,6 +1469,7 @@ pub enum UiCommand {
         constants::CEC_OP_UI_CMD_SELECT_SOUND_PRESENTATION,
     AudioDescription = constants::CEC_OP_UI_CMD_AUDIO_DESCRIPTION,
     Internet = constants::CEC_OP_UI_CMD_INTERNET,
+    #[strum(serialize = "3d-mode")]
     ThreeDMode = constants::CEC_OP_UI_CMD_3D_MODE,
     PlayFunction(Option<PlayMode>) = constants::CEC_OP_UI_CMD_PLAY_FUNCTION,
     PausePlayFunction = constants::CEC_OP_UI_CMD_PAUSE_PLAY_FUNCTION,
