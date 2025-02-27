@@ -49,6 +49,136 @@ support all of these features:
 - Translating a configurable set of UI buttons (usually remote controller buttons) to an evdev input device.
 - A DBus service for sending and receiving messages, including a handful of convenience methods.
 
+### Configuration
+
+cecd has configuration files located at various paths. They are loaded in the following order, with ones loaded later
+overriding ones loaded earlier:
+
+- `/usr/share/cecd/config.toml`: The system default configuration file.
+- `/usr/share/cecd/config.d/*.toml`: Configuration fragments, for system packages that may want to tweak only portions
+  of the configuration.
+- `/etc/cecd/config.toml`: Editable system-wide configuration file.
+- `/etc/cecd/config.d/*.toml`: Editable system-wide configuration fragments.
+- `$XDG_CONFIG_HOME/cecd/config.toml`: User-specific configuration file.
+- `$XDG_CONFIG_HOME/cecd/config.d/*.toml`: User-specific configuration fragments.
+
+The configuration files are stored in [TOML format](https://toml.io/en/), with the following keys valid:
+
+- `osd_name`: The default advertised OSD name for this device, max 14 bytes. Note that this is not guaranteed to work
+  with non-ASCII characters with all TVs and may have unexpected results if attempted. Defaults to "CEC Device".
+- `vendor_id`: The vendor [OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier) for this device.
+  Defaults to `None`.
+- `logical_address`: The type of logical address this device should request. Valid types are `record`, `tuner`,
+  `playback`, `audiosystem`, and `specific`. Defaults to `playback`.
+- `mappings`: Desired key mappings for uinput. This is a table of the CEC-specified UI Command names (listed below) to
+  [Linux key code values](https://web.git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/include/uapi/linux/input-event-codes.h).
+  Note that the key code value must be the numeric value, not the name. Defaults are listed below, and overriding the
+  table at all will unset all of the default mappings.
+- `wake_tv`: Should cecd attempt to wake the TV when the device is woken? Defaults to false.
+- `suspend_tv`: Should cecd attempt to suspend the TV when the device is suspended? Defaults to false.
+- `allow_standby`: Should cecd attempt to suspend when receiving a Standby command? Defaults to false.
+- `disable_uinput`: Should uinput mappings be disabled. Defaults to false.
+
+#### UI Commands
+
+CEC specifies a large list of "UI Commands" that be sent to devices to tell them to do various things. What the devices
+do is not well-specified for most commands, excluding the "function" commands, and various devices have been known to
+behave very differently. As the "function" commands have specific definitions of their behaviors it is recommended to
+use them carefully, if at all, and most are left unmapped by default. Some commands are specified to be relayed from
+remote contols, which are marked in **bold**, though other commands may be relayed too. The full list, as usable in
+cectool and cecd mapping names, is as follows, with the default mapping in cecd listed. Some commands have multiple
+valid names, which are separated by commas. A few commands also optionally take additional parameters. The parameters
+are marked in brackets.
+
+- **select**, **ok** (This is generally marked as "OK", "Enter", or "Select" on remote controls.): `KEY_ENTER`
+- **up**: `KEY_UP`
+- **down**: `KEY_DOWN`
+- **left**: `KEY_LEFT`
+- **right**: `KEY_RIGHT`
+- **right-up**: `KEY_RIGHT_UP`
+- **right-down**: `KEY_RIGHT_DOWN`
+- **left-up**: `KEY_LEFT_UP`
+- **left-down**: `KEY_LEFT_DOWN`
+- device-root-menu: `KEY_ROOT_MENU`
+- device-setup-menu: `KEY_SETUP`
+- contents-menu: `KEY_MENU`
+- favorite-menu: `KEY_FAVORITES`
+- **back**, **exit**: `KEY_ESC`
+- media-top-menu: `KEY_MEDIA_TOP_MENU`
+- media-context-sensitive-menu: `KEY_CONTEXT_MENU`,
+- **number-entry-mode**: `KEY_DIGITS`
+- **11**: `KEY_NUMERIC_11`
+- **12**: `KEY_NUMERIC_12`
+- **0**, **10**: `KEY_NUMERIC_0`
+- **1**: `KEY_NUMERIC_1`
+- **2**: `KEY_NUMERIC_2`
+- **3**: `KEY_NUMERIC_3`
+- **4**: `KEY_NUMERIC_4`
+- **5**: `KEY_NUMERIC_5`
+- **6**: `KEY_NUMERIC_6`
+- **7**: `KEY_NUMERIC_7`
+- **8**: `KEY_NUMERIC_8`
+- **9**: `KEY_NUMERIC_9`
+- dot: `KEY_DOT`
+- enter (This is not the same as the select key): `KEY_ENTER`
+- clear: `KEY_CLEAR`
+- next-favorite: `KEY_NEXT_FAVORITE`
+- channel-up: `KEY_CHANNELUP`
+- channel-down: `KEY_CHANNELDOWN`
+- previous-channel: `KEY_PREVIOUS`
+- sound-select: `KEY_SOUND`
+- input-select: *unmapped*
+- display-information: `KEY_INFO`
+- help: `KEY_HELP`
+- page-up: `KEY_PAGEUP`
+- page-down: `KEY_PAGEDOWN`
+- power: `KEY_POWER`
+- volume-up: `KEY_VOLUMEUP`
+- volume-down: `KEY_VOLUMEDOWN`
+- mute: `KEY_MUTE`
+- play: `KEY_PLAYCD`
+- stop: `KEY_STOPCD`
+- pause: `KEY_PAUSECD`
+- record: `KEY_RECORD`
+- rewind: `KEY_REWIND`
+- fast-forward: `KEY_FASTFORWARD`
+- eject: `KEY_EJECTCD`
+- skip-forward: `KEY_NEXTSONG`
+- skip-backward: `KEY_PREVIOUSSONG`
+- stop-record: `KEY_STOP_RECORD`
+- pause-record: `KEY_PAUSE_RECORD`
+- angle: `KEY_ANGLE`
+- sub-picture: *unmapped*
+- video-on-demand: `KEY_VOD`
+- electronic-program-guide: `KEY_EPG`
+- timer-programming: `KEY_TIME`
+- initial-configuration: `KEY_CONFIG`
+- select-broadcast-type [UI Broadcast Type]: *unmapped*
+- select-sound-presentation [UI Sound Presentation Control]: *unmapped*
+- audio-description: `KEY_AUDIO_DESC`
+- internet: `KEY_WWW`
+- 3d-mode: `KEY_3D_MODE`
+- play-function [Play Mode]: *unmapped*
+- pause-play-function: *unmapped*
+- record-function: *unmapped*
+- pause-record-function: *unmapped*
+- stop-function: *unmapped*
+- mute-function: *unmapped*
+- restore-volume-function: `KEY_UNMUTE`
+- tune-function [Channel Identifier]: *unmapped*
+- select-media-function [UI Function Media]: *unmapped*
+- select-av-input-function [UI Function Select A/V Input]: *unmapped*
+- select-audio-input-function [UI Function Select Audio Input]: *unmapped*
+- power-toggle-function: `KEY_POWER`
+- power-off-function: `KEY_SLEEP`
+- power-on-function: `KEY_WAKEUP`
+- **f1**, **blue**: `KEY_BLUE`
+- **f2**, **red**: `KEY_RED`
+- **f3**, **green**: `KEY_GREEN`
+- **f4**, **yellow**: `KEY_YELLOW`
+- **f5**: `KEY_F5`
+- data: `KEY_DATA`
+
 ---
 
 linux-cec is copyright © 2024, Valve Software.
