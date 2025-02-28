@@ -510,6 +510,13 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
 #[repr(transparent)]
 pub struct PhysicalAddress(pub(crate) u16);
 
+impl PhysicalAddress {
+    /// Check whether or not the physical address is valid, i.e. not `f.f.f.f`.
+    pub fn is_valid(&self) -> bool {
+        self.0 != 0xFFFF
+    }
+}
+
 impl Display for PhysicalAddress {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
