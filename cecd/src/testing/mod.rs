@@ -13,6 +13,7 @@ use linux_cec::{
     Result, Timeout, VendorId,
 };
 use std::cell::UnsafeCell;
+use std::collections::VecDeque;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -26,10 +27,12 @@ use tracing::{debug, subscriber};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use zbus::connection::Builder;
+use zbus::names::OwnedErrorName;
 use zbus::proxy;
 
 mod dbus;
 
+use crate::config::Config;
 use crate::system::{System, SystemHandle};
 pub(crate) use crate::testing::dbus::MockDBus;
 use crate::ArcDevice;
@@ -43,6 +46,9 @@ struct DeviceState {
     log_addrs: Vec<LogicalAddress>,
     osd_name: BufferOperand,
     vendor_id: Option<VendorId>,
+    tx_queue: VecDeque<(Message, LogicalAddress)>,
+    rx_queue: VecDeque<Envelope>,
+    sequence: u32,
 }
 
 #[derive(Debug)]
@@ -50,6 +56,7 @@ pub struct AsyncDevice {
     _path: PathBuf,
     caps: Capabilities,
     token: CancellationToken,
+    force_unregistered: bool,
     state: RwLock<DeviceState>,
 }
 
@@ -67,6 +74,7 @@ impl AsyncDevice {
             _path: path.as_ref().to_path_buf(),
             caps: Capabilities::empty(),
             token: CancellationToken::new(),
+            force_unregistered: false,
             state: RwLock::new(DeviceState {
                 pollers: Vec::new(),
                 follower: FollowerMode::Disabled,
@@ -75,6 +83,9 @@ impl AsyncDevice {
                 log_addrs: Vec::new(),
                 osd_name: BufferOperand::default(),
                 vendor_id: None,
+                tx_queue: VecDeque::new(),
+                rx_queue: VecDeque::new(),
+                sequence: 1,
             }),
         })
     }
@@ -83,8 +94,16 @@ impl AsyncDevice {
         self.caps = caps;
     }
 
-    pub(crate) async fn _set_phys_addr(&mut self, phys_addr: PhysicalAddress) {
+    pub(crate) async fn set_phys_addr(&mut self, phys_addr: PhysicalAddress) {
         self.state.write().await.phys_addr = phys_addr;
+    }
+
+    pub(crate) async fn _queue_rx_message(&self, message: Envelope) {
+        self.state.write().await.rx_queue.push_back(message);
+    }
+
+    pub(crate) async fn dequeue_tx_message(&self) -> Option<(Message, LogicalAddress)> {
+        self.state.write().await.tx_queue.pop_front()
     }
 
     pub async fn set_blocking(&self, _blocking: bool) -> Result<()> {
@@ -149,20 +168,27 @@ impl AsyncDevice {
             if !state.log_addrs.is_empty() {
                 return Err(Error::InvalidData);
             }
+            if !state.phys_addr.is_valid() {
+                return Err(Error::InvalidData);
+            }
         }
         let mut state = self.state.write().await;
-        state.log_addrs = log_addrs
-            .into_iter()
-            .map(|ty| match *ty {
-                LogicalAddressType::Tv => LogicalAddress::Tv,
-                LogicalAddressType::Record => LogicalAddress::RecordingDevice1,
-                LogicalAddressType::Tuner => LogicalAddress::Tuner1,
-                LogicalAddressType::Playback => LogicalAddress::PlaybackDevice1,
-                LogicalAddressType::AudioSystem => LogicalAddress::AudioSystem,
-                LogicalAddressType::Specific => LogicalAddress::Specific,
-                LogicalAddressType::Unregistered => LogicalAddress::Unregistered,
-            })
-            .collect();
+        if self.force_unregistered {
+            state.log_addrs = vec![LogicalAddress::Unregistered];
+        } else {
+            state.log_addrs = log_addrs
+                .into_iter()
+                .map(|ty| match *ty {
+                    LogicalAddressType::Tv => LogicalAddress::Tv,
+                    LogicalAddressType::Record => LogicalAddress::RecordingDevice1,
+                    LogicalAddressType::Tuner => LogicalAddress::Tuner1,
+                    LogicalAddressType::Playback => LogicalAddress::PlaybackDevice1,
+                    LogicalAddressType::AudioSystem => LogicalAddress::AudioSystem,
+                    LogicalAddressType::Specific => LogicalAddress::Specific,
+                    LogicalAddressType::Unregistered => LogicalAddress::Unregistered,
+                })
+                .collect();
+        }
         for poller in state.pollers.iter() {
             poller.send(PollStatus::GotEvent).await.unwrap();
         }
@@ -199,12 +225,25 @@ impl AsyncDevice {
         Ok(())
     }
 
-    pub async fn tx_message(
-        &self,
-        _message: &Message,
-        _destination: LogicalAddress,
-    ) -> Result<u32> {
-        todo!();
+    pub async fn tx_message(&self, message: &Message, destination: LogicalAddress) -> Result<u32> {
+        let mut state = self.state.write().await;
+        if state.log_addrs.is_empty() {
+            return Err(Error::NoLogicalAddress);
+        }
+        if !state
+            .log_addrs
+            .iter()
+            .any(|addr| *addr != LogicalAddress::Unregistered)
+        {
+            return Err(Error::InvalidData);
+        }
+        if state.initiator == InitiatorMode::Disabled {
+            return Err(Error::InvalidData);
+        }
+        state.tx_queue.push_front((message.clone(), destination));
+        let seq = state.sequence;
+        state.sequence += 1;
+        Ok(seq)
     }
 
     pub async fn tx_rx_message(
@@ -218,7 +257,18 @@ impl AsyncDevice {
     }
 
     pub async fn rx_message(&self, _timeout: Timeout) -> Result<Envelope> {
-        todo!();
+        let mut state = self.state.write().await;
+        if state.log_addrs.is_empty() {
+            return Err(Error::NoLogicalAddress);
+        }
+        if state.follower == FollowerMode::Disabled {
+            return Err(Error::InvalidData);
+        }
+        if let Some(message) = state.rx_queue.pop_front() {
+            Ok(message)
+        } else {
+            Err(Error::Timeout)
+        }
     }
 
     pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
@@ -241,8 +291,10 @@ impl AsyncDevice {
         todo!();
     }
 
-    pub async fn standby(&self, _target: LogicalAddress) -> Result<()> {
-        todo!();
+    pub async fn standby(&self, target: LogicalAddress) -> Result<()> {
+        let standby = Message::Standby {};
+        self.tx_message(&standby, target).await?;
+        Ok(())
     }
 
     pub async fn press_user_control(
@@ -341,6 +393,7 @@ trait CecDevice {
 
 async fn setup_dbus_test<F, Fut>(
     setup_dev: F,
+    config: Option<Config>,
 ) -> anyhow::Result<(ArcDevice, CecDeviceProxy<'static>, DefaultGuard)>
 where
     F: FnOnce(ArcDevice) -> Fut,
@@ -352,14 +405,23 @@ where
             .with(EnvFilter::from_default_env()),
     );
 
+    debug!("Setting up DBus test");
     let dbus = MockDBus::new().await?;
     let builder = Builder::address(dbus.address())?;
     let connection = Builder::address(dbus.address())?.build().await?;
+    debug!("Got DBus connection");
 
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(
         System::new(token.clone(), builder, connection.clone()).await?,
     )));
+    let config = config.unwrap_or_else(|| {
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config
+    });
+    system.set_config(config).await?;
+    debug!("System created");
 
     let dev;
     let rx;
@@ -370,10 +432,12 @@ where
         (dev, tx, rx) = system.find_dev("/dev/null").await?;
         connection = system.connection.clone();
     }
+    debug!("Device created");
     let arc_dev = dev.device.clone();
     setup_dev(arc_dev.clone()).await?;
     dev.register(connection.clone(), system.clone(), tx, rx)
         .await?;
+    debug!("Device registered");
 
     Ok((
         arc_dev,
@@ -387,16 +451,17 @@ async fn test_no_caps() {
     async fn cb(_dev: ArcDevice) -> anyhow::Result<()> {
         Ok(())
     }
-    assert!(setup_dbus_test(cb).await.is_err());
+    assert!(setup_dbus_test(cb, None).await.is_err());
 }
 
 #[tokio::test]
 async fn test_caps_transmit_only() {
     async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
-        dev.lock().await.set_caps(Capabilities::TRANSMIT);
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::TRANSMIT);
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb).await.unwrap();
+    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
     assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
     assert!(proxy.logical_addresses().await.unwrap().is_empty());
 }
@@ -404,15 +469,87 @@ async fn test_caps_transmit_only() {
 #[tokio::test]
 async fn test_caps_log_addr() {
     async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
-        dev.lock()
-            .await
-            .set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb).await.unwrap();
-    assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
+    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
+    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
+    assert_eq!(
+        proxy.logical_addresses().await.unwrap(),
+        &[u8::from(LogicalAddress::PlaybackDevice1)]
+    );
+}
+
+#[tokio::test]
+async fn test_tx_no_log_addr() {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::TRANSMIT);
+        Ok(())
+    }
+    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
+    assert!(proxy.logical_addresses().await.unwrap().is_empty());
+    let err = proxy.standby(0).await.unwrap_err();
+    let zbus::Error::MethodError(name, text, _) = err else {
+        panic!();
+    };
+    assert_eq!(
+        OwnedErrorName::try_from("org.freedesktop.DBus.Error.Failed").unwrap(),
+        name
+    );
+    assert_eq!(Some(Error::NoLogicalAddress.to_string()), text);
+}
+
+#[tokio::test]
+async fn test_tx_invalid_log_addr() {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+        dev.force_unregistered = true;
+        Ok(())
+    }
+    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
+    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
     assert_eq!(
         proxy.logical_addresses().await.unwrap(),
         &[u8::from(LogicalAddress::Unregistered)]
+    );
+
+    let err = proxy.standby(LogicalAddress::Tv.into()).await.unwrap_err();
+    let zbus::Error::MethodError(name, text, _) = err else {
+        panic!();
+    };
+    assert_eq!(
+        OwnedErrorName::try_from("org.freedesktop.DBus.Error.Failed").unwrap(),
+        name
+    );
+    assert_eq!(Some(Error::InvalidData.to_string()), text);
+}
+
+#[tokio::test]
+async fn test_tx_basic() {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+        Ok(())
+    }
+    let mut config = Config::default();
+    config.disable_uinput = true;
+    config.logical_address = LogicalAddressType::Playback;
+    let (dev, proxy, _guard) = setup_dbus_test(cb, Some(config)).await.unwrap();
+    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
+    assert_eq!(
+        proxy.logical_addresses().await.unwrap(),
+        &[u8::from(LogicalAddress::PlaybackDevice1)]
+    );
+
+    proxy.standby(LogicalAddress::Tv.into()).await.unwrap();
+    assert_eq!(
+        dev.lock().await.dequeue_tx_message().await,
+        Some((Message::Standby {}, LogicalAddress::Tv))
     );
 }
