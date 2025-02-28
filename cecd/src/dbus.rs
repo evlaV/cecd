@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
 use linux_cec::{LogicalAddress, PhysicalAddress, Timeout};
@@ -94,6 +94,13 @@ impl CecDevice {
             .collect::<String>();
         Ok(format!("{PATH}/{path}"))
     }
+
+    pub async fn send_system_message(&self, message: SystemMessage) -> Result<()> {
+        let Some(ref tx) = self.channel else {
+            bail!("Device task has not started");
+        };
+        Ok(tx.send(message)?)
+    }
 }
 
 #[interface(name = "com.steampowered.CecDaemon1.CecDevice1")]
@@ -158,12 +165,9 @@ impl CecDevice {
     }
 
     async fn wake(&self) -> fdo::Result<()> {
-        let Some(ref tx) = self.channel else {
-            return Err(fdo::Error::Failed(String::from(
-                "Device task has not started",
-            )));
-        };
-        tx.send(SystemMessage::Wake).map_err(into_fdo_error)
+        self.send_system_message(SystemMessage::Wake)
+            .await
+            .map_err(into_fdo_error)
     }
 
     async fn standby(&self, target: u8) -> fdo::Result<()> {

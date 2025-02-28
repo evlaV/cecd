@@ -18,9 +18,11 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::select;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::dispatcher::DefaultGuard;
 use tracing::{debug, subscriber};
@@ -28,12 +30,14 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use zbus::connection::Builder;
 use zbus::names::OwnedErrorName;
-use zbus::proxy;
+use zbus::object_server::InterfaceRef;
+use zbus::{proxy, Connection};
 
 mod dbus;
 
 use crate::config::Config;
-use crate::system::{System, SystemHandle};
+use crate::dbus::CecDevice;
+use crate::system::{System, SystemHandle, SystemMessage};
 pub(crate) use crate::testing::dbus::MockDBus;
 use crate::ArcDevice;
 
@@ -391,10 +395,17 @@ trait CecDevice {
     ) -> zbus::Result<Vec<u8>>;
 }
 
+struct DBusTest<'a> {
+    dev: ArcDevice,
+    proxy: CecDeviceProxy<'a>,
+    connection: Connection,
+    _guard: DefaultGuard,
+}
+
 async fn setup_dbus_test<F, Fut>(
     setup_dev: F,
     config: Option<Config>,
-) -> anyhow::Result<(ArcDevice, CecDeviceProxy<'static>, DefaultGuard)>
+) -> anyhow::Result<DBusTest<'static>>
 where
     F: FnOnce(ArcDevice) -> Fut,
     Fut: Future<Output = anyhow::Result<()>>,
@@ -439,11 +450,12 @@ where
         .await?;
     debug!("Device registered");
 
-    Ok((
-        arc_dev,
-        CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Null").await?,
-        guard,
-    ))
+    Ok(DBusTest {
+        dev: arc_dev,
+        proxy: CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Null").await?,
+        connection,
+        _guard: guard,
+    })
 }
 
 #[tokio::test]
@@ -461,9 +473,9 @@ async fn test_caps_transmit_only() {
         dev.set_caps(Capabilities::TRANSMIT);
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
-    assert_eq!(proxy.physical_address().await.unwrap(), 0xFFFF);
-    assert!(proxy.logical_addresses().await.unwrap().is_empty());
+    let test = setup_dbus_test(cb, None).await.unwrap();
+    assert_eq!(test.proxy.physical_address().await.unwrap(), 0xFFFF);
+    assert!(test.proxy.logical_addresses().await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -474,10 +486,10 @@ async fn test_caps_log_addr() {
         dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
-    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
+    let test = setup_dbus_test(cb, None).await.unwrap();
+    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
     assert_eq!(
-        proxy.logical_addresses().await.unwrap(),
+        test.proxy.logical_addresses().await.unwrap(),
         &[u8::from(LogicalAddress::PlaybackDevice1)]
     );
 }
@@ -489,9 +501,9 @@ async fn test_tx_no_log_addr() {
         dev.set_caps(Capabilities::TRANSMIT);
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
-    assert!(proxy.logical_addresses().await.unwrap().is_empty());
-    let err = proxy.standby(0).await.unwrap_err();
+    let test = setup_dbus_test(cb, None).await.unwrap();
+    assert!(test.proxy.logical_addresses().await.unwrap().is_empty());
+    let err = test.proxy.standby(0).await.unwrap_err();
     let zbus::Error::MethodError(name, text, _) = err else {
         panic!();
     };
@@ -511,14 +523,18 @@ async fn test_tx_invalid_log_addr() {
         dev.force_unregistered = true;
         Ok(())
     }
-    let (_, proxy, _guard) = setup_dbus_test(cb, None).await.unwrap();
-    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
+    let test = setup_dbus_test(cb, None).await.unwrap();
+    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
     assert_eq!(
-        proxy.logical_addresses().await.unwrap(),
+        test.proxy.logical_addresses().await.unwrap(),
         &[u8::from(LogicalAddress::Unregistered)]
     );
 
-    let err = proxy.standby(LogicalAddress::Tv.into()).await.unwrap_err();
+    let err = test
+        .proxy
+        .standby(LogicalAddress::Tv.into())
+        .await
+        .unwrap_err();
     let zbus::Error::MethodError(name, text, _) = err else {
         panic!();
     };
@@ -540,16 +556,57 @@ async fn test_tx_basic() {
     let mut config = Config::default();
     config.disable_uinput = true;
     config.logical_address = LogicalAddressType::Playback;
-    let (dev, proxy, _guard) = setup_dbus_test(cb, Some(config)).await.unwrap();
-    assert_eq!(proxy.physical_address().await.unwrap(), 0x1000);
+    let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
     assert_eq!(
-        proxy.logical_addresses().await.unwrap(),
+        test.proxy.logical_addresses().await.unwrap(),
         &[u8::from(LogicalAddress::PlaybackDevice1)]
     );
 
-    proxy.standby(LogicalAddress::Tv.into()).await.unwrap();
+    test.proxy.standby(LogicalAddress::Tv.into()).await.unwrap();
     assert_eq!(
-        dev.lock().await.dequeue_tx_message().await,
+        test.dev.lock().await.dequeue_tx_message().await,
         Some((Message::Standby {}, LogicalAddress::Tv))
     );
+}
+
+#[tokio::test]
+async fn test_system_message_standby() {
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+        Ok(())
+    }
+    let mut config = Config::default();
+    config.disable_uinput = true;
+    config.logical_address = LogicalAddressType::Playback;
+    let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+    assert_eq!(
+        test.proxy.logical_addresses().await.unwrap(),
+        &[u8::from(LogicalAddress::PlaybackDevice1)]
+    );
+
+    let interface: InterfaceRef<CecDevice> = test
+        .connection
+        .object_server()
+        .interface("/com/steampowered/CecDaemon1/Null")
+        .await
+        .unwrap();
+    {
+        let dev = interface.get_mut().await;
+        dev.send_system_message(SystemMessage::Standby)
+            .await
+            .unwrap();
+    }
+    for _ in 0..100 {
+        let Some(message) = test.dev.lock().await.dequeue_tx_message().await else {
+            sleep(Duration::from_millis(1)).await;
+            continue;
+        };
+        assert_eq!(message, (Message::Standby {}, LogicalAddress::Tv));
+        return;
+    }
+    panic!();
 }
