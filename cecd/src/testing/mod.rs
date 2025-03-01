@@ -18,11 +18,9 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::select;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::dispatcher::DefaultGuard;
 use tracing::{debug, subscriber};
@@ -30,14 +28,12 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use zbus::connection::Builder;
 use zbus::names::OwnedErrorName;
-use zbus::object_server::InterfaceRef;
 use zbus::{proxy, Connection};
 
-mod dbus;
+pub(crate) mod dbus;
 
 use crate::config::Config;
-use crate::dbus::CecDevice;
-use crate::system::{System, SystemHandle, SystemMessage};
+use crate::system::{System, SystemHandle};
 pub(crate) use crate::testing::dbus::MockDBus;
 use crate::ArcDevice;
 
@@ -102,8 +98,12 @@ impl AsyncDevice {
         self.state.write().await.phys_addr = phys_addr;
     }
 
-    pub(crate) async fn _queue_rx_message(&self, message: Envelope) {
-        self.state.write().await.rx_queue.push_back(message);
+    pub(crate) async fn queue_rx_message(&self, message: Envelope) {
+        let mut state = self.state.write().await;
+        state.rx_queue.push_back(message);
+        for poller in state.pollers.iter() {
+            poller.send(PollStatus::GotMessage).await.unwrap();
+        }
     }
 
     pub(crate) async fn dequeue_tx_message(&self) -> Option<(Message, LogicalAddress)> {
@@ -276,11 +276,17 @@ impl AsyncDevice {
     }
 
     pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
-        match status {
-            PollStatus::Nothing | PollStatus::Destroyed => Ok(Vec::new()),
-            PollStatus::GotEvent => Ok(vec![PollResult::StateChange]),
-            PollStatus::GotMessage | PollStatus::GotAll => todo!(),
+        let mut results = Vec::new();
+        if status.got_event() {
+            results.push(PollResult::StateChange);
         }
+
+        if status.got_message() {
+            if let Some(message) = self.state.write().await.rx_queue.pop_front() {
+                results.push(PollResult::Message(message));
+            }
+        }
+        Ok(results)
     }
 
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
@@ -340,7 +346,7 @@ impl AsyncDevicePoller {
     interface = "com.steampowered.CecDaemon1.CecDevice1",
     default_service = "com.steampowered.CecDaemon1"
 )]
-trait CecDevice {
+pub(crate) trait CecDevice {
     #[zbus(signal)]
     fn received_message(
         initiator: u8,
@@ -395,14 +401,14 @@ trait CecDevice {
     ) -> zbus::Result<Vec<u8>>;
 }
 
-struct DBusTest<'a> {
-    dev: ArcDevice,
-    proxy: CecDeviceProxy<'a>,
-    connection: Connection,
+pub(crate) struct DBusTest<'a> {
+    pub dev: ArcDevice,
+    pub proxy: CecDeviceProxy<'a>,
+    pub connection: Connection,
     _guard: DefaultGuard,
 }
 
-async fn setup_dbus_test<F, Fut>(
+pub(crate) async fn setup_dbus_test<F, Fut>(
     setup_dev: F,
     config: Option<Config>,
 ) -> anyhow::Result<DBusTest<'static>>
@@ -543,70 +549,4 @@ async fn test_tx_invalid_log_addr() {
         name
     );
     assert_eq!(Some(Error::InvalidData.to_string()), text);
-}
-
-#[tokio::test]
-async fn test_tx_basic() {
-    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
-        let mut dev = dev.lock().await;
-        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
-        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
-        Ok(())
-    }
-    let mut config = Config::default();
-    config.disable_uinput = true;
-    config.logical_address = LogicalAddressType::Playback;
-    let test = setup_dbus_test(cb, Some(config)).await.unwrap();
-    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
-    assert_eq!(
-        test.proxy.logical_addresses().await.unwrap(),
-        &[u8::from(LogicalAddress::PlaybackDevice1)]
-    );
-
-    test.proxy.standby(LogicalAddress::Tv.into()).await.unwrap();
-    assert_eq!(
-        test.dev.lock().await.dequeue_tx_message().await,
-        Some((Message::Standby {}, LogicalAddress::Tv))
-    );
-}
-
-#[tokio::test]
-async fn test_system_message_standby() {
-    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
-        let mut dev = dev.lock().await;
-        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
-        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
-        Ok(())
-    }
-    let mut config = Config::default();
-    config.disable_uinput = true;
-    config.logical_address = LogicalAddressType::Playback;
-    let test = setup_dbus_test(cb, Some(config)).await.unwrap();
-    assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
-    assert_eq!(
-        test.proxy.logical_addresses().await.unwrap(),
-        &[u8::from(LogicalAddress::PlaybackDevice1)]
-    );
-
-    let interface: InterfaceRef<CecDevice> = test
-        .connection
-        .object_server()
-        .interface("/com/steampowered/CecDaemon1/Null")
-        .await
-        .unwrap();
-    {
-        let dev = interface.get_mut().await;
-        dev.send_system_message(SystemMessage::Standby)
-            .await
-            .unwrap();
-    }
-    for _ in 0..100 {
-        let Some(message) = test.dev.lock().await.dequeue_tx_message().await else {
-            sleep(Duration::from_millis(1)).await;
-            continue;
-        };
-        assert_eq!(message, (Message::Standby {}, LogicalAddress::Tv));
-        return;
-    }
-    panic!();
 }

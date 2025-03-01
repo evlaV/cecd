@@ -377,3 +377,171 @@ impl KeyRepeat {
             .await?)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use linux_cec::device::Capabilities;
+    use linux_cec::message::Opcode;
+    use linux_cec::{LogicalAddressType, PhysicalAddress};
+    use std::time::Duration;
+
+    use crate::config::Config;
+    use crate::testing::setup_dbus_test;
+
+    async fn rx_message(dev: &ArcDevice) -> Option<(Message, LogicalAddress)> {
+        for _ in 0..100 {
+            let Some(message) = dev.lock().await.dequeue_tx_message().await else {
+                sleep(Duration::from_millis(1)).await;
+                continue;
+            };
+            return Some(message);
+        }
+        None
+    }
+
+    #[tokio::test]
+    async fn test_tx_basic() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        test.proxy.standby(LogicalAddress::Tv.into()).await.unwrap();
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((Message::Standby {}, LogicalAddress::Tv))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_system_message_standby() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Null")
+            .await
+            .unwrap();
+        {
+            let dev = interface.get_mut().await;
+            dev.send_system_message(SystemMessage::Standby)
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (Message::Standby {}, LogicalAddress::Tv)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_rx_abort() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::RecordOff {},
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::FeatureAbort {
+                    opcode: Opcode::RecordOff,
+                    abort_reason: AbortReason::UnrecognizedOp,
+                },
+                LogicalAddress::Tv
+            )
+        );
+    }
+
+    #[tokio::test]
+    async fn test_give_device_power_status() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::GiveDevicePowerStatus {},
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::ReportPowerStatus {
+                    status: PowerStatus::On,
+                },
+                LogicalAddress::Tv
+            )
+        );
+    }
+}
