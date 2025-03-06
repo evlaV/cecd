@@ -409,6 +409,7 @@ pub(crate) struct DBusTest<'a> {
     pub dev: ArcDevice,
     pub proxy: CecDeviceProxy<'a>,
     pub connection: Connection,
+    _dbus: MockDBus,
     _guard: DefaultGuard,
 }
 
@@ -467,6 +468,7 @@ where
         dev: arc_dev,
         proxy: CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Null").await?,
         connection,
+        _dbus: dbus,
         _guard: guard,
     })
 }

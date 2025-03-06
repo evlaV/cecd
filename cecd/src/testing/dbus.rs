@@ -30,6 +30,7 @@ impl MockDBus {
                 "--config-file=test-dbus.conf",
             ])
             .stdout(Stdio::piped())
+            .kill_on_drop(true)
             .spawn()?;
 
         let stdout = BufReader::new(
@@ -55,7 +56,7 @@ impl MockDBus {
         })
     }
 
-    pub fn _shutdown(mut self) -> anyhow::Result<()> {
+    pub fn shutdown(&mut self) -> anyhow::Result<()> {
         let pid = match self.process.id() {
             Some(id) => id,
             None => return Ok(()),
@@ -77,5 +78,11 @@ impl MockDBus {
 
     pub fn address(&self) -> Address {
         self.address.clone()
+    }
+}
+
+impl Drop for MockDBus {
+    fn drop(&mut self) {
+        self.shutdown().unwrap();
     }
 }
