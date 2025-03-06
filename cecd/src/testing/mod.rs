@@ -433,30 +433,33 @@ where
     debug!("Got DBus connection");
 
     let token = CancellationToken::new();
+    dbg!();
     let system = SystemHandle(Arc::new(Mutex::new(
         System::new(token.clone(), builder, connection.clone()).await?,
     )));
+    dbg!();
     let config = config.unwrap_or_else(|| {
         let mut config = Config::default();
         config.disable_uinput = true;
         config
     });
+    dbg!();
     system.set_config(config).await?;
     debug!("System created");
 
     let dev;
-    let rx;
-    let tx;
+    let channel;
     let connection;
     {
         let mut system = system.lock().await;
-        (dev, tx, rx) = system.find_dev("/dev/null").await?;
+        dev = system.find_dev("/dev/null").await?;
+        channel = system.channel.clone();
         connection = system.connection.clone();
     }
     debug!("Device created");
     let arc_dev = dev.device.clone();
     setup_dev(arc_dev.clone()).await?;
-    dev.register(connection.clone(), system.clone(), tx, rx)
+    dev.register(connection.clone(), system.clone(), channel)
         .await?;
     debug!("Device registered");
 

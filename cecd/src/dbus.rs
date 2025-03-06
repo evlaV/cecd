@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use tokio::fs::canonicalize;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::broadcast::Sender;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
@@ -33,7 +33,7 @@ const PATH: &str = "/com/steampowered/CecDaemon1";
 pub struct CecDevice {
     pub device: ArcDevice,
     pub token: CancellationToken,
-    channel: Option<UnboundedSender<SystemMessage>>,
+    channel: Option<Sender<SystemMessage>>,
     path: PathBuf,
     pub cached_phys_addr: u16,
     pub cached_log_addrs: Vec<u8>,
@@ -61,8 +61,7 @@ impl CecDevice {
         self,
         connection: Connection,
         system: SystemHandle,
-        tx: UnboundedSender<SystemMessage>,
-        rx: UnboundedReceiver<SystemMessage>,
+        channel: Sender<SystemMessage>,
     ) -> Result<()> {
         debug!("Registering CEC device {} on bus", self.path.display());
 
@@ -71,10 +70,11 @@ impl CecDevice {
         object_server.at(path.clone(), self).await?;
 
         let interface = object_server.interface(path.clone()).await?;
-        let task = DeviceTask::new(interface.clone(), system, rx, connection).await?;
+        let task =
+            DeviceTask::new(interface.clone(), system, channel.subscribe(), connection).await?;
         spawn(task.run());
         let mut interface = interface.get_mut().await;
-        interface.channel = Some(tx);
+        interface.channel = Some(channel);
         info!("Device {path} registered");
         Ok(())
     }
@@ -99,7 +99,8 @@ impl CecDevice {
         let Some(ref tx) = self.channel else {
             bail!("Device task has not started");
         };
-        Ok(tx.send(message)?)
+        tx.send(message)?;
+        Ok(())
     }
 }
 

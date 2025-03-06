@@ -11,7 +11,7 @@ use linux_cec::{Error, LogicalAddress};
 use std::mem::drop;
 use std::time::Duration;
 use tokio::select;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::broadcast::Receiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -34,7 +34,7 @@ pub struct DeviceTask {
     interface: InterfaceRef<CecDevice>,
     uinput: Option<UInputDevice>,
     active_key: Option<UiCommand>,
-    channel: UnboundedReceiver<SystemMessage>,
+    channel: Receiver<SystemMessage>,
     connection: Connection,
     path: String,
     log_addr_try: i32,
@@ -54,7 +54,7 @@ impl DeviceTask {
     pub async fn new(
         iface: InterfaceRef<CecDevice>,
         system: SystemHandle,
-        channel: UnboundedReceiver<SystemMessage>,
+        channel: Receiver<SystemMessage>,
         connection: Connection,
     ) -> Result<DeviceTask> {
         let interface = iface.clone();
@@ -110,7 +110,7 @@ impl DeviceTask {
                     }
                 }
                 message = self.channel.recv() => {
-                    let Some(message) = message else {
+                    let Ok(message) = message else {
                         break;
                     };
                     if let Err(err) = self.handle_system_message(message).await {

@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::{Mutex, MutexGuard};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
@@ -31,15 +31,10 @@ pub(crate) struct System {
     pub config: Config,
 
     pub connection: Connection,
+    pub channel: Sender<SystemMessage>,
     system_bus: Connection,
     token: CancellationToken,
-    devs: HashMap<PathBuf, DeviceHandle>,
-}
-
-#[derive(Debug)]
-struct DeviceHandle {
-    token: CancellationToken,
-    channel: UnboundedSender<SystemMessage>,
+    devs: HashMap<PathBuf, CancellationToken>,
 }
 
 #[proxy(
@@ -167,6 +162,7 @@ impl System {
         system_bus: Connection,
     ) -> Result<System> {
         let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
+        let (channel, _) = channel(10);
 
         Ok(System {
             osd_name: String::from("CEC Device"),
@@ -175,18 +171,11 @@ impl System {
             system_bus,
             token,
             devs: HashMap::new(),
+            channel,
         })
     }
 
-    pub(crate) async fn find_devs(
-        &mut self,
-    ) -> Result<
-        Vec<(
-            CecDevice,
-            UnboundedSender<SystemMessage>,
-            UnboundedReceiver<SystemMessage>,
-        )>,
-    > {
+    pub(crate) async fn find_devs(&mut self) -> Result<Vec<CecDevice>> {
         let mut devs = Vec::new();
         let mut add = HashMap::new();
         let mut dir = read_dir("/dev").await?;
@@ -205,27 +194,15 @@ impl System {
             debug!("Scanning cec device {pathname}");
 
             let token = self.token.child_token();
-            let (channel, rx) = unbounded_channel();
-            devs.push((
-                CecDevice::open(&path, token.clone()).await?,
-                channel.clone(),
-                rx,
-            ));
+            devs.push(CecDevice::open(&path, token.clone()).await?);
             info!("Found cec device at {pathname}");
-            add.insert(path, DeviceHandle { token, channel });
+            add.insert(path, token);
         }
         self.devs.extend(add);
         Ok(devs)
     }
 
-    pub(crate) async fn find_dev(
-        &mut self,
-        path: impl AsRef<Path>,
-    ) -> Result<(
-        CecDevice,
-        UnboundedSender<SystemMessage>,
-        UnboundedReceiver<SystemMessage>,
-    )> {
+    pub(crate) async fn find_dev(&mut self, path: impl AsRef<Path>) -> Result<CecDevice> {
         let pathname = path.as_ref().display();
         debug!("Scanning cec device {pathname}");
         ensure!(
@@ -233,22 +210,15 @@ impl System {
             "Device {pathname} already loaded"
         );
         let token = self.token.child_token();
-        let (channel, rx) = unbounded_channel();
         let dev = CecDevice::open(&path, token.clone()).await?;
         info!("Found cec device at {pathname}");
-        self.devs.insert(
-            path.as_ref().to_path_buf(),
-            DeviceHandle {
-                token,
-                channel: channel.clone(),
-            },
-        );
-        Ok((dev, channel, rx))
+        self.devs.insert(path.as_ref().to_path_buf(), token);
+        Ok(dev)
     }
 
     pub(crate) fn close_dev(&mut self, path: impl AsRef<Path>) {
-        if let Some(handle) = self.devs.remove(path.as_ref()) {
-            handle.token.cancel();
+        if let Some(token) = self.devs.remove(path.as_ref()) {
+            token.cancel();
         }
     }
 
@@ -268,8 +238,7 @@ impl System {
 
         debug!("Configuration loaded: {:#?}", self.config);
 
-        self.send_message(SystemMessage::ReloadConfig).await;
-        Ok(())
+        self.send_message(SystemMessage::ReloadConfig).await
     }
 
     pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
@@ -300,14 +269,11 @@ impl System {
         Ok(uinput)
     }
 
-    async fn send_message(&mut self, message: SystemMessage) {
-        self.devs.retain(|_, dev| {
-            if let Ok(()) = dev.channel.send(message) {
-                return true;
-            }
-            dev.token.cancel();
-            false
-        });
+    async fn send_message(&mut self, message: SystemMessage) -> Result<()> {
+        if !self.devs.is_empty() {
+            self.channel.send(message)?;
+        }
+        Ok(())
     }
 }
 
@@ -337,26 +303,30 @@ impl SystemHandle {
             devs = system.find_devs().await?;
             connection = system.connection.clone();
         }
-        for (dev, tx, rx) in devs {
+        for dev in devs {
             tokens.push(dev.token.clone());
-            dev.register(connection.clone(), self.clone(), tx, rx)
-                .await?;
+            dev.register(
+                connection.clone(),
+                self.clone(),
+                self.lock().await.channel.clone(),
+            )
+            .await?;
         }
         Ok(tokens)
     }
 
     pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<CancellationToken> {
         let dev;
-        let rx;
-        let tx;
+        let channel;
         let connection;
         {
             let mut system = self.lock().await;
-            (dev, tx, rx) = system.find_dev(path).await?;
+            dev = system.find_dev(path).await?;
+            channel = system.channel.clone();
             connection = system.connection.clone();
         }
         let token = dev.token.clone();
-        dev.register(connection.clone(), self.clone(), tx, rx)
+        dev.register(connection.clone(), self.clone(), channel)
             .await?;
         Ok(token)
     }
@@ -386,9 +356,9 @@ impl SystemHandle {
                 }
             };
             if !sleep && self.lock().await.config.wake_tv {
-                self.lock().await.send_message(SystemMessage::Wake).await;
+                self.lock().await.send_message(SystemMessage::Wake).await?;
             } else if sleep && self.lock().await.config.suspend_tv {
-                self.lock().await.send_message(SystemMessage::Standby).await;
+                self.lock().await.send_message(SystemMessage::Standby).await?;
             }
         }
     }
