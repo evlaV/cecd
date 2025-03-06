@@ -1520,7 +1520,7 @@ impl OperandEncodable for UiCommand {
 
         Range::AtLeast(1).check(bytes.len(), "bytes")?;
         Ok(match bytes[0] {
-            CEC_OP_UI_CMD_SELECT => Stop,
+            CEC_OP_UI_CMD_SELECT => Select,
             CEC_OP_UI_CMD_UP => Up,
             CEC_OP_UI_CMD_DOWN => Down,
             CEC_OP_UI_CMD_LEFT => Left,
