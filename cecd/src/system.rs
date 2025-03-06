@@ -358,7 +358,10 @@ impl SystemHandle {
             if !sleep && self.lock().await.config.wake_tv {
                 self.lock().await.send_message(SystemMessage::Wake).await?;
             } else if sleep && self.lock().await.config.suspend_tv {
-                self.lock().await.send_message(SystemMessage::Standby).await?;
+                self.lock()
+                    .await
+                    .send_message(SystemMessage::Standby)
+                    .await?;
             }
         }
     }
