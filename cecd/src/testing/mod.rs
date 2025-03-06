@@ -244,7 +244,7 @@ impl AsyncDevice {
         if state.initiator == InitiatorMode::Disabled {
             return Err(Error::InvalidData);
         }
-        state.tx_queue.push_front((message.clone(), destination));
+        state.tx_queue.push_back((message.clone(), destination));
         let seq = state.sequence;
         state.sequence += 1;
         Ok(seq)
@@ -309,14 +309,18 @@ impl AsyncDevice {
 
     pub async fn press_user_control(
         &self,
-        _ui_command: UiCommand,
-        _target: LogicalAddress,
+        ui_command: UiCommand,
+        target: LogicalAddress,
     ) -> Result<()> {
-        todo!();
+        let user_control = Message::UserControlPressed { ui_command };
+        self.tx_message(&user_control, target).await?;
+        Ok(())
     }
 
-    pub async fn release_user_control(&self, _target: LogicalAddress) -> Result<()> {
-        todo!();
+    pub async fn release_user_control(&self, target: LogicalAddress) -> Result<()> {
+        let user_control = Message::UserControlReleased {};
+        self.tx_message(&user_control, target).await?;
+        Ok(())
     }
 
     pub async fn close(self) -> Result<()> {
