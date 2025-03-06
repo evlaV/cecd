@@ -692,4 +692,115 @@ mod test {
             Some((Message::UserControlReleased {}, LogicalAddress::Tv))
         );
     }
+
+    #[tokio::test]
+    async fn test_key_double_press() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        let mut buf = Vec::new();
+        UiCommand::Select.to_bytes(&mut buf);
+        test.proxy
+            .press_user_control(&buf, LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+        test.proxy
+            .press_user_control(&buf, LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+        test.proxy
+            .release_user_control(LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((
+                Message::UserControlPressed {
+                    ui_command: UiCommand::Select
+                },
+                LogicalAddress::Tv
+            ))
+        );
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((Message::UserControlReleased {}, LogicalAddress::Tv))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_key_change() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = true;
+        config.logical_address = LogicalAddressType::Playback;
+        let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        let mut buf = Vec::new();
+        UiCommand::Select.to_bytes(&mut buf);
+        test.proxy
+            .press_user_control(&buf, LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+        let mut buf = Vec::new();
+        UiCommand::Back.to_bytes(&mut buf);
+        test.proxy
+            .press_user_control(&buf, LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+        test.proxy
+            .release_user_control(LogicalAddress::Tv.into())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((
+                Message::UserControlPressed {
+                    ui_command: UiCommand::Select
+                },
+                LogicalAddress::Tv
+            ))
+        );
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((Message::UserControlReleased {}, LogicalAddress::Tv))
+        );
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((
+                Message::UserControlPressed {
+                    ui_command: UiCommand::Back
+                },
+                LogicalAddress::Tv
+            ))
+        );
+        assert_eq!(
+            test.dev.lock().await.dequeue_tx_message().await,
+            Some((Message::UserControlReleased {}, LogicalAddress::Tv))
+        );
+    }
 }
