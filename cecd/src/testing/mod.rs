@@ -20,7 +20,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, Notify, RwLock};
 use tokio_util::sync::CancellationToken;
 use tracing::dispatcher::DefaultGuard;
 use tracing::{debug, subscriber};
@@ -58,6 +58,7 @@ pub struct AsyncDevice {
     token: CancellationToken,
     force_unregistered: bool,
     state: RwLock<DeviceState>,
+    pub key_repeat: Arc<Notify>,
 }
 
 #[derive(Debug)]
@@ -75,6 +76,7 @@ impl AsyncDevice {
             caps: Capabilities::empty(),
             token: CancellationToken::new(),
             force_unregistered: false,
+            key_repeat: Arc::new(Notify::new()),
             state: RwLock::new(DeviceState {
                 pollers: Vec::new(),
                 follower: FollowerMode::Disabled,

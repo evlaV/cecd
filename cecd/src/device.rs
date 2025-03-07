@@ -8,6 +8,8 @@ use linux_cec::device::{Envelope, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress};
+#[cfg(not(test))]
+use std::future::Future;
 use std::mem::drop;
 use std::time::Duration;
 use tokio::select;
@@ -355,15 +357,21 @@ impl DeviceTask {
 
 impl KeyRepeat {
     #[cfg(not(test))]
-    // Recommended interval of 450ms is per H14b CEC 13.13.3,
-    // starting at the beginning of message transmission
-    const REPEAT_INTERVAL: u64 = 450;
+    fn delay(&self) -> impl Future<Output = ()> {
+        // Recommended interval of 450ms is per H14b CEC 13.13.3,
+        // starting at the beginning of message transmission
+        sleep(Duration::from_millis(450))
+    }
+
     #[cfg(test)]
-    const REPEAT_INTERVAL: u64 = 3;
+    async fn delay(&self) {
+        let key_repeat = self.device.lock().await.key_repeat.clone();
+        key_repeat.notified().await
+    }
 
     pub async fn run(self) -> Result<()> {
         loop {
-            let delay = sleep(Duration::from_millis(Self::REPEAT_INTERVAL));
+            let delay = self.delay();
             self.device
                 .lock()
                 .await
@@ -595,7 +603,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_key_repeat_short() {
+    async fn test_key_repeat() {
         async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
             let mut dev = dev.lock().await;
             dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
@@ -618,52 +626,7 @@ mod test {
             .press_user_control(&buf, LogicalAddress::Tv.into())
             .await
             .unwrap();
-        sleep(Duration::from_millis(1)).await;
-        test.proxy
-            .release_user_control(LogicalAddress::Tv.into())
-            .await
-            .unwrap();
-
-        assert_eq!(
-            test.dev.lock().await.dequeue_tx_message().await,
-            Some((
-                Message::UserControlPressed {
-                    ui_command: UiCommand::Select
-                },
-                LogicalAddress::Tv
-            ))
-        );
-        assert_eq!(
-            test.dev.lock().await.dequeue_tx_message().await,
-            Some((Message::UserControlReleased {}, LogicalAddress::Tv))
-        );
-    }
-
-    #[tokio::test]
-    async fn test_key_repeat_long() {
-        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
-            let mut dev = dev.lock().await;
-            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
-            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
-            Ok(())
-        }
-        let mut config = Config::default();
-        config.disable_uinput = true;
-        config.logical_address = LogicalAddressType::Playback;
-        let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
-        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
-        assert_eq!(
-            test.proxy.logical_addresses().await.unwrap(),
-            &[u8::from(LogicalAddress::PlaybackDevice1)]
-        );
-
-        let mut buf = Vec::new();
-        UiCommand::Select.to_bytes(&mut buf);
-        test.proxy
-            .press_user_control(&buf, LogicalAddress::Tv.into())
-            .await
-            .unwrap();
-        sleep(Duration::from_millis(4)).await;
+        test.dev.lock().await.key_repeat.notify_one();
         test.proxy
             .release_user_control(LogicalAddress::Tv.into())
             .await
