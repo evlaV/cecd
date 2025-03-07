@@ -436,17 +436,14 @@ where
     debug!("Got DBus connection");
 
     let token = CancellationToken::new();
-    dbg!();
     let system = SystemHandle(Arc::new(Mutex::new(
         System::new(token.clone(), builder, connection.clone()).await?,
     )));
-    dbg!();
     let config = config.unwrap_or_else(|| {
         let mut config = Config::default();
         config.disable_uinput = true;
         config
     });
-    dbg!();
     system.set_config(config).await?;
     debug!("System created");
 
