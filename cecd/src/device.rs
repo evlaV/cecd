@@ -22,7 +22,6 @@ use zbus::Connection;
 
 use crate::dbus::{CecDevice, CecDeviceSignals};
 use crate::system::{SystemHandle, SystemMessage};
-use crate::uinput::UInputDevice;
 use crate::{ArcDevice, AsyncDevicePoller};
 
 const LOG_ADDR_RETRIES: i32 = 20;
@@ -34,7 +33,6 @@ pub struct DeviceTask {
     system: SystemHandle,
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
-    uinput: Option<UInputDevice>,
     active_key: Option<UiCommand>,
     channel: Receiver<SystemMessage>,
     connection: Connection,
@@ -60,10 +58,10 @@ impl DeviceTask {
         connection: Connection,
     ) -> Result<DeviceTask> {
         let interface = iface.clone();
-        let dbus_obj = iface.get().await;
+        let mut dbus_obj = iface.get_mut().await;
         let device = dbus_obj.device.clone();
         let poller = device.lock().await.get_poller().await?;
-        let uinput = system.lock().await.configure_dev(device.clone()).await?;
+        dbus_obj.uinput = system.lock().await.configure_dev(device.clone()).await?;
         let token = dbus_obj.token.clone();
         let path = dbus_obj.dbus_path()?;
         Ok(DeviceTask {
@@ -71,7 +69,6 @@ impl DeviceTask {
             system,
             token,
             interface,
-            uinput,
             active_key: None,
             channel,
             connection,
@@ -224,7 +221,7 @@ impl DeviceTask {
                 self.interface
                     .user_control_pressed(buf.as_ref(), initiator as u8)
                     .await?;
-                if let Some(uinput) = self.uinput.as_ref() {
+                if let Some(uinput) = self.interface.get_mut().await.uinput.as_mut() {
                     if let Some(old_key) = self.active_key {
                         uinput.key_up(old_key)?;
                     }
@@ -238,7 +235,7 @@ impl DeviceTask {
                     .user_control_released(initiator as u8)
                     .await?;
                 if let Some(old_key) = self.active_key {
-                    if let Some(uinput) = self.uinput.as_ref() {
+                    if let Some(uinput) = self.interface.get_mut().await.uinput.as_mut() {
                         uinput.key_up(old_key)?;
                     }
                     self.active_key = None;
@@ -342,8 +339,9 @@ impl DeviceTask {
                 Ok(())
             }
             SystemMessage::ReloadConfig => {
-                self.uinput = None; // Drop old UInputDevice before opening a new one
-                self.uinput = self
+                let mut interface = self.interface.get_mut().await;
+                interface.uinput = None; // Drop old UInputDevice before opening a new one
+                interface.uinput = self
                     .system
                     .lock()
                     .await
@@ -395,6 +393,7 @@ impl KeyRepeat {
 mod test {
     use super::*;
 
+    use input_linux::{EventKind, Key, KeyEvent, KeyState};
     use linux_cec::device::Capabilities;
     use linux_cec::message::Opcode;
     use linux_cec::{LogicalAddressType, PhysicalAddress};
@@ -764,6 +763,231 @@ mod test {
         assert_eq!(
             test.dev.lock().await.dequeue_tx_message().await,
             Some((Message::UserControlReleased {}, LogicalAddress::Tv))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mapped_keys() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = false;
+        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlPressed {
+                    ui_command: UiCommand::Enter,
+                },
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlReleased {},
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
+        notify.notified().await;
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Null")
+            .await
+            .unwrap();
+        let mut dbus_obj = interface.get_mut().await;
+        let uinput = dbus_obj.uinput.as_mut().unwrap();
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Enter);
+        assert_eq!(key.value, KeyState::PRESSED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
+        );
+
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Enter);
+        assert_eq!(key.value, KeyState::RELEASED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
+        );
+    }
+
+    #[tokio::test]
+    async fn test_unmapped_keys() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = false;
+        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlPressed {
+                    ui_command: UiCommand::Back,
+                },
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlReleased {},
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
+        notify.notified().await;
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Null")
+            .await
+            .unwrap();
+        let mut dbus_obj = interface.get_mut().await;
+        let uinput = dbus_obj.uinput.as_mut().unwrap();
+        assert!(uinput.get_next_event().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_mapped_keys_change() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.disable_uinput = false;
+        config.mappings = [(UiCommand::Enter, Key::Enter), (UiCommand::Back, Key::Exit)].into();
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlPressed {
+                    ui_command: UiCommand::Enter,
+                },
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlPressed {
+                    ui_command: UiCommand::Back,
+                },
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: Message::UserControlReleased {},
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
+        notify.notified().await;
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Null")
+            .await
+            .unwrap();
+        let mut dbus_obj = interface.get_mut().await;
+        let uinput = dbus_obj.uinput.as_mut().unwrap();
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Enter);
+        assert_eq!(key.value, KeyState::PRESSED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
+        );
+
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Enter);
+        assert_eq!(key.value, KeyState::RELEASED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
+        );
+
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Exit);
+        assert_eq!(key.value, KeyState::PRESSED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
+        );
+
+        let event = uinput.get_next_event().unwrap();
+        let key = KeyEvent::try_from(event).unwrap();
+        assert_eq!(key.key, Key::Exit);
+        assert_eq!(key.value, KeyState::RELEASED);
+
+        assert_eq!(
+            uinput.get_next_event().unwrap().kind,
+            EventKind::Synchronize
         );
     }
 }

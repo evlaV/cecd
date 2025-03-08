@@ -21,6 +21,7 @@ use zbus::{fdo, interface, Connection};
 
 use crate::device::{DeviceTask, KeyRepeat};
 use crate::system::{SystemHandle, SystemMessage};
+use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
 fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
@@ -29,7 +30,6 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
 
 const PATH: &str = "/com/steampowered/CecDaemon1";
 
-#[derive(Debug)]
 pub struct CecDevice {
     pub device: ArcDevice,
     pub token: CancellationToken,
@@ -39,6 +39,7 @@ pub struct CecDevice {
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
     key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<Result<()>>)>,
+    pub uinput: Option<UInputDevice>,
 }
 
 impl CecDevice {
@@ -54,6 +55,7 @@ impl CecDevice {
             cached_log_addrs: Vec::new(),
             cached_vendor_id: -1,
             key_repeat: HashMap::new(),
+            uinput: None,
         })
     }
 

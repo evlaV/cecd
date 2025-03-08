@@ -4,26 +4,38 @@
  */
 
 use anyhow::{ensure, Result};
+#[cfg(not(test))]
 use input_linux::sys::BUS_CEC;
-use input_linux::{
-    EventKind, EventTime, InputId, Key, KeyEvent, KeyState, SynchronizeEvent, UInputHandle,
-};
+#[cfg(test)]
+use input_linux::InputEvent;
+#[cfg(not(test))]
+use input_linux::{EventKind, InputId, UInputHandle};
+use input_linux::{EventTime, Key, KeyEvent, KeyState, SynchronizeEvent};
 use linux_cec::operand::UiCommand;
+#[cfg(not(test))]
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use std::collections::HashMap;
+#[cfg(test)]
+use std::collections::VecDeque;
+#[cfg(not(test))]
 use std::fs::OpenOptions;
+#[cfg(not(test))]
 use std::os::fd::{IntoRawFd, RawFd};
 use std::time::SystemTime;
 use tracing::{debug, warn};
 
 pub(crate) struct UInputDevice {
     mappings: HashMap<UiCommand, Key>,
+    #[cfg(not(test))]
     handle: UInputHandle<RawFd>,
+    #[cfg(test)]
+    queue: VecDeque<InputEvent>,
     name: String,
     open: bool,
 }
 
 impl UInputDevice {
+    #[cfg(not(test))]
     pub(crate) fn new() -> Result<UInputDevice> {
         let rawfd = OpenOptions::new()
             .write(true)
@@ -43,6 +55,16 @@ impl UInputDevice {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn new() -> Result<UInputDevice> {
+        Ok(UInputDevice {
+            mappings: HashMap::new(),
+            queue: VecDeque::new(),
+            name: String::new(),
+            open: false,
+        })
+    }
+
     pub(crate) fn set_mappings(&mut self, mappings: HashMap<UiCommand, Key>) -> Result<()> {
         ensure!(!self.open, "Cannot change mappings after opening");
         self.mappings = mappings;
@@ -55,6 +77,7 @@ impl UInputDevice {
         Ok(())
     }
 
+    #[cfg(not(test))]
     pub(crate) fn open(&mut self) -> Result<()> {
         ensure!(!self.open, "Cannot reopen uinput handle");
 
@@ -76,6 +99,13 @@ impl UInputDevice {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn open(&mut self) -> Result<()> {
+        ensure!(!self.open, "Cannot reopen uinput handle");
+        self.open = true;
+        Ok(())
+    }
+
     fn system_time() -> Result<EventTime> {
         let duration = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         Ok(EventTime::new(
@@ -84,7 +114,7 @@ impl UInputDevice {
         ))
     }
 
-    fn send_key_event(&self, key: Key, value: KeyState) -> Result<()> {
+    fn send_key_event(&mut self, key: Key, value: KeyState) -> Result<()> {
         let tv = UInputDevice::system_time().unwrap_or_else(|err| {
             warn!("System time error: {err}");
             EventTime::default()
@@ -92,11 +122,14 @@ impl UInputDevice {
 
         let ev = KeyEvent::new(tv, key, value);
         let syn = SynchronizeEvent::report(tv);
+        #[cfg(not(test))]
         self.handle.write(&[*ev.as_ref(), *syn.as_ref()])?;
+        #[cfg(test)]
+        self.queue.extend(&[*ev.as_ref(), *syn.as_ref()]);
         Ok(())
     }
 
-    pub(crate) fn key_down(&self, uikey: UiCommand) -> Result<()> {
+    pub(crate) fn key_down(&mut self, uikey: UiCommand) -> Result<()> {
         let Some(key) = self.mappings.get(&uikey) else {
             debug!("Mapping for {uikey} not found");
             return Ok(());
@@ -105,12 +138,17 @@ impl UInputDevice {
         self.send_key_event(*key, KeyState::PRESSED)
     }
 
-    pub(crate) fn key_up(&self, uikey: UiCommand) -> Result<()> {
+    pub(crate) fn key_up(&mut self, uikey: UiCommand) -> Result<()> {
         let Some(key) = self.mappings.get(&uikey) else {
             debug!("Mapping for {uikey} not found");
             return Ok(());
         };
 
         self.send_key_event(*key, KeyState::RELEASED)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn get_next_event(&mut self) -> Option<InputEvent> {
+        self.queue.pop_front()
     }
 }

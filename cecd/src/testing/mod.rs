@@ -15,6 +15,7 @@ use linux_cec::{
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
 use std::future::Future;
+use std::mem::drop;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -48,6 +49,7 @@ struct DeviceState {
     vendor_id: Option<VendorId>,
     tx_queue: VecDeque<(Message, LogicalAddress)>,
     rx_queue: VecDeque<Envelope>,
+    rx_empty: Vec<Arc<Notify>>,
     sequence: u32,
 }
 
@@ -87,6 +89,7 @@ impl AsyncDevice {
                 vendor_id: None,
                 tx_queue: VecDeque::new(),
                 rx_queue: VecDeque::new(),
+                rx_empty: Vec::new(),
                 sequence: 1,
             }),
         })
@@ -108,6 +111,16 @@ impl AsyncDevice {
         }
     }
 
+    pub(crate) async fn rx_queue_empty(&mut self) -> Option<Arc<Notify>> {
+        let mut state = self.state.write().await;
+        if state.rx_queue.is_empty() {
+            return None;
+        }
+        let notify = Arc::new(Notify::new());
+        state.rx_empty.push(notify.clone());
+        Some(notify)
+    }
+
     pub(crate) async fn dequeue_tx_message(&self) -> Option<(Message, LogicalAddress)> {
         self.state.write().await.tx_queue.pop_front()
     }
@@ -117,7 +130,7 @@ impl AsyncDevice {
     }
 
     pub async fn get_poller(&self) -> Result<AsyncDevicePoller> {
-        let (tx, rx) = channel(1);
+        let (tx, rx) = channel(8);
         self.state.write().await.pollers.push(tx);
         Ok(AsyncDevicePoller {
             channel: UnsafeCell::new(rx),
@@ -284,7 +297,14 @@ impl AsyncDevice {
         }
 
         if status.got_message() {
-            if let Some(message) = self.state.write().await.rx_queue.pop_front() {
+            let mut state = self.state.write().await;
+            if let Some(message) = state.rx_queue.pop_front() {
+                if state.rx_queue.is_empty() {
+                    for notify in state.rx_empty.drain(..) {
+                        notify.notify_one();
+                    }
+                }
+                drop(state);
                 results.push(PollResult::Message(message));
             }
         }
