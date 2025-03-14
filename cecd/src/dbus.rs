@@ -230,16 +230,16 @@ impl CecDevice {
     async fn press_once_user_control(&mut self, button: &[u8], target: u8) -> fdo::Result<()> {
         let log_addr = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
         let key = UiCommand::try_from_bytes(button).map_err(into_fdo_error)?;
-        if let Some((current_key, token, _)) = self.key_repeat.get(&target) {
-            if &key == current_key {
-                return Ok(());
-            }
+        if let Some((_, token, _)) = self.key_repeat.get(&target) {
             token.cancel();
-            let (_, _, handle) = self.key_repeat.remove(&target).unwrap();
+            let (current_key, _, handle) = self.key_repeat.remove(&target).unwrap();
             handle
                 .await
                 .map_err(into_fdo_error)?
                 .map_err(into_fdo_error)?;
+            if key == current_key {
+                return Ok(());
+            }
         }
         let device = self.device.lock().await;
         device
