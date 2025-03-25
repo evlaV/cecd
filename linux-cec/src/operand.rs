@@ -483,9 +483,7 @@ pub trait TaggedLengthBuffer: Sized {
     fn fixed_param(&self) -> Self::FixedParam;
 
     #[must_use]
-    fn extra_params(&self) -> &[u8] {
-        &[] as &[u8; 0]
-    }
+    fn extra_params(&self) -> &[u8];
 
     #[must_use]
     fn expected_len() -> Range<usize> {
