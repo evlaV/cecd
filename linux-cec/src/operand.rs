@@ -142,7 +142,7 @@ mod test_delay {
             <Delay as OperandEncodable>::try_from_bytes(&[0]),
             Err(Error::OutOfRange {
                 got: 0,
-                expected: Range::Interval { min: 1, max: 251 },
+                expected: Range::from(1..=251),
                 quantity: "value"
             })
         );
@@ -151,7 +151,7 @@ mod test_delay {
             <Delay as OperandEncodable>::try_from_bytes(&[252]),
             Err(Error::OutOfRange {
                 got: 252,
-                expected: Range::Interval { min: 1, max: 251 },
+                expected: Range::from(1..=251),
                 quantity: "value"
             })
         );
@@ -2633,8 +2633,8 @@ impl<const MIN: u8, const MAX: u8> OperandEncodable for BcdByte<MIN, MAX> {
     fn try_from_bytes(bytes: &[u8]) -> Result<BcdByte<MIN, MAX>> {
         Self::expected_len().check(bytes.len(), "bytes")?;
         let byte = bytes[0];
-        Range::Interval { min: 0, max: 9 }.check(byte & 0xF, "low bits")?;
-        Range::Interval { min: 0, max: 9 }.check(byte >> 4, "high bits")?;
+        Range::from(0..=9).check(byte & 0xF, "low bits")?;
+        Range::from(0..=9).check(byte >> 4, "high bits")?;
         Range::Interval {
             min: MIN as usize,
             max: MAX as usize,
@@ -2688,7 +2688,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from(0),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 0,
                 quantity: "value",
             })
@@ -2697,7 +2697,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from(9),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 9,
                 quantity: "value",
             })
@@ -2710,7 +2710,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from(21),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 21,
                 quantity: "value",
             })
@@ -2719,7 +2719,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from(30),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 30,
                 quantity: "value",
             })
@@ -2731,7 +2731,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[0]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 0,
                 quantity: "value",
             })
@@ -2740,7 +2740,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[9]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 9,
                 quantity: "value",
             })
@@ -2749,7 +2749,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[0xA]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "low bits",
             })
@@ -2758,7 +2758,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[0xA0]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "high bits",
             })
@@ -2771,7 +2771,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[0x21]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 21,
                 quantity: "value",
             })
@@ -2780,7 +2780,7 @@ mod test_bcd_byte {
         assert_eq!(
             BcdByte::<10, 20>::try_from_bytes(&[0x30]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 10, max: 20 },
+                expected: Range::from(10..=20),
                 got: 30,
                 quantity: "value",
             })
@@ -3115,7 +3115,7 @@ mod test_duration {
         assert_eq!(
             Duration::try_from_bytes(&[0x04, 0x69]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 59 },
+                expected: Range::from(0..=59),
                 got: 69,
                 quantity: "value",
             })
@@ -3127,7 +3127,7 @@ mod test_duration {
         assert_eq!(
             Duration::try_from_bytes(&[0x0A, 0x20]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "low bits",
             })
@@ -3139,7 +3139,7 @@ mod test_duration {
         assert_eq!(
             Duration::try_from_bytes(&[0x04, 0x1A]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "low bits",
             })
@@ -3371,7 +3371,7 @@ mod test_time {
         assert_eq!(
             Time::try_from_bytes(&[0x24, 0x30]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 23 },
+                expected: Range::from(0..=23),
                 got: 24,
                 quantity: "value",
             })
@@ -3383,7 +3383,7 @@ mod test_time {
         assert_eq!(
             Time::try_from_bytes(&[0x04, 0x69]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 59 },
+                expected: Range::from(0..=59),
                 got: 69,
                 quantity: "value",
             })
@@ -3395,7 +3395,7 @@ mod test_time {
         assert_eq!(
             Time::try_from_bytes(&[0x0A, 0x20]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "low bits",
             })
@@ -3407,7 +3407,7 @@ mod test_time {
         assert_eq!(
             Time::try_from_bytes(&[0x04, 0x1A]),
             Err(Error::OutOfRange {
-                expected: Range::Interval { min: 0, max: 9 },
+                expected: Range::from(0..=9),
                 got: 10,
                 quantity: "low bits",
             })

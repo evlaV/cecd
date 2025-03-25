@@ -9,7 +9,7 @@ use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::io;
-use std::ops::{Add, Deref};
+use std::ops::{Add, Deref, RangeInclusive};
 use std::str::FromStr;
 use std::string::ToString;
 use std::time::Duration;
@@ -332,6 +332,15 @@ impl Range<usize> {
                 expected: self,
                 quantity,
             }),
+        }
+    }
+}
+
+impl<T: PartialOrd + Clone + Display + Default + Debug + Eq> From<RangeInclusive<T>> for Range<T> {
+    fn from(val: RangeInclusive<T>) -> Range<T> {
+        Range::Interval {
+            min: val.start().clone(),
+            max: val.end().clone(),
         }
     }
 }
