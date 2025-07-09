@@ -6,7 +6,7 @@
 use heck::AsSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Punct, TokenStream as TokenStream2};
-use quote::quote;
+use quote::{format_ident, quote};
 use std::collections::HashSet;
 use syn::parse::{self, Parse, ParseStream};
 use syn::{
@@ -54,8 +54,7 @@ impl MessageEnum {
         let mut from_params = Vec::new();
         let mut names = Vec::new();
 
-        let testname: Ident =
-            parse_str(format!("test_{}", AsSnakeCase(ident.to_string())).as_str()).unwrap();
+        let testname: Ident = format_ident!("test_{}", AsSnakeCase(ident.to_string()).to_string());
 
         match fields {
             Fields::Named(_) => {
@@ -809,15 +808,15 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
     let overfull_name: Ident;
 
     if let Some(name) = name {
-        encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
-        decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
-        len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
-        overfull_name = parse_str(format!("test_decode_overfull{name}").as_str()).unwrap();
+        encode_name = format_ident!("test_encode{name}");
+        decode_name = format_ident!("test_decode{name}");
+        len_name = format_ident!("test_len{name}");
+        overfull_name = format_ident!("test_decode_overfull{name}");
     } else {
-        encode_name = parse_str("test_encode").unwrap();
-        decode_name = parse_str("test_decode").unwrap();
-        len_name = parse_str("test_len").unwrap();
-        overfull_name = parse_str("test_decode_overfull").unwrap();
+        encode_name = format_ident!("test_encode");
+        decode_name = format_ident!("test_decode");
+        len_name = format_ident!("test_len");
+        overfull_name = format_ident!("test_decode_overfull");
     };
 
     let test_overfull = if extra.take("Overfull").is_some() {
@@ -877,16 +876,16 @@ pub fn message_test(input: TokenStream) -> TokenStream {
     let test_opcode;
 
     if let Some(ref name) = name {
-        encode_name = parse_str(format!("test_encode{name}").as_str()).unwrap();
-        decode_name = parse_str(format!("test_decode{name}").as_str()).unwrap();
-        len_name = parse_str(format!("test_len{name}").as_str()).unwrap();
-        overfull_name = parse_str(format!("test_decode_overfull{name}").as_str()).unwrap();
+        encode_name = format_ident!("test_encode{name}");
+        decode_name = format_ident!("test_decode{name}");
+        len_name = format_ident!("test_len{name}");
+        overfull_name = format_ident!("test_decode_overfull{name}");
         test_opcode = None;
     } else {
-        encode_name = parse_str("test_encode").unwrap();
-        decode_name = parse_str("test_decode").unwrap();
-        len_name = parse_str("test_len").unwrap();
-        overfull_name = parse_str("test_decode_overfull").unwrap();
+        encode_name = format_ident!("test_encode");
+        decode_name = format_ident!("test_decode");
+        len_name = format_ident!("test_len");
+        overfull_name = format_ident!("test_decode_overfull");
         test_opcode = Some(quote! {
             #[test]
             fn test_opcode() {
