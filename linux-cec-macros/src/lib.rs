@@ -284,6 +284,12 @@ impl MessageEnum {
                 #(#opcodes,)*
             }
 
+            impl PartialEq<u8> for #opcode {
+                fn eq(&self, rhs: &u8) -> bool {
+                    *self as u8 == *rhs
+                }
+            }
+
             impl #message {
                 pub fn try_from_bytes(bytes: &[u8]) -> Result<#message> {
                     if bytes.is_empty() {
