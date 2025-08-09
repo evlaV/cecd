@@ -110,7 +110,7 @@ impl TryFrom<cec_msg> for Envelope {
         if message.rx_status.contains(CEC_RX_STATUS::FEATURE_ABORT) {
             return Err(RxError::FeatureAbort.into());
         }
-        if message.len > 15 {
+        if !(2..=15).contains(&message.len) {
             return Err(Error::InvalidData);
         }
         let bytes = &message.msg[1..message.len as usize];
@@ -142,6 +142,179 @@ impl TryFrom<cec_msg> for Envelope {
         #[cfg(feature = "tracing")]
         debug!("Got message {envelope:#?}");
         Ok(envelope)
+    }
+}
+
+#[cfg(test)]
+mod test_envelope {
+    use super::*;
+    use crate::sys::CEC_MSG_FL;
+
+    #[test]
+    fn decode_simple() {
+        let msg = cec_msg {
+            tx_ts: 0,
+            rx_ts: 911462400,
+            len: 2,
+            timeout: 0,
+            sequence: 1,
+            flags: CEC_MSG_FL::empty(),
+            msg: [
+                0xF,
+                Opcode::Standby as u8,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            reply: 0,
+            rx_status: CEC_RX_STATUS::OK,
+            tx_status: CEC_TX_STATUS::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+
+        let envelope = Envelope::try_from(msg).unwrap();
+        assert_eq!(envelope.message.opcode(), Opcode::Standby as u8);
+        assert_eq!(envelope.initiator, LogicalAddress::Tv);
+        assert_eq!(envelope.destination, LogicalAddress::Broadcast);
+        assert_eq!(envelope.timestamp, 911462400);
+        assert_eq!(envelope.sequence, 1);
+        let MessageData::Valid(message) = envelope.message else {
+            panic!();
+        };
+        assert_eq!(message.opcode(), Opcode::Standby);
+    }
+
+    #[test]
+    fn decode_invalid_opcode() {
+        let msg = cec_msg {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 2,
+            timeout: 0,
+            sequence: 1,
+            flags: CEC_MSG_FL::empty(),
+            msg: [0xF, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            reply: 0,
+            rx_status: CEC_RX_STATUS::OK,
+            tx_status: CEC_TX_STATUS::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+
+        let envelope = Envelope::try_from(msg).unwrap();
+        assert_eq!(envelope.message.opcode(), 0xFE);
+        let MessageData::Invalid(message) = envelope.message else {
+            panic!();
+        };
+        assert_eq!(message.as_slice(), &[0xFE]);
+    }
+
+    #[test]
+    fn decode_too_long() {
+        let msg = cec_msg {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 16,
+            timeout: 0,
+            sequence: 1,
+            flags: CEC_MSG_FL::empty(),
+            msg: [
+                0xF,
+                Opcode::Standby as u8,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            reply: 0,
+            rx_status: CEC_RX_STATUS::OK,
+            tx_status: CEC_TX_STATUS::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+
+        let Err(err) = Envelope::try_from(msg) else {
+            panic!();
+        };
+        assert_eq!(err, Error::InvalidData);
+    }
+
+    #[test]
+    fn decode_way_too_short() {
+        let msg = cec_msg {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 0,
+            timeout: 0,
+            sequence: 1,
+            flags: CEC_MSG_FL::empty(),
+            msg: [0; 16],
+            reply: 0,
+            rx_status: CEC_RX_STATUS::OK,
+            tx_status: CEC_TX_STATUS::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+
+        let Err(err) = Envelope::try_from(msg) else {
+            panic!();
+        };
+        assert_eq!(err, Error::InvalidData);
+    }
+
+    #[test]
+    fn decode_too_short() {
+        let msg = cec_msg {
+            tx_ts: 0,
+            rx_ts: 0,
+            len: 1,
+            timeout: 0,
+            sequence: 1,
+            flags: CEC_MSG_FL::empty(),
+            msg: [0; 16],
+            reply: 0,
+            rx_status: CEC_RX_STATUS::OK,
+            tx_status: CEC_TX_STATUS::empty(),
+            tx_arb_lost_cnt: 0,
+            tx_nack_cnt: 0,
+            tx_low_drive_cnt: 0,
+            tx_error_cnt: 0,
+        };
+
+        let Err(err) = Envelope::try_from(msg) else {
+            panic!();
+        };
+        assert_eq!(err, Error::InvalidData);
     }
 }
 
