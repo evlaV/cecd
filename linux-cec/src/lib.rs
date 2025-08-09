@@ -374,7 +374,6 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
 {
     type Output = Range<T>;
 
-    #[must_use]
     fn add(self, rhs: T) -> Self::Output {
         match self {
             Range::AtMost(max) => Range::AtMost(max + rhs),
