@@ -960,8 +960,9 @@ mod test_buffer_operand {
     }
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum AbortReason {
     /// Unrecognized opcode
     UnrecognizedOp = constants::CEC_OP_ABORT_UNRECOGNIZED_OP,
@@ -977,16 +978,18 @@ pub enum AbortReason {
     Undetermined = constants::CEC_OP_ABORT_UNDETERMINED,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum AnalogueBroadcastType {
     Cable = constants::CEC_OP_ANA_BCAST_TYPE_CABLE,
     Satellite = constants::CEC_OP_ANA_BCAST_TYPE_SATELLITE,
     Terrestrial = constants::CEC_OP_ANA_BCAST_TYPE_TERRESTRIAL,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum AudioRate {
     /// Rate control off
     Off = constants::CEC_OP_AUD_RATE_OFF,
@@ -1026,8 +1029,9 @@ pub enum AudioOutputCompensated {
     PartialDelay = constants::CEC_OP_AUD_OUT_COMPENSATED_PARTIAL_DELAY,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum BroadcastSystem {
     /// PAL-B/G
     PalBG = constants::CEC_OP_BCAST_SYSTEM_PAL_BG,
@@ -1050,8 +1054,9 @@ pub enum BroadcastSystem {
     Other = constants::CEC_OP_BCAST_SYSTEM_OTHER,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+#[repr(u8)]
+#[non_exhaustive]
 enum ChannelNumberFormat {
     Fmt1Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_1_PART,
     Fmt2Part = constants::CEC_OP_CHANNEL_NUMBER_FMT_2_PART,
@@ -1105,8 +1110,9 @@ pub enum DayOfMonth {
     Day31 = 31,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum DeckControlMode {
     SkipForward = constants::CEC_OP_DECK_CTL_MODE_SKIP_FWD,
     SkipReverse = constants::CEC_OP_DECK_CTL_MODE_SKIP_REV,
@@ -1114,8 +1120,9 @@ pub enum DeckControlMode {
     Eject = constants::CEC_OP_DECK_CTL_MODE_EJECT,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum DeckInfo {
     Play = constants::CEC_OP_DECK_INFO_PLAY,
     Record = constants::CEC_OP_DECK_INFO_RECORD,
@@ -1134,8 +1141,9 @@ pub enum DeckInfo {
     Other = constants::CEC_OP_DECK_INFO_OTHER,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum DigitalServiceBroadcastSystem {
     AribGeneric = constants::CEC_OP_DIG_SERVICE_BCAST_SYSTEM_ARIB_GEN,
     AtscGeneric = constants::CEC_OP_DIG_SERVICE_BCAST_SYSTEM_ATSC_GEN,
@@ -1152,39 +1160,44 @@ pub enum DigitalServiceBroadcastSystem {
     DvbT = constants::CEC_OP_DIG_SERVICE_BCAST_SYSTEM_DVB_T,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum DisplayControl {
     Default = constants::CEC_OP_DISP_CTL_DEFAULT,
     UntilCleared = constants::CEC_OP_DISP_CTL_UNTIL_CLEARED,
     Clear = constants::CEC_OP_DISP_CTL_CLEAR,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum ExternalSourceSpecifier {
     ExternalPlug = constants::CEC_OP_EXT_SRC_PLUG,
     ExternalPhysicalAddress = constants::CEC_OP_EXT_SRC_PHYS_ADDR,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum MediaInfo {
     UnprotectedMedia = constants::CEC_OP_MEDIA_INFO_UNPROT_MEDIA,
     ProtectedMedia = constants::CEC_OP_MEDIA_INFO_PROT_MEDIA,
     NoMedia = constants::CEC_OP_MEDIA_INFO_NO_MEDIA,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum MenuRequestType {
     Activate = constants::CEC_OP_MENU_REQUEST_ACTIVATE,
     Deactivate = constants::CEC_OP_MENU_REQUEST_DEACTIVATE,
     Query = constants::CEC_OP_MENU_REQUEST_QUERY,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum MenuState {
     Activated = constants::CEC_OP_MENU_STATE_ACTIVATED,
     Deactivated = constants::CEC_OP_MENU_STATE_DEACTIVATED,
@@ -1219,8 +1232,9 @@ pub enum MonthOfYear {
     December = 12,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum PlayMode {
     Forward = constants::CEC_OP_PLAY_MODE_PLAY_FWD,
     Reverse = constants::CEC_OP_PLAY_MODE_PLAY_REV,
@@ -1239,8 +1253,9 @@ pub enum PlayMode {
     SlowReverseMaximum = constants::CEC_OP_PLAY_MODE_PLAY_SLOW_REV_MAX,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum PowerStatus {
     /// On
     On = constants::CEC_OP_POWER_STATUS_ON,
@@ -1252,8 +1267,9 @@ pub enum PowerStatus {
     ToStandby = constants::CEC_OP_POWER_STATUS_TO_STANDBY,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum PrimaryDeviceType {
     Tv = constants::CEC_OP_PRIM_DEVTYPE_TV,
     Recording = constants::CEC_OP_PRIM_DEVTYPE_RECORD,
@@ -1264,8 +1280,9 @@ pub enum PrimaryDeviceType {
     Processor = constants::CEC_OP_PRIM_DEVTYPE_PROCESSOR,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum RecordSourceType {
     Own = constants::CEC_OP_RECORD_SRC_OWN,
     Digital = constants::CEC_OP_RECORD_SRC_DIGITAL,
@@ -1274,8 +1291,9 @@ pub enum RecordSourceType {
     ExternalPhysicalAddress = constants::CEC_OP_RECORD_SRC_EXT_PHYS_ADDR,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum RecordStatusInfo {
     CurrentSource = constants::CEC_OP_RECORD_STATUS_CUR_SRC,
     DigitalService = constants::CEC_OP_RECORD_STATUS_DIG_SERVICE,
@@ -1303,8 +1321,9 @@ pub enum RecordStatusInfo {
     Other = constants::CEC_OP_RECORD_STATUS_OTHER,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum RcProfileId {
     ProfileNone = constants::CEC_OP_FEAT_RC_TV_PROFILE_NONE,
     Profile1 = constants::CEC_OP_FEAT_RC_TV_PROFILE_1,
@@ -1313,8 +1332,9 @@ pub enum RcProfileId {
     Profile4 = constants::CEC_OP_FEAT_RC_TV_PROFILE_4,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+#[repr(u8)]
+#[non_exhaustive]
 enum ServiceIdMethod {
     ByDigitalId = constants::CEC_OP_SERVICE_ID_METHOD_BY_DIG_ID,
     ByChannel = constants::CEC_OP_SERVICE_ID_METHOD_BY_CHANNEL,
@@ -1338,16 +1358,18 @@ impl From<AnalogueServiceId> for ServiceId {
     }
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum StatusRequest {
     On = constants::CEC_OP_STATUS_REQ_ON,
     Off = constants::CEC_OP_STATUS_REQ_OFF,
     Once = constants::CEC_OP_STATUS_REQ_ONCE,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum TimerClearedStatusData {
     Recording = constants::CEC_OP_TIMER_CLR_STAT_RECORDING,
     NoMatching = constants::CEC_OP_TIMER_CLR_STAT_NO_MATCHING,
@@ -1355,16 +1377,18 @@ pub enum TimerClearedStatusData {
     Cleared = constants::CEC_OP_TIMER_CLR_STAT_CLEARED,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum TunerDisplayInfo {
     Digital = constants::CEC_OP_TUNER_DISPLAY_INFO_DIGITAL,
     None = constants::CEC_OP_TUNER_DISPLAY_INFO_NONE,
     Analogue = constants::CEC_OP_TUNER_DISPLAY_INFO_ANALOGUE,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum UiBroadcastType {
     ToggleAll = constants::CEC_OP_UI_BCAST_TYPE_TOGGLE_ALL,
     ToggleDigitalAnalogue = constants::CEC_OP_UI_BCAST_TYPE_TOGGLE_DIG_ANA,
@@ -1381,9 +1405,10 @@ pub enum UiBroadcastType {
     Ip = constants::CEC_OP_UI_BCAST_TYPE_IP,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Display, EnumString)]
+#[repr(u8)]
 #[strum(serialize_all = "kebab-case")]
+#[non_exhaustive]
 pub enum UiCommand {
     #[strum(serialize = "select", serialize = "ok")]
     Select = constants::CEC_OP_UI_CMD_SELECT,
@@ -1818,8 +1843,9 @@ mod test_ui_command {
     }
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum Version {
     // These first few versions predate CEC specification and are
     // theoretically invalid, but we should probably recognize anyway
@@ -1832,8 +1858,9 @@ pub enum Version {
     V2_0 = constants::CEC_OP_CEC_VERSION_2_0,
 }
 
-#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Operand)]
+#[repr(u8)]
+#[non_exhaustive]
 pub enum UiSoundPresentationControl {
     DualMono = constants::CEC_OP_UI_SND_PRES_CTL_DUAL_MONO,
     Karaoke = constants::CEC_OP_UI_SND_PRES_CTL_KARAOKE,
@@ -2002,6 +2029,7 @@ mod test_analogue_service_id {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum DigitalServiceId {
     AribGeneric(AribData),
     AtscGeneric(AtscData),
@@ -2488,6 +2516,7 @@ pub trait DurationAvailable {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ProgrammedInfo {
     EnoughSpace,
     NotEnoughSpace {
@@ -2510,6 +2539,7 @@ impl DurationAvailable for ProgrammedInfo {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NotProgrammedErrorInfo {
     NoFreeTimer,
     DateOutOfRange,
@@ -2909,6 +2939,7 @@ mod test_atsc_data {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ChannelId {
     OnePart(u16),
     TwoPart(u16, u16),
@@ -4108,6 +4139,7 @@ mod test_tuner_device_info {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ExternalSource {
     Plug(u8),
     PhysicalAddress(PhysicalAddress),
@@ -4194,6 +4226,7 @@ mod test_external_source {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum RecordSource {
     Own,
     DigitalService(DigitalServiceId),

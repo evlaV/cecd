@@ -25,6 +25,7 @@ pub use crate::cdc::{Message as CdcMessage, Opcode as CdcOpcode};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum Message {
     ActiveSource {
         address: PhysicalAddress,

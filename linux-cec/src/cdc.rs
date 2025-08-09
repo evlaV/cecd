@@ -262,6 +262,7 @@ mod test_hec_field {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, MessageEnum)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum Message {
     HecInquireState {
         terminating_address1: PhysicalAddress,

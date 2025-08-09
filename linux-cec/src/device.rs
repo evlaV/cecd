@@ -217,6 +217,7 @@ pub enum PollResult {
 
 /// Information about how the CEC device is connected to the system.
 #[derive(Debug, Clone, Hash)]
+#[non_exhaustive]
 pub enum ConnectorInfo {
     None,
     /// Tells which drm connector is associated with the CEC adapter.
