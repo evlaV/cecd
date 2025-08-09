@@ -40,16 +40,15 @@ impl UInputDevice {
         let rawfd = OpenOptions::new()
             .write(true)
             .create(false)
-            .open("/dev/uinput")?
-            .into_raw_fd();
+            .open("/dev/uinput")?;
 
-        let mut flags = OFlag::from_bits_retain(fcntl(rawfd, FcntlArg::F_GETFL)?);
+        let mut flags = OFlag::from_bits_retain(fcntl(&rawfd, FcntlArg::F_GETFL)?);
         flags.set(OFlag::O_NONBLOCK, true);
-        fcntl(rawfd, FcntlArg::F_SETFL(flags))?;
+        fcntl(&rawfd, FcntlArg::F_SETFL(flags))?;
 
         Ok(UInputDevice {
             mappings: HashMap::new(),
-            handle: UInputHandle::new(rawfd),
+            handle: UInputHandle::new(rawfd.into_raw_fd()),
             name: String::new(),
             open: false,
         })

@@ -11,17 +11,17 @@ keywords = ["cec"]
 categories = ["hardware-support"]
 
 [dev-dependencies]
-nix = { version = "0.29", default-features = false, features = ["fs", "signal"] }
+nix = { version = "0.30", default-features = false, features = ["fs", "signal"] }
 
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
-config = { version = "0.14", default-features = false, features = ["async", "toml"] }
+config = { version = "0.15", default-features = false, features = ["async", "toml"] }
 input-linux = "0.7"
 libc = "0.2"
 linux-cec = { path = "../linux-cec", features = ["async", "tracing"] }
-nix = { version = "0.29", default-features = false, features = ["fs"] }
+nix = { version = "0.30", default-features = false, features = ["fs"] }
 num_enum = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "signal"] }
@@ -30,5 +30,5 @@ tokio-stream = { version = "0.1", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std"] }
 udev = "0.9"
-xdg = "2.5"
+xdg = "3.0"
 zbus = { version = "5", default-features = false, features = ["tokio"] }

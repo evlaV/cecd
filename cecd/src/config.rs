@@ -177,8 +177,8 @@ pub(crate) async fn read_default_config() -> Result<Config> {
     let system_config_path = PathBuf::from("/usr/share/cecd");
     let etc_config_path = PathBuf::from("/etc/cecd");
     let mut config_paths = vec![system_config_path, etc_config_path];
-    if let Ok(xdg) = BaseDirectories::new() {
-        config_paths.push(xdg.get_config_home().join("cecd"));
+    if let Some(home) = BaseDirectories::new().get_config_home() {
+        config_paths.push(home.join("cecd"));
     }
 
     for config_path in config_paths.into_iter() {

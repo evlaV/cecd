@@ -236,7 +236,7 @@ impl Device {
 
     /// Set or clear `O_NONBLOCK` on the underlying fd.
     pub fn set_blocking(&self, blocking: bool) -> Result<()> {
-        let rawfd = self.file.as_raw_fd();
+        let rawfd = self.file.as_fd();
         let mut flags = OFlag::from_bits_retain(fcntl(rawfd, FcntlArg::F_GETFL)?);
         flags.set(OFlag::O_NONBLOCK, !blocking);
         fcntl(rawfd, FcntlArg::F_SETFL(flags))?;

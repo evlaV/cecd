@@ -23,15 +23,15 @@ name = "cectool"
 required-features = ["cectool"]
 
 [dependencies]
-bitfield-struct = "0.9"
+bitfield-struct = "0.11"
 bitflags = "2.6"
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"], optional = true }
-nix = { version = "0.29", default-features = false, features = ["fs", "ioctl", "poll"] }
+nix = { version = "0.30", default-features = false, features = ["fs", "ioctl", "poll"] }
 linux-cec-macros = { path = "../linux-cec-macros" }
 linux-cec-sys = { path = "../linux-cec-sys" }
 num_enum = "0.7"
-strum = { version = "0.26", features = ["derive"] }
+strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
-tinyvec = "1.8"
+tinyvec = "1.9"
 tracing = { version = "0.1", default-features = false, optional = true }
 tokio = { version = "1", default-features = false, features = ["fs", "macros", "rt-multi-thread", "sync"], optional = true }
