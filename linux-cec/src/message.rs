@@ -188,7 +188,7 @@ pub enum Message {
         status: operand::PowerStatus,
     } = constants::CEC_MSG_REPORT_POWER_STATUS,
     FeatureAbort {
-        opcode: Opcode,
+        opcode: u8,
         abort_reason: operand::AbortReason,
     } = constants::CEC_MSG_FEATURE_ABORT,
     Abort = constants::CEC_MSG_ABORT,
@@ -2143,7 +2143,7 @@ mod test_feature_abort {
     message_test! {
         ty: FeatureAbort,
         instance: Message::FeatureAbort {
-            opcode: Opcode::FeatureAbort,
+            opcode: Opcode::FeatureAbort.into(),
             abort_reason: operand::AbortReason::IncorrectMode,
         },
         bytes: [Opcode::FeatureAbort as u8, operand::AbortReason::IncorrectMode as u8],

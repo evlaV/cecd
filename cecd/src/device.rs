@@ -4,7 +4,7 @@
  */
 
 use anyhow::Result;
-use linux_cec::device::{Envelope, PollResult, PollStatus};
+use linux_cec::device::{Envelope, MessageData, PollResult, PollStatus};
 use linux_cec::message::Message;
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress};
@@ -212,10 +212,12 @@ impl DeviceTask {
             .await?;
 
         let reply = match envelope.message {
-            Message::GiveDevicePowerStatus => Some(Message::ReportPowerStatus {
-                status: PowerStatus::On,
-            }),
-            Message::UserControlPressed { ui_command } => {
+            MessageData::Valid(Message::GiveDevicePowerStatus) => {
+                Some(Message::ReportPowerStatus {
+                    status: PowerStatus::On,
+                })
+            }
+            MessageData::Valid(Message::UserControlPressed { ui_command }) => {
                 let mut buf = Vec::new();
                 ui_command.to_bytes(&mut buf);
                 self.interface
@@ -230,7 +232,7 @@ impl DeviceTask {
                 self.active_key = Some(ui_command);
                 return Ok(());
             }
-            Message::UserControlReleased => {
+            MessageData::Valid(Message::UserControlReleased) => {
                 self.interface
                     .user_control_released(initiator as u8)
                     .await?;
@@ -242,7 +244,7 @@ impl DeviceTask {
                 }
                 return Ok(());
             }
-            Message::SetStreamPath { address } => {
+            MessageData::Valid(Message::SetStreamPath { address }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if address == this_address {
                     Some(Message::ActiveSource {
@@ -252,7 +254,9 @@ impl DeviceTask {
                     None
                 }
             }
-            Message::Standby if self.system.lock().await.config.allow_standby => {
+            MessageData::Valid(Message::Standby)
+                if self.system.lock().await.config.allow_standby =>
+            {
                 if let Err(e) = self.system.suspend().await {
                     error!("Failed to standby: {e}");
                     Some(Message::FeatureAbort {
@@ -267,14 +271,14 @@ impl DeviceTask {
                 opcode: envelope.message.opcode(),
                 abort_reason: AbortReason::UnrecognizedOp,
             }),
-            Message::RoutingChange { new_address, .. } => {
+            MessageData::Valid(Message::RoutingChange { new_address, .. }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if new_address == this_address {
                     self.awaiting_wake = false;
                 }
                 None
             }
-            Message::RequestActiveSource if self.awaiting_wake => {
+            MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake => {
                 let address = self.device.lock().await.get_physical_address().await?;
                 Some(Message::ActiveSource { address })
             }
@@ -496,7 +500,7 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::RecordOff {},
+                message: MessageData::Valid(Message::RecordOff {}),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -508,7 +512,7 @@ mod test {
             rx_message(&test.dev).await.unwrap(),
             (
                 Message::FeatureAbort {
-                    opcode: Opcode::RecordOff,
+                    opcode: Opcode::RecordOff as u8,
                     abort_reason: AbortReason::UnrecognizedOp,
                 },
                 LogicalAddress::Tv
@@ -538,7 +542,7 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::GiveDevicePowerStatus {},
+                message: MessageData::Valid(Message::GiveDevicePowerStatus {}),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -965,9 +969,9 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlPressed {
+                message: MessageData::Valid(Message::UserControlPressed {
                     ui_command: UiCommand::Enter,
-                },
+                }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -978,7 +982,7 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlReleased {},
+                message: MessageData::Valid(Message::UserControlReleased {}),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -1035,9 +1039,9 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlPressed {
+                message: MessageData::Valid(Message::UserControlPressed {
                     ui_command: UiCommand::Back,
-                },
+                }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -1048,7 +1052,7 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlReleased {},
+                message: MessageData::Valid(Message::UserControlReleased {}),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -1087,9 +1091,9 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlPressed {
+                message: MessageData::Valid(Message::UserControlPressed {
                     ui_command: UiCommand::Enter,
-                },
+                }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -1100,9 +1104,9 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlPressed {
+                message: MessageData::Valid(Message::UserControlPressed {
                     ui_command: UiCommand::Back,
-                },
+                }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,
@@ -1113,7 +1117,7 @@ mod test {
             .lock()
             .await
             .queue_rx_message(Envelope {
-                message: Message::UserControlReleased {},
+                message: MessageData::Valid(Message::UserControlReleased {}),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
                 timestamp: 0,

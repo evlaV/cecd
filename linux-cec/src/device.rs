@@ -27,6 +27,7 @@ use std::fs::{File, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::path::Path;
 use std::str::FromStr;
+use tinyvec::ArrayVec;
 #[cfg(feature = "tracing")]
 use tracing::{debug, warn};
 
@@ -52,11 +53,36 @@ pub struct Device {
     internal_log_addrs: cec_log_addrs,
 }
 
+/// An enum containing the message data, either successfully parsed or invalid.
+#[derive(Debug, Copy, Clone, PartialEq, Hash)]
+pub enum MessageData {
+    /// Valid, parsed data
+    Valid(Message),
+    /// Invalid, unparsed data
+    Invalid(ArrayVec<[u8; 14]>),
+}
+
+impl MessageData {
+    pub fn opcode(&self) -> u8 {
+        match self {
+            MessageData::Valid(message) => message.opcode().into(),
+            MessageData::Invalid(bytes) => bytes[0],
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            MessageData::Valid(message) => message.to_bytes(),
+            MessageData::Invalid(bytes) => bytes.to_vec(),
+        }
+    }
+}
+
 /// A representation of a received [`Message`] and its associated metadata.
 #[derive(Debug, Clone, Hash)]
 pub struct Envelope {
     /// The received message data.
-    pub message: Message,
+    pub message: MessageData,
     /// The logical address of the CEC device that sent the message.
     pub initiator: LogicalAddress,
     /// The logical address to which this message was sent. Unless the [`Device`]
@@ -93,12 +119,18 @@ impl TryFrom<cec_msg> for Envelope {
         let timestamp = message.rx_ts;
         let sequence = message.sequence;
 
-        #[cfg(feature = "tracing")]
-        let message = Message::try_from_bytes(bytes).inspect_err(|e| {
-            warn!("Failed to parse incoming message {bytes:?}: {e}");
-        })?;
-        #[cfg(not(feature = "tracing"))]
-        let message = Message::try_from_bytes(bytes)?;
+        let message = match Message::try_from_bytes(bytes) {
+            Ok(message) => MessageData::Valid(message),
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                warn!("Failed to parse incoming message {bytes:?}: {e}");
+                let _ = e;
+                MessageData::Invalid(ArrayVec::from_array_len(
+                    message.msg[1..15].try_into().unwrap(),
+                    bytes.len(),
+                ))
+            }
+        };
 
         let envelope = Envelope {
             message,
