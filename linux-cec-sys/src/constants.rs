@@ -13,6 +13,7 @@ pub const CEC_MAX_MSG_SIZE: usize = 16;
 /* cec_msg flags field */
 pub const CEC_MSG_FL_REPLY_TO_FOLLOWERS: u32 = 1 << 0;
 pub const CEC_MSG_FL_RAW: u32 = 1 << 1;
+pub const CEC_MSG_FL_REPLY_VENDOR_ID: u32 = 1 << 2;
 
 /* cec_msg tx/rx_status field */
 pub const CEC_TX_STATUS_OK: u8 = 1 << 0;
@@ -130,6 +131,8 @@ pub const CEC_CAP_NEEDS_HPD: u32 = 1 << 6;
 pub const CEC_CAP_MONITOR_PIN: u32 = 1 << 7;
 /* CEC_ADAP_G_CONNECTOR_INFO is available */
 pub const CEC_CAP_CONNECTOR_INFO: u32 = 1 << 8;
+/* CEC_MSG_FL_REPLY_VENDOR_ID is available */
+pub const CEC_CAP_REPLY_VENDOR_ID: u32 = 1 << 9;
 
 /* Allow a fallback to unregistered */
 pub const CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK: u32 = 1 << 0;

@@ -284,6 +284,8 @@ bitflags! {
         const MONITOR_PIN = CEC_CAP_MONITOR_PIN;
         /// CEC_ADAP_G_CONNECTOR_INFO is available
         const CONNECTOR_INFO = CEC_CAP_CONNECTOR_INFO;
+        /// CEC_MSG_FL_REPLY_VENDOR_ID is available
+        const REPLY_VENDOR_ID = CEC_CAP_REPLY_VENDOR_ID;
     }
 }
 
