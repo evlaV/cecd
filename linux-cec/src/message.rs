@@ -244,6 +244,10 @@ pub enum Message {
         flags: operand::LatencyFlags,
         audio_output_delay: Option<operand::Delay>,
     } = constants::CEC_MSG_REPORT_CURRENT_LATENCY,
+    /* HDMI 2.1a */
+    SetAudioVolumeLevel {
+        volume_level: operand::AudioVolumeLevel,
+    } = constants::CEC_MSG_SET_AUDIO_VOLUME_LEVEL,
 }
 
 impl Message {

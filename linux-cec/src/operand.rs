@@ -181,6 +181,146 @@ mod test_delay {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct AudioVolumeLevel(u8);
+
+impl From<AudioVolumeLevel> for u8 {
+    #[inline]
+    fn from(val: AudioVolumeLevel) -> u8 {
+        val.0
+    }
+}
+
+impl AudioVolumeLevel {
+    const MIN: u8 = 0;
+    const MAX: u8 = 100;
+    const NO_CHANGE_VAL: u8 = 0x7F;
+    pub const NO_CHANGE: AudioVolumeLevel = AudioVolumeLevel(Self::NO_CHANGE_VAL);
+
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        if self.0 == AudioVolumeLevel::NO_CHANGE_VAL {
+            return true;
+        }
+
+        Range::Interval {
+            min: AudioVolumeLevel::MIN as usize,
+            max: AudioVolumeLevel::MAX as usize,
+        }
+        .check(self.0, "value")
+        .is_ok()
+    }
+}
+
+impl TryFrom<u8> for AudioVolumeLevel {
+    type Error = Error;
+
+    fn try_from(val: u8) -> Result<AudioVolumeLevel> {
+        Range::Interval {
+            min: AudioVolumeLevel::MIN as usize,
+            max: AudioVolumeLevel::MAX as usize,
+        }
+        .check(val, "value")?;
+        Ok(AudioVolumeLevel(val))
+    }
+}
+
+impl OperandEncodable for AudioVolumeLevel {
+    fn to_bytes(&self, buf: &mut impl Extend<u8>) {
+        buf.extend([self.0]);
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Self::expected_len().check(bytes.len(), "bytes")?;
+        if bytes[0] == AudioVolumeLevel::NO_CHANGE_VAL {
+            return Ok(AudioVolumeLevel(bytes[0]));
+        }
+        AudioVolumeLevel::try_from(bytes[0])
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn expected_len() -> Range<usize> {
+        Range::AtLeast(1)
+    }
+}
+
+#[cfg(test)]
+mod test_audio_volume_level {
+    use super::*;
+
+    opcode_test! {
+        name: _min,
+        ty: AudioVolumeLevel,
+        instance: AudioVolumeLevel(0),
+        bytes: [0],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _max,
+        ty: AudioVolumeLevel,
+        instance: AudioVolumeLevel(100),
+        bytes: [100],
+        extra: [Overfull],
+    }
+
+    opcode_test! {
+        name: _keep_current,
+        ty: AudioVolumeLevel,
+        instance: AudioVolumeLevel(0x7f),
+        bytes: [0x7f],
+        extra: [Overfull],
+    }
+
+    #[test]
+    fn test_decode_out_of_range() {
+        assert_eq!(
+            <AudioVolumeLevel as OperandEncodable>::try_from_bytes(&[101]),
+            Err(Error::OutOfRange {
+                got: 101,
+                expected: Range::from(0..=100),
+                quantity: "value"
+            })
+        );
+
+        assert_eq!(
+            <AudioVolumeLevel as OperandEncodable>::try_from_bytes(&[128]),
+            Err(Error::OutOfRange {
+                got: 128,
+                expected: Range::from(0..=100),
+                quantity: "value"
+            })
+        );
+    }
+
+    #[test]
+    fn test_encode_out_of_range() {
+        let mut buf = Vec::new();
+        AudioVolumeLevel(101).to_bytes(&mut buf);
+        assert_eq!(&buf, &[101]);
+
+        let mut buf = Vec::new();
+        AudioVolumeLevel(128).to_bytes(&mut buf);
+        assert_eq!(&buf, &[128]);
+    }
+
+    #[test]
+    fn test_decode_empty() {
+        assert_eq!(
+            <AudioVolumeLevel as OperandEncodable>::try_from_bytes(&[]),
+            Err(Error::OutOfRange {
+                got: 0,
+                expected: Range::AtLeast(1),
+                quantity: "bytes"
+            })
+        );
+    }
+}
+
 impl OperandEncodable for u8 {
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         buf.extend([*self]);
