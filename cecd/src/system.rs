@@ -251,6 +251,19 @@ impl System {
         self.send_message(SystemMessage::ReloadConfig).await
     }
 
+    fn trimmed_osd_name(&self) -> &str {
+        if self.osd_name.len() <= 14 {
+            return self.osd_name.as_str();
+        }
+        // TODO: Simplify using floor_char_boundary when we can bump the minimum rust ver to 1.91
+        for i in (10..=14).rev() {
+            if self.osd_name.is_char_boundary(i) {
+                return &self.osd_name.as_str()[..i];
+            }
+        }
+        unreachable!();
+    }
+
     pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
         let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
             let mut uinput_dev = UInputDevice::new()?;
@@ -268,7 +281,7 @@ impl System {
         debug!("Device has caps: {caps:?}");
         if caps.contains(Capabilities::LOG_ADDRS) {
             device.clear_logical_addresses().await?;
-            device.set_osd_name(&self.osd_name).await?;
+            device.set_osd_name(self.trimmed_osd_name()).await?;
             device.set_vendor_id(self.config.vendor_id).await?;
             device
                 .set_logical_address(self.config.logical_address)
