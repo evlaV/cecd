@@ -8,6 +8,7 @@ use input_linux::Key;
 use linux_cec::device::Capabilities;
 use linux_cec::operand::UiCommand;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, VendorId};
+use nix::unistd::gethostname;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -164,8 +165,17 @@ impl System {
         let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
         let (channel, _) = channel(10);
 
+        let hostname = gethostname()
+            .ok()
+            .and_then(|hostname| hostname.into_string().ok());
+
+        let osd_name = match hostname {
+            Some(hostname) if !hostname.is_empty() => hostname,
+            _ => String::from("CEC Device"),
+        };
+
         Ok(System {
-            osd_name: String::from("CEC Device"),
+            osd_name,
             config: Config::default(),
             connection,
             system_bus,

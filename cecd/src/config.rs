@@ -73,7 +73,9 @@ where
 
 #[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
-    /// The default advertised OSD name for this device, max 14 bytes. Defaults to "CEC Device".
+    /// The default advertised OSD name for this device, max 14 bytes. If not
+    /// set, it uses the hostname, or "CEC Device" if it can't get the hostname.
+    #[serde(default)]
     pub osd_name: Option<String>,
     /// The vendor OUI for this device. Defaults to `None`.
     #[serde(deserialize_with = "de_vendor_id", default)]
