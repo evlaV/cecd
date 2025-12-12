@@ -320,6 +320,7 @@ mod test_envelope {
 
 /// A physical pin that can be monitored via [`PinEvent`]s.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Pin {
     /// The CEC data pin (13)
     Cec,
@@ -362,6 +363,7 @@ pub struct DevicePoller {
 /// As this is a representation of what data is available and not used for
 /// requesting data manually, it should not be constructed directly.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum PollStatus {
     Nothing,
     Destroyed,
@@ -373,6 +375,7 @@ pub enum PollStatus {
 /// A return result of [`Device::handle_status`], containing
 /// about a single message or event was returned from the kernel.
 #[derive(Debug, Clone, Hash)]
+#[non_exhaustive]
 pub enum PollResult {
     /// The device received a [`Message`].
     Message(Envelope),

@@ -129,7 +129,6 @@ impl DeviceTask {
     async fn handle_poll_result(&mut self, result: PollResult) -> Result<()> {
         match result {
             PollResult::Message(envelope) => self.handle_message(envelope).await?,
-            PollResult::PinEvent(_) => (),
             PollResult::LostMessages(n) => warn!("Lost {n} messages!"),
             PollResult::StateChange => {
                 let device = self.device.lock().await;
@@ -191,6 +190,7 @@ impl DeviceTask {
                         .await?;
                 }
             }
+            _ => (),
         }
         Ok(())
     }

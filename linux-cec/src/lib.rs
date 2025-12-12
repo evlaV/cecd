@@ -264,6 +264,7 @@ impl LogicalAddressType {
 /// An mode specifying how a given [`Device`](device::Device) should act as
 /// an initiator; that is, if the device should be able to send messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum InitiatorMode {
     /// Do not act as an initiator.
     Disabled,
@@ -277,6 +278,7 @@ pub enum InitiatorMode {
 /// A mode specifying how a given [`Device`](device::Device) should act as
 /// a follower; that is, how receiving messages should be handled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FollowerMode {
     /// Do not act as a follower.
     Disabled,
@@ -390,6 +392,7 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
 
 /// A set of common errors.
 #[derive(Error, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
     /// A value of a given `quantity` was outside of the `expected` range.
     #[error("Expected {expected} {quantity}, got {got} {quantity}")]
@@ -434,6 +437,7 @@ pub enum Error {
 
 /// A set of error codes that correspond to [`CEC_TX_STATUS`](sys::CEC_TX_STATUS).
 #[derive(Error, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 #[repr(u8)]
 pub enum TxError {
     #[error("Arbitration was lost")]
@@ -454,6 +458,7 @@ pub enum TxError {
 
 /// A set of error codes that correspond to [`CEC_RX_STATUS`](sys::CEC_RX_STATUS).
 #[derive(Error, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 #[repr(u8)]
 pub enum RxError {
     #[error("The request timed out")]
