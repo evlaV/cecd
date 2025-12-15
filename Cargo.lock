@@ -117,6 +117,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cecd-proxy"
+version = "0.1.0"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

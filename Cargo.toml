@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
 members = [
-    "linux-cec", "linux-cec-macros", "linux-cec-sys", "cecd",
+    "linux-cec", "linux-cec-macros", "linux-cec-sys", "cecd", "cecd-proxy",
 ]

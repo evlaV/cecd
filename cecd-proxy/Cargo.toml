@@ -1,0 +1,14 @@
+[package]
+name = "cecd-proxy"
+version = "0.1.0"
+edition = "2024"
+authors = ["Vicki Pfau <vi@endrift.com>"]
+license = "LGPL-2.1-or-later"
+description = "Daemon for userspace interactions with CEC on Linux (zbus proxy)"
+repository = "https://gitlab.steamos.cloud/holo/linux-cec/"
+readme = "../README.md"
+keywords = ["cec"]
+categories = ["hardware-support"]
+
+[dependencies]
+zbus = { version = "5", default-features = false, features = ["tokio"] }
