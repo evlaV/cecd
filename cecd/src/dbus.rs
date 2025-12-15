@@ -28,7 +28,7 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
     fdo::Error::Failed(format!("{val}"))
 }
 
-const PATH: &str = "/com/steampowered/CecDaemon1";
+pub const PATH: &str = "/com/steampowered/CecDaemon1";
 
 pub struct CecDevice {
     pub device: ArcDevice,

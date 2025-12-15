@@ -19,10 +19,11 @@ use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 use zbus::connection::{Builder, Connection};
+use zbus::fdo::ObjectManager;
 use zbus::proxy;
 
 use crate::config::Config;
-use crate::dbus::CecDevice;
+use crate::dbus::{CecDevice, PATH};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
@@ -162,7 +163,11 @@ impl System {
         builder: Builder<'_>,
         system_bus: Connection,
     ) -> Result<System> {
-        let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
+        let connection = builder
+            .name("com.steampowered.CecDaemon1")?
+            .serve_at(PATH, ObjectManager {})?
+            .build()
+            .await?;
         let (channel, _) = channel(10);
 
         let hostname = gethostname()
