@@ -8,8 +8,13 @@ test:
   tags:
     - x86_64-linux-kvm-docker
   script:
-    - pacman -Sy --noconfirm --needed rust
-    - cargo test
+    - pacman -Sy --noconfirm --needed rust cargo-tarpaulin
+    - cargo tarpaulin --out xml --engine llvm
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
 
 fmt:
   stage: test
