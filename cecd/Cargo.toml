@@ -11,7 +11,7 @@ keywords = ["cec"]
 categories = ["hardware-support"]
 
 [dev-dependencies]
-nix = { version = "0.30", default-features = false, features = ["fs", "signal"] }
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 
 [dependencies]
 anyhow = "1"
@@ -21,7 +21,7 @@ config = { version = "0.15", default-features = false, features = ["async", "tom
 input-linux = "0.7"
 libc = "0.2"
 linux-cec = { path = "../linux-cec", features = ["async", "tracing"] }
-nix = { version = "0.30", default-features = false, features = ["fs", "hostname"] }
+nix = { version = "0.30", default-features = false, features = ["fs", "hostname", "time"] }
 num_enum = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "signal"] }

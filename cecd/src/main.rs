@@ -7,16 +7,19 @@ use anyhow::Result;
 use clap::Parser;
 #[cfg(not(test))]
 use linux_cec::device::{AsyncDevice, AsyncDevicePoller};
+use nix::time::{clock_gettime, ClockId};
+use std::env;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::net::UnixDatagram;
 use tokio::select;
 use tokio::signal::ctrl_c;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle, JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 use zbus::connection::{Builder, Connection};
 
 use crate::config::{read_config_file, read_default_config};
@@ -53,6 +56,54 @@ impl Deref for ArcDevice {
 
     fn deref(&self) -> &Arc<Mutex<AsyncDevice>> {
         &self.0
+    }
+}
+
+#[derive(Debug, Default)]
+struct NotifySocket {
+    socket: Option<UnixDatagram>,
+}
+
+impl NotifySocket {
+    async fn setup_socket(&mut self) -> Result<()> {
+        if self.socket.is_some() {
+            return Ok(());
+        }
+        let Some(notify_socket) = env::var_os("NOTIFY_SOCKET") else {
+            return Ok(());
+        };
+        let socket = UnixDatagram::unbound()?;
+        socket.connect(notify_socket)?;
+        self.socket = Some(socket);
+        Ok(())
+    }
+
+    async fn notify(&mut self, message: &str) -> Result<()> {
+        self.setup_socket()
+            .await
+            .inspect_err(|e| warn!("Couldn't set up systemd notify socket: {e}"))?;
+        let Some(ref socket) = self.socket else {
+            return Ok(());
+        };
+        trace!("Sending message to systemd: {message}");
+        socket
+            .send(message.as_bytes())
+            .await
+            .inspect_err(|e| warn!("Couldn't notify systemd: {e}"))?;
+        Ok(())
+    }
+
+    async fn ready(&mut self) -> Result<()> {
+        self.notify("READY=1\n").await
+    }
+
+    async fn begin_reload(&mut self) -> Result<()> {
+        let timestamp = clock_gettime(ClockId::CLOCK_MONOTONIC)
+            .inspect_err(|e| warn!("Couldn't get timestamp when notifying systemd: {e}"))?;
+        let timestamp = timestamp.tv_sec() * 1_000_000 + timestamp.tv_nsec() / 1_000;
+        let notifies = format!("RELOADING=1\nMONOTONIC_USEC={timestamp}\n");
+        self.notify(notifies.as_str()).await?;
+        Ok(())
     }
 }
 
@@ -140,23 +191,29 @@ pub async fn main() -> Result<()> {
     let config_reload: JoinHandle<Result<()>> = {
         let token = token.clone();
         spawn(async move {
+            let mut notify_socket = NotifySocket::default();
             loop {
                 let mut sighup = signal(SignalKind::hangup())?;
                 select! {
                     _ = sighup.recv() => (),
                     _ = token.cancelled() => break,
                 }
+                let _ = notify_socket.begin_reload().await;
                 let config = if let Some(ref config_path) = args.config {
                     read_config_file(config_path).await?
                 } else {
                     read_default_config().await?
                 };
                 system.set_config(config).await?;
+                let _ = notify_socket.ready().await;
             }
             Ok(())
         })
     };
     let _guard = token.drop_guard();
+
+    let mut notify_socket = NotifySocket::default();
+    let _ = notify_socket.ready().await;
 
     let mut sigterm = signal(SignalKind::terminate())?;
     select! {
