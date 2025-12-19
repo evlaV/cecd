@@ -332,11 +332,12 @@ impl SystemHandle {
             connection = system.connection.clone();
         }
         for dev in devs {
+            let channel = self.lock().await.channel.clone();
             tokens.push(dev.token.clone());
             dev.register(
                 connection.clone(),
                 self.clone(),
-                self.lock().await.channel.clone(),
+                channel,
             )
             .await?;
         }
