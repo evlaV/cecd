@@ -334,12 +334,8 @@ impl SystemHandle {
         for dev in devs {
             let channel = self.lock().await.channel.clone();
             tokens.push(dev.token.clone());
-            dev.register(
-                connection.clone(),
-                self.clone(),
-                channel,
-            )
-            .await?;
+            dev.register(connection.clone(), self.clone(), channel)
+                .await?;
         }
         Ok(tokens)
     }
