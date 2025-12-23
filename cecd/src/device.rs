@@ -463,7 +463,7 @@ mod test {
         let interface: InterfaceRef<CecDevice> = test
             .connection
             .object_server()
-            .interface("/com/steampowered/CecDaemon1/Null")
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
             .await
             .unwrap();
         {
@@ -995,7 +995,7 @@ mod test {
         let interface: InterfaceRef<CecDevice> = test
             .connection
             .object_server()
-            .interface("/com/steampowered/CecDaemon1/Null")
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
             .await
             .unwrap();
         let mut dbus_obj = interface.get_mut().await;
@@ -1065,7 +1065,7 @@ mod test {
         let interface: InterfaceRef<CecDevice> = test
             .connection
             .object_server()
-            .interface("/com/steampowered/CecDaemon1/Null")
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
             .await
             .unwrap();
         let mut dbus_obj = interface.get_mut().await;
@@ -1130,7 +1130,7 @@ mod test {
         let interface: InterfaceRef<CecDevice> = test
             .connection
             .object_server()
-            .interface("/com/steampowered/CecDaemon1/Null")
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
             .await
             .unwrap();
         let mut dbus_obj = interface.get_mut().await;

@@ -485,7 +485,8 @@ where
 
     Ok(DBusTest {
         dev: arc_dev,
-        proxy: CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Null").await?,
+        proxy: CecDeviceProxy::new(&connection, "/com/steampowered/CecDaemon1/Devices/Null")
+            .await?,
         connection,
         _dbus: dbus,
         _guard: guard,

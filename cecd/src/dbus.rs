@@ -94,7 +94,7 @@ impl CecDevice {
                     .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
             })
             .collect::<String>();
-        Ok(format!("{PATH}/{path}"))
+        Ok(format!("{PATH}/Devices/{path}"))
     }
 
     pub async fn send_system_message(&self, message: SystemMessage) -> Result<()> {

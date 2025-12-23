@@ -2,7 +2,7 @@
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <!--
-      com.steampowered.CecDaemon1.CecDaemon1
+      com.steampowered.CecDaemon1.CecDevice1
       @short_description: An HDMI CEC device.
 
   -->
