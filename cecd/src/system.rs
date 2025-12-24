@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
-use tokio::sync::broadcast::{channel, Sender};
+use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, MutexGuard};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
@@ -268,6 +268,10 @@ impl System {
         self.send_message(SystemMessage::ReloadConfig).await
     }
 
+    pub(crate) fn subscribe(&self) -> Receiver<SystemMessage> {
+        self.channel.subscribe()
+    }
+
     fn trimmed_osd_name(&self) -> &str {
         if self.osd_name.len() <= 14 {
             return self.osd_name.as_str();
@@ -344,27 +348,22 @@ impl SystemHandle {
             connection = system.connection.clone();
         }
         for dev in devs {
-            let channel = self.lock().await.channel.clone();
             tokens.push(dev.token.clone());
-            dev.register(connection.clone(), self.clone(), channel)
-                .await?;
+            dev.register(connection.clone(), self.clone()).await?;
         }
         Ok(tokens)
     }
 
     pub(crate) async fn find_dev(&self, path: impl AsRef<Path>) -> Result<CancellationToken> {
         let dev;
-        let channel;
         let connection;
         {
             let mut system = self.lock().await;
             dev = system.find_dev(path).await?;
-            channel = system.channel.clone();
             connection = system.connection.clone();
         }
         let token = dev.token.clone();
-        dev.register(connection.clone(), self.clone(), channel)
-            .await?;
+        dev.register(connection.clone(), self.clone()).await?;
         Ok(token)
     }
 

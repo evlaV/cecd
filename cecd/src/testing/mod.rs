@@ -468,19 +468,16 @@ where
     debug!("System created");
 
     let dev;
-    let channel;
     let connection;
     {
         let mut system = system.lock().await;
         dev = system.find_dev("/dev/null").await?;
-        channel = system.channel.clone();
         connection = system.connection.clone();
     }
     debug!("Device created");
     let arc_dev = dev.device.clone();
     setup_dev(arc_dev.clone()).await?;
-    dev.register(connection.clone(), system.clone(), channel)
-        .await?;
+    dev.register(connection.clone(), system.clone()).await?;
     debug!("Device registered");
 
     Ok(DBusTest {

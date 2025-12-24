@@ -59,12 +59,7 @@ impl CecDevice {
         })
     }
 
-    pub async fn register(
-        self,
-        connection: Connection,
-        system: SystemHandle,
-        channel: Sender<SystemMessage>,
-    ) -> Result<()> {
+    pub async fn register(self, connection: Connection, system: SystemHandle) -> Result<()> {
         debug!("Registering CEC device {} on bus", self.path.display());
 
         let object_server = connection.object_server();
@@ -72,11 +67,17 @@ impl CecDevice {
         object_server.at(path.clone(), self).await?;
 
         let interface = object_server.interface(path.clone()).await?;
-        let task =
-            DeviceTask::new(interface.clone(), system, channel.subscribe(), connection).await?;
+        let sender;
+        let receiver;
+        {
+            let system = system.lock().await;
+            sender = system.channel.clone();
+            receiver = system.subscribe();
+        }
+        let task = DeviceTask::new(interface.clone(), system, receiver, connection).await?;
         spawn(task.run());
         let mut interface = interface.get_mut().await;
-        interface.channel = Some(channel);
+        interface.channel = Some(sender);
         info!("Device {path} registered");
         Ok(())
     }
