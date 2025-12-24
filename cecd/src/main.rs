@@ -22,7 +22,6 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, trace, warn};
 use zbus::connection::{Builder, Connection};
 
-use crate::config::{read_config_file, read_default_config};
 use crate::system::{System, SystemHandle};
 use crate::udev::udev_hotplug;
 
@@ -135,14 +134,9 @@ pub async fn main() -> Result<()> {
     let builder = Builder::session()?;
     let system_bus = Connection::system().await?;
     let system = SystemHandle(Arc::new(Mutex::new(
-        System::new(token.clone(), builder, system_bus).await?,
+        System::new(token.clone(), builder, system_bus, args.config).await?,
     )));
-    let config = if let Some(ref config_path) = args.config {
-        read_config_file(config_path).await?
-    } else {
-        read_default_config().await?
-    };
-    system.set_config(config).await?;
+    system.reconfig().await?;
     let system_task = {
         let mut system = system.clone();
         spawn(async move { system.run().await })
@@ -199,12 +193,7 @@ pub async fn main() -> Result<()> {
                     _ = token.cancelled() => break,
                 }
                 let _ = notify_socket.begin_reload().await;
-                let config = if let Some(ref config_path) = args.config {
-                    read_config_file(config_path).await?
-                } else {
-                    read_default_config().await?
-                };
-                system.set_config(config).await?;
+                system.reconfig().await?;
                 let _ = notify_socket.ready().await;
             }
             Ok(())

@@ -22,7 +22,7 @@ use zbus::connection::{Builder, Connection};
 use zbus::fdo::ObjectManager;
 use zbus::proxy;
 
-use crate::config::Config;
+use crate::config::{read_config_file, read_default_config, Config};
 use crate::dbus::{CecDevice, PATH};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
@@ -31,6 +31,7 @@ use crate::ArcDevice;
 pub(crate) struct System {
     osd_name: String,
     pub config: Config,
+    config_path: Option<PathBuf>,
 
     pub connection: Connection,
     pub channel: Sender<SystemMessage>,
@@ -162,6 +163,7 @@ impl System {
         token: CancellationToken,
         builder: Builder<'_>,
         system_bus: Connection,
+        config_path: Option<PathBuf>,
     ) -> Result<System> {
         let connection = builder
             .name("com.steampowered.CecDaemon1")?
@@ -187,6 +189,7 @@ impl System {
             token,
             devs: HashMap::new(),
             channel,
+            config_path,
         })
     }
 
@@ -235,6 +238,15 @@ impl System {
         if let Some(token) = self.devs.remove(path.as_ref()) {
             token.cancel();
         }
+    }
+
+    pub(crate) async fn reconfig(&mut self) -> Result<()> {
+        let config = if let Some(ref config_path) = self.config_path {
+            read_config_file(config_path).await?
+        } else {
+            read_default_config().await?
+        };
+        self.set_config(config).await
     }
 
     pub(crate) async fn set_config(&mut self, config: Config) -> Result<()> {
@@ -361,9 +373,9 @@ impl SystemHandle {
         system.close_dev(path);
     }
 
-    pub(crate) async fn set_config(&self, config: Config) -> Result<()> {
+    pub(crate) async fn reconfig(&self) -> Result<()> {
         let mut system = self.lock().await;
-        system.set_config(config).await
+        system.reconfig().await
     }
 
     pub(crate) async fn run(&mut self) -> Result<()> {
