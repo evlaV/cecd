@@ -265,7 +265,8 @@ impl System {
 
         debug!("Configuration loaded: {:#?}", self.config);
 
-        self.send_message(SystemMessage::ReloadConfig).await
+        self.send_message(SystemMessage::ReloadConfig).await;
+        Ok(())
     }
 
     pub(crate) fn subscribe(&self) -> Receiver<SystemMessage> {
@@ -313,11 +314,9 @@ impl System {
         Ok(uinput)
     }
 
-    async fn send_message(&mut self, message: SystemMessage) -> Result<()> {
-        if !self.devs.is_empty() {
-            self.channel.send(message)?;
-        }
-        Ok(())
+    async fn send_message(&mut self, message: SystemMessage) {
+        // This is allowed to fail silently
+        let _ = self.channel.send(message);
     }
 }
 
@@ -392,12 +391,9 @@ impl SystemHandle {
                 }
             };
             if !sleep && self.lock().await.config.wake_tv {
-                self.lock().await.send_message(SystemMessage::Wake).await?;
+                self.lock().await.send_message(SystemMessage::Wake).await;
             } else if sleep && self.lock().await.config.suspend_tv {
-                self.lock()
-                    .await
-                    .send_message(SystemMessage::Standby)
-                    .await?;
+                self.lock().await.send_message(SystemMessage::Standby).await;
             }
         }
     }
