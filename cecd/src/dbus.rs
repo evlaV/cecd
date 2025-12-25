@@ -6,7 +6,7 @@
 use anyhow::{anyhow, bail, Result};
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
-use linux_cec::{LogicalAddress, PhysicalAddress, Timeout};
+use linux_cec::{LogicalAddress, LogicalAddressType, PhysicalAddress, Timeout};
 use num_enum::TryFromPrimitive;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -15,10 +15,11 @@ use tokio::fs::canonicalize;
 use tokio::sync::broadcast::Sender;
 use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use zbus::object_server::SignalEmitter;
 use zbus::{fdo, interface, Connection};
 
+use crate::config::Config;
 use crate::device::{DeviceTask, KeyRepeat};
 use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
@@ -29,6 +30,138 @@ fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
 }
 
 pub const PATH: &str = "/com/steampowered/CecDaemon1";
+
+#[derive(Debug)]
+pub struct CecConfig {
+    system: SystemHandle,
+    cached_config: Config,
+}
+
+impl CecConfig {
+    pub async fn new(system: SystemHandle) -> CecConfig {
+        let cached_config = system.lock().await.config.clone();
+        CecConfig {
+            system,
+            cached_config,
+        }
+    }
+
+    pub async fn reconfigure(&mut self, emitter: &SignalEmitter<'_>) {
+        let mut new_config = self.system.lock().await.config.clone();
+        if new_config.logical_address == LogicalAddressType::Unregistered {
+            new_config.logical_address = LogicalAddressType::Playback;
+        }
+        let old_config = self.cached_config.clone();
+        self.cached_config = new_config;
+        dbg!(&self.cached_config, &old_config);
+
+        if self.cached_config.osd_name != old_config.osd_name {
+            if let Err(e) = self.osd_name_changed(&emitter).await {
+                warn!("Failed to emit OsdName changed: {e}");
+            }
+        }
+
+        if self.cached_config.vendor_id != old_config.vendor_id {
+            if let Err(e) = self.vendor_id_changed(&emitter).await {
+                warn!("Failed to emit VendorId changed: {e}");
+            }
+        }
+
+        if self.cached_config.logical_address != old_config.logical_address {
+            if let Err(e) = self.logical_address_changed(&emitter).await {
+                warn!("Failed to emit LogicalAddress changed: {e}");
+            }
+        }
+
+        if self.cached_config.mappings != old_config.mappings {
+            if let Err(e) = self.mappings_changed(&emitter).await {
+                warn!("Failed to emit Mappings changed: {e}");
+            }
+        }
+
+        if self.cached_config.wake_tv != old_config.wake_tv {
+            if let Err(e) = self.wake_tv_changed(&emitter).await {
+                warn!("Failed to emit WakeTv changed: {e}");
+            }
+        }
+
+        if self.cached_config.suspend_tv != old_config.suspend_tv {
+            if let Err(e) = self.suspend_tv_changed(&emitter).await {
+                warn!("Failed to emit SuspendTv changed: {e}");
+            }
+        }
+
+        if self.cached_config.allow_standby != old_config.allow_standby {
+            if let Err(e) = self.allow_standby_changed(&emitter).await {
+                warn!("Failed to emit AllowStandby changed: {e}");
+            }
+        }
+
+        if self.cached_config.disable_uinput != old_config.disable_uinput {
+            if let Err(e) = self.disable_uinput_changed(&emitter).await {
+                warn!("Failed to emit DisableUinput changed: {e}");
+            }
+        }
+    }
+}
+
+#[interface(name = "com.steampowered.CecDaemon1.Config1")]
+impl CecConfig {
+    #[zbus(property)]
+    pub async fn osd_name(&self) -> &str {
+        self.cached_config
+            .osd_name
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    }
+
+    #[zbus(property)]
+    pub async fn vendor_id(&self) -> i32 {
+        self.cached_config
+            .vendor_id
+            .map(Into::<i32>::into)
+            .unwrap_or(-1)
+    }
+
+    #[zbus(property)]
+    pub async fn logical_address(&self) -> u8 {
+        self.cached_config.logical_address.into()
+    }
+
+    #[zbus(property)]
+    pub async fn mappings(&self) -> Vec<(Vec<u8>, u16)> {
+        Vec::from_iter(self.cached_config.mappings.iter().map(|(k, v)| {
+            let mut kv = Vec::new();
+            k.to_bytes(&mut kv);
+            (kv, (*v).into())
+        }))
+    }
+
+    #[zbus(property)]
+    pub async fn wake_tv(&self) -> bool {
+        self.cached_config.wake_tv
+    }
+
+    #[zbus(property)]
+    pub async fn suspend_tv(&self) -> bool {
+        self.cached_config.suspend_tv
+    }
+
+    #[zbus(property)]
+    pub async fn allow_standby(&self) -> bool {
+        self.cached_config.allow_standby
+    }
+
+    #[zbus(property)]
+    pub async fn disable_uinput(&self) -> bool {
+        self.cached_config.disable_uinput
+    }
+
+    pub async fn reload(&self) -> fdo::Result<()> {
+        self.system.reconfig().await.map_err(into_fdo_error)
+    }
+}
 
 pub struct CecDevice {
     pub device: ArcDevice,
@@ -325,5 +458,204 @@ impl CecDevice {
             .await
             .map_err(into_fdo_error)?;
         Ok(reply.message.to_bytes())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::system::System;
+    use crate::testing::{setup_dbus_test, DBusTest};
+    use cecd_proxy::Config1Proxy;
+    use input_linux::Key;
+    use linux_cec::device::Capabilities;
+    use linux_cec::VendorId;
+    use nix::unistd::gethostname;
+
+    async fn setup_config_test(
+        config: &Config,
+    ) -> Result<(DBusTest<'static>, Config1Proxy<'static>)> {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let test = setup_dbus_test(cb, Some(config.clone())).await?;
+
+        let config_obj = CecConfig::new(test.system.clone()).await;
+        test.connection
+            .object_server()
+            .at(format!("{PATH}/Daemon"), config_obj)
+            .await?;
+
+        let config_proxy = Config1Proxy::builder(&test.connection).build().await?;
+
+        Ok((test, config_proxy))
+    }
+
+    #[tokio::test]
+    async fn test_default_config_readout() {
+        let config = Config::default();
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.osd_name().await.unwrap(),
+            config
+                .osd_name
+                .unwrap_or_else(|| gethostname().unwrap().into_string().unwrap())
+        );
+        assert_eq!(
+            config_proxy.vendor_id().await.unwrap(),
+            config.vendor_id.map(Into::<i32>::into).unwrap_or(-1)
+        );
+        assert_eq!(
+            config_proxy.logical_address().await.unwrap(),
+            (if config.logical_address == LogicalAddressType::Unregistered {
+                LogicalAddressType::Playback
+            } else {
+                config.logical_address
+            })
+            .into()
+        );
+        assert_eq!(
+            HashMap::from_iter(config_proxy.mappings().await.unwrap()),
+            (if !config.mappings.is_empty() {
+                config
+                    .mappings
+                    .iter()
+                    .map(|(k, v)| {
+                        let mut kv = Vec::new();
+                        k.to_bytes(&mut kv);
+                        (kv, (*v).into())
+                    })
+                    .collect::<HashMap<_, _>>()
+            } else {
+                System::DEFAULT_MAPPINGS
+                    .iter()
+                    .map(|(k, v)| {
+                        let mut kv = Vec::new();
+                        k.to_bytes(&mut kv);
+                        (kv, (*v).into())
+                    })
+                    .collect::<HashMap<_, _>>()
+            })
+        );
+        assert_eq!(config_proxy.wake_tv().await.unwrap(), config.wake_tv);
+        assert_eq!(config_proxy.suspend_tv().await.unwrap(), config.suspend_tv);
+        assert_eq!(
+            config_proxy.allow_standby().await.unwrap(),
+            config.allow_standby
+        );
+        assert_eq!(
+            config_proxy.disable_uinput().await.unwrap(),
+            config.disable_uinput
+        );
+    }
+
+    #[tokio::test]
+    async fn test_osd_name_config_readout() {
+        let mut config = Config::default();
+        config.osd_name = Some(String::from("CEC2"));
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.osd_name().await.unwrap(),
+            config.osd_name.unwrap_or_default()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_vendor_id_config_readout() {
+        let mut config = Config::default();
+        config.vendor_id = Some(VendorId([0x12, 0x34, 0x56]));
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.vendor_id().await.unwrap(),
+            config.vendor_id.map(Into::<i32>::into).unwrap_or(-1)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_logical_address_config_readout() {
+        let mut config = Config::default();
+        config.logical_address = LogicalAddressType::AudioSystem;
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.logical_address().await.unwrap(),
+            config.logical_address.into()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mappings_config_readout() {
+        let mut config = Config::default();
+        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            HashMap::from_iter(config_proxy.mappings().await.unwrap()),
+            config
+                .mappings
+                .iter()
+                .map(|(k, v)| {
+                    let mut kv = Vec::new();
+                    k.to_bytes(&mut kv);
+                    (kv, (*v).into())
+                })
+                .collect::<HashMap<_, _>>()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_wake_tv_config_readout() {
+        let mut config = Config::default();
+        config.wake_tv = !config.wake_tv;
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.wake_tv().await.unwrap(),
+            config.wake_tv
+        );
+    }
+
+
+    #[tokio::test]
+    async fn test_suspend_tv_config_readout() {
+        let mut config = Config::default();
+        config.suspend_tv = !config.suspend_tv;
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.suspend_tv().await.unwrap(),
+            config.suspend_tv
+        );
+    }
+
+    #[tokio::test]
+    async fn test_allow_standby_config_readout() {
+        let mut config = Config::default();
+        config.allow_standby = !config.allow_standby;
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.allow_standby().await.unwrap(),
+            config.allow_standby
+        );
+    }
+
+    #[tokio::test]
+    async fn test_disabled_uinput_config_readout() {
+        let mut config = Config::default();
+        config.disable_uinput = !config.disable_uinput;
+        let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
+
+        assert_eq!(
+            config_proxy.disable_uinput().await.unwrap(),
+            config.disable_uinput
+        );
     }
 }

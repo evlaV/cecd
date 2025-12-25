@@ -13,8 +13,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_dir;
+use tokio::spawn;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, MutexGuard};
+use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
@@ -23,7 +25,7 @@ use zbus::fdo::ObjectManager;
 use zbus::proxy;
 
 use crate::config::{read_config_file, read_default_config, Config};
-use crate::dbus::{CecDevice, PATH};
+use crate::dbus::{CecConfig, CecDevice, PATH};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
@@ -63,7 +65,7 @@ impl System {
     // Most of these mappings match Linux's rc mapping, but a few are intentionally
     // changed or removed in an opinionated way. These are just the defaults however,
     // so they are easily overridden or unmapped if desired.
-    const DEFAULT_MAPPINGS: &[(UiCommand, Key)] = &[
+    pub(crate) const DEFAULT_MAPPINGS: &[(UiCommand, Key)] = &[
         (UiCommand::Select, Key::Enter),
         (UiCommand::Up, Key::Up),
         (UiCommand::Down, Key::Down),
@@ -259,6 +261,17 @@ impl System {
             self.config.logical_address = LogicalAddressType::Playback;
         }
 
+        if self.config.osd_name.is_none() {
+            let hostname = gethostname()
+                .ok()
+                .and_then(|hostname| hostname.into_string().ok());
+
+            self.config.osd_name = Some(match hostname {
+                Some(hostname) if !hostname.is_empty() => hostname,
+                _ => String::from("CEC Device"),
+            });
+        }
+
         if self.config.mappings.is_empty() {
             self.config.mappings = HashMap::from_iter(System::DEFAULT_MAPPINGS.iter().copied());
         }
@@ -401,5 +414,55 @@ impl SystemHandle {
     pub(crate) async fn suspend(&self) -> Result<()> {
         let login_manager = LoginManagerProxy::new(&self.lock().await.system_bus).await?;
         login_manager.suspend(false).await
+    }
+}
+
+#[derive(Debug)]
+pub struct ConfigTask {
+    channel: Receiver<SystemMessage>,
+    connection: Connection,
+}
+
+impl ConfigTask {
+    pub async fn start(system: SystemHandle) -> Result<JoinHandle<Result<()>>> {
+        let channel;
+        let connection;
+        {
+            let system = system.lock().await;
+            channel = system.subscribe();
+            connection = system.connection.clone();
+        }
+        let config_obj = CecConfig::new(system).await;
+        connection
+            .object_server()
+            .at(format!("{PATH}/Daemon"), config_obj)
+            .await?;
+        let task = ConfigTask {
+            channel,
+            connection,
+        };
+        Ok(spawn(task.run()))
+    }
+
+    async fn run(mut self) -> Result<()> {
+        let config_obj = self
+            .connection
+            .object_server()
+            .interface::<_, CecConfig>(format!("{PATH}/Daemon"))
+            .await?;
+        loop {
+            let message = match self.channel.recv().await {
+                Ok(message) => message,
+                Err(e) => {
+                    warn!("Error receiving message: {e}");
+                    return Err(e.into());
+                }
+            };
+            if !matches!(message, SystemMessage::ReloadConfig) {
+                continue;
+            }
+            let emitter = config_obj.signal_emitter();
+            config_obj.get_mut().await.reconfigure(&emitter).await;
+        }
     }
 }

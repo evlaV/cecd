@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, trace, warn};
 use zbus::connection::{Builder, Connection};
 
-use crate::system::{System, SystemHandle};
+use crate::system::{ConfigTask, System, SystemHandle};
 use crate::udev::udev_hotplug;
 
 pub(crate) mod config;
@@ -137,6 +137,7 @@ pub async fn main() -> Result<()> {
         System::new(token.clone(), builder, system_bus, args.config).await?,
     )));
     system.reconfig().await?;
+    ConfigTask::start(system.clone()).await?;
     let system_task = {
         let mut system = system.clone();
         spawn(async move { system.run().await })
