@@ -605,10 +605,21 @@ impl Deref for VendorId {
 impl From<VendorId> for SysVendorId {
     #[inline]
     fn from(val: VendorId) -> SysVendorId {
-        SysVendorId::try_from(
-            (u32::from(val.0[0]) << 16) | (u32::from(val.0[1]) << 8) | u32::from(val.0[2]),
-        )
-        .unwrap()
+        SysVendorId::try_from(u32::from(val)).unwrap()
+    }
+}
+
+impl From<VendorId> for i32 {
+    #[inline]
+    fn from(val: VendorId) -> i32 {
+        (i32::from(val.0[0]) << 16) | (i32::from(val.0[1]) << 8) | i32::from(val.0[2])
+    }
+}
+
+impl From<VendorId> for u32 {
+    #[inline]
+    fn from(val: VendorId) -> u32 {
+        (u32::from(val.0[0]) << 16) | (u32::from(val.0[1]) << 8) | u32::from(val.0[2])
     }
 }
 
@@ -698,6 +709,22 @@ mod test_vendor_id {
         assert_eq!(
             VendorId::try_from_sys(SysVendorId::try_from(0xFFFFFFFF).unwrap()),
             Ok(None)
+        );
+    }
+
+    #[test]
+    fn test_into_i32() {
+        assert_eq!(
+            <_ as Into<i32>>::into(VendorId([0x01, 0xAB, 0x2C])),
+            0x01ab2ci32
+        );
+    }
+
+    #[test]
+    fn test_into_u32() {
+        assert_eq!(
+            <_ as Into<u32>>::into(VendorId([0x01, 0xAB, 0x2C])),
+            0x01ab2cu32
         );
     }
 

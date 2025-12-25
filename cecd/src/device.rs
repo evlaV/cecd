@@ -148,7 +148,7 @@ impl DeviceTask {
                     .get_vendor_id()
                     .await
                     .unwrap_or_default()
-                    .map(|v| ((v.0[0] as i32) << 16) | ((v.0[1] as i32) << 8) | (v.0[2] as i32))
+                    .map(Into::<i32>::into)
                     .unwrap_or(-1);
 
                 let emitter = self.interface.signal_emitter();
