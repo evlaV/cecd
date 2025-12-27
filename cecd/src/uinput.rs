@@ -151,3 +151,10 @@ impl UInputDevice {
         self.queue.pop_front()
     }
 }
+
+#[cfg(not(test))]
+impl Drop for UInputDevice {
+    fn drop(&mut self) {
+        let _ = self.handle.dev_destroy();
+    }
+}
