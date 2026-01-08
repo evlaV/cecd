@@ -616,12 +616,8 @@ mod test {
         config.wake_tv = !config.wake_tv;
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
-        assert_eq!(
-            config_proxy.wake_tv().await.unwrap(),
-            config.wake_tv
-        );
+        assert_eq!(config_proxy.wake_tv().await.unwrap(), config.wake_tv);
     }
-
 
     #[tokio::test]
     async fn test_suspend_tv_config_readout() {
@@ -629,10 +625,7 @@ mod test {
         config.suspend_tv = !config.suspend_tv;
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
-        assert_eq!(
-            config_proxy.suspend_tv().await.unwrap(),
-            config.suspend_tv
-        );
+        assert_eq!(config_proxy.suspend_tv().await.unwrap(), config.suspend_tv);
     }
 
     #[tokio::test]
