@@ -212,11 +212,12 @@ impl DeviceTask {
             .await?;
 
         let reply = match envelope.message {
-            MessageData::Valid(Message::GiveDevicePowerStatus) => {
-                Some(Message::ReportPowerStatus {
+            MessageData::Valid(Message::GiveDevicePowerStatus) => Some((
+                Message::ReportPowerStatus {
                     status: PowerStatus::On,
-                })
-            }
+                },
+                initiator,
+            )),
             MessageData::Valid(Message::UserControlPressed { ui_command }) => {
                 let mut buf = Vec::new();
                 ui_command.to_bytes(&mut buf);
@@ -247,9 +248,12 @@ impl DeviceTask {
             MessageData::Valid(Message::SetStreamPath { address }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if address == this_address {
-                    Some(Message::ActiveSource {
-                        address: this_address,
-                    })
+                    Some((
+                        Message::ActiveSource {
+                            address: this_address,
+                        },
+                        LogicalAddress::Broadcast,
+                    ))
                 } else {
                     None
                 }
@@ -259,18 +263,24 @@ impl DeviceTask {
             {
                 if let Err(e) = self.system.suspend().await {
                     error!("Failed to standby: {e}");
-                    Some(Message::FeatureAbort {
-                        opcode: envelope.message.opcode(),
-                        abort_reason: AbortReason::IncorrectMode,
-                    })
+                    Some((
+                        Message::FeatureAbort {
+                            opcode: envelope.message.opcode(),
+                            abort_reason: AbortReason::IncorrectMode,
+                        },
+                        initiator,
+                    ))
                 } else {
                     None
                 }
             }
-            _ if envelope.destination != LogicalAddress::Broadcast => Some(Message::FeatureAbort {
-                opcode: envelope.message.opcode(),
-                abort_reason: AbortReason::UnrecognizedOp,
-            }),
+            _ if envelope.destination != LogicalAddress::Broadcast => Some((
+                Message::FeatureAbort {
+                    opcode: envelope.message.opcode(),
+                    abort_reason: AbortReason::UnrecognizedOp,
+                },
+                initiator,
+            )),
             MessageData::Valid(Message::RoutingChange { new_address, .. }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if new_address == this_address {
@@ -280,17 +290,13 @@ impl DeviceTask {
             }
             MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake => {
                 let address = self.device.lock().await.get_physical_address().await?;
-                Some(Message::ActiveSource { address })
+                Some((Message::ActiveSource { address }, LogicalAddress::Broadcast))
             }
             _ => None,
         };
 
-        if let Some(reply) = reply {
-            self.device
-                .lock()
-                .await
-                .tx_message(&reply, envelope.initiator)
-                .await?;
+        if let Some((reply, address)) = reply {
+            self.device.lock().await.tx_message(&reply, address).await?;
         }
         Ok(())
     }
