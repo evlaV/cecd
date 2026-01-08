@@ -231,7 +231,7 @@ impl DeviceTask {
                     uinput.key_down(ui_command)?;
                 }
                 self.active_key = Some(ui_command);
-                return Ok(());
+                None
             }
             MessageData::Valid(Message::UserControlReleased) => {
                 self.interface
@@ -243,7 +243,7 @@ impl DeviceTask {
                     }
                     self.active_key = None;
                 }
-                return Ok(());
+                None
             }
             MessageData::Valid(Message::SetStreamPath { address }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
