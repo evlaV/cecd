@@ -307,6 +307,26 @@ pub enum FollowerMode {
     MonitorAll,
 }
 
+/// This enum encodes the diferent ways in which a given message may be
+/// allowed to be addressed.
+///
+/// Hypothetically all messages can be addressed either directly or broadcast;
+/// however, the specification states that each message type only has specific
+/// ways it can be addressed. This enum encodes the various ways a message may
+/// be allowed to be addressed, per the specification, and can be queried on
+/// either a [`Message`](crate::message::Message) or an
+/// [`Opcode`](crate::message::Opcode).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AddressingType {
+    /// The given message can only be addressed
+    /// directly to a specific logical address.
+    Direct,
+    /// The given message can only be broadcast to all logical addresses.
+    Broadcast,
+    /// The given message can be either directly addressed or broadcast.
+    Either,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Range<T: PartialOrd + Clone + Display + Default + Debug, const S: usize = 4>
 where

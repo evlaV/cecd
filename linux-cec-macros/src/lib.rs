@@ -44,17 +44,27 @@ struct MessageEnum {
     to_bytes: Vec<TokenStream2>,
     len: Vec<TokenStream2>,
     expected_len: Vec<TokenStream2>,
+    has_addressing_type: bool,
+    addressing_type: Vec<TokenStream2>,
     tests: Vec<TokenStream2>,
 }
 
 impl MessageEnum {
-    fn add_message(&mut self, ident: Ident, fields: Fields) -> Result<(), String> {
+    fn add_message(
+        &mut self,
+        ident: Ident,
+        fields: Fields,
+        addressing: &Ident,
+    ) -> Result<(), String> {
         let message = &self.message;
         let opcode = &self.opcode;
         let mut from_params = Vec::new();
         let mut names = Vec::new();
 
         let testname: Ident = format_ident!("test_{}", AsSnakeCase(ident.to_string()).to_string());
+
+        self.addressing_type
+            .push(quote!(#opcode::#ident => AddressingType::#addressing));
 
         match fields {
             Fields::Named(_) => {
@@ -257,6 +267,12 @@ impl MessageEnum {
 
     fn process(mut self, data: DataEnum) -> Result<TokenStream2, String> {
         let mut opcodes = Vec::new();
+
+        let addressing = format_ident!("addressing");
+        let broadcast = format_ident!("Broadcast");
+        let direct = format_ident!("Direct");
+        let either = format_ident!("Either");
+
         for variant in data.variants {
             let ident = variant.ident;
             let Some((_, discriminant)) = variant.discriminant else {
@@ -264,7 +280,31 @@ impl MessageEnum {
             };
             opcodes.push(quote!(#ident = #discriminant));
 
-            self.add_message(ident, variant.fields)?;
+            let mut addressing_type = &direct;
+            for attr in variant.attrs {
+                let Meta::NameValue(meta) = attr.meta else {
+                    continue;
+                };
+                if meta.path.get_ident() != Some(&addressing) {
+                    continue;
+                };
+                let Expr::Lit(ExprLit {
+                    lit: Lit::Str(lit), ..
+                }) = meta.value
+                else {
+                    return Err(format!("Invalid addressing type for {ident}"));
+                };
+
+                self.has_addressing_type = true;
+                addressing_type = match lit.value().as_str() {
+                    "direct" => &direct,
+                    "broadcast" => &broadcast,
+                    "either" => &either,
+                    _ => return Err(format!("Unknown addressing type `{}`", lit.value())),
+                };
+            }
+
+            self.add_message(ident, variant.fields, addressing_type)?;
         }
 
         let message = self.message;
@@ -273,7 +313,26 @@ impl MessageEnum {
         let to_bytes = self.to_bytes;
         let len = self.len;
         let expected_len = self.expected_len;
+        let addressing_type = self.addressing_type;
         let tests = self.tests;
+
+        let addressing_type = if self.has_addressing_type {
+            Some(quote! {
+
+                /// Get the [`AddressingType`] that reports whether this `#opcode` can be
+                /// addressed directly to a specific logical address, broadcast to all
+                /// logical addresses, or both.
+                impl #opcode {
+                    pub fn addressing_type(&self) -> AddressingType {
+                        match self {
+                            #(#addressing_type,)*
+                        }
+                    }
+                }
+            })
+        } else {
+            None
+        };
 
         Ok(quote! {
             #[derive(
@@ -289,6 +348,8 @@ impl MessageEnum {
                     *self as u8 == *rhs
                 }
             }
+
+            #addressing_type
 
             impl #message {
                 pub fn try_from_bytes(bytes: &[u8]) -> Result<#message> {
@@ -330,7 +391,7 @@ impl MessageEnum {
     }
 }
 
-#[proc_macro_derive(MessageEnum)]
+#[proc_macro_derive(MessageEnum, attributes(addressing))]
 pub fn message_enum(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident: message,
@@ -353,6 +414,8 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
         to_bytes: Vec::new(),
         len: Vec::new(),
         expected_len: Vec::new(),
+        has_addressing_type: false,
+        addressing_type: Vec::new(),
         tests: Vec::new(),
     };
 

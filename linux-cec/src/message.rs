@@ -17,7 +17,7 @@ use std::str::FromStr;
 use tinyvec::array_vec;
 
 use crate::operand::OperandEncodable;
-use crate::{cdc, constants, operand, PhysicalAddress, Result};
+use crate::{cdc, constants, operand, AddressingType, PhysicalAddress, Result};
 #[cfg(test)]
 use crate::{Error, Range};
 
@@ -27,6 +27,7 @@ pub use crate::cdc::{Message as CdcMessage, Opcode as CdcOpcode};
 #[repr(u8)]
 #[non_exhaustive]
 pub enum Message {
+    #[addressing = "broadcast"]
     ActiveSource {
         address: PhysicalAddress,
     } = constants::CEC_MSG_ACTIVE_SOURCE,
@@ -35,17 +36,22 @@ pub enum Message {
     InactiveSource {
         address: PhysicalAddress,
     } = constants::CEC_MSG_INACTIVE_SOURCE,
+    #[addressing = "broadcast"]
     RequestActiveSource = constants::CEC_MSG_REQUEST_ACTIVE_SOURCE,
+    #[addressing = "broadcast"]
     RoutingChange {
         original_address: PhysicalAddress,
         new_address: PhysicalAddress,
     } = constants::CEC_MSG_ROUTING_CHANGE,
+    #[addressing = "broadcast"]
     RoutingInformation {
         address: PhysicalAddress,
     } = constants::CEC_MSG_ROUTING_INFORMATION,
+    #[addressing = "broadcast"]
     SetStreamPath {
         address: PhysicalAddress,
     } = constants::CEC_MSG_SET_STREAM_PATH,
+    #[addressing = "either"]
     Standby = constants::CEC_MSG_STANDBY,
     RecordOff = constants::CEC_MSG_RECORD_OFF,
     RecordOn {
@@ -118,10 +124,12 @@ pub enum Message {
     GetCecVersion = constants::CEC_MSG_GET_CEC_VERSION,
     GivePhysicalAddr = constants::CEC_MSG_GIVE_PHYSICAL_ADDR,
     GetMenuLanguage = constants::CEC_MSG_GET_MENU_LANGUAGE,
+    #[addressing = "broadcast"]
     ReportPhysicalAddr {
         physical_address: PhysicalAddress,
         device_type: operand::PrimaryDeviceType,
     } = constants::CEC_MSG_REPORT_PHYSICAL_ADDR,
+    #[addressing = "broadcast"]
     SetMenuLanguage {
         language: [u8; 3],
     } = constants::CEC_MSG_SET_MENU_LANGUAGE,
@@ -151,6 +159,7 @@ pub enum Message {
     } = constants::CEC_MSG_TUNER_DEVICE_STATUS,
     TunerStepDecrement = constants::CEC_MSG_TUNER_STEP_DECREMENT,
     TunerStepIncrement = constants::CEC_MSG_TUNER_STEP_INCREMENT,
+    #[addressing = "broadcast"]
     DeviceVendorId {
         vendor_id: crate::VendorId,
     } = constants::CEC_MSG_DEVICE_VENDOR_ID,
@@ -158,13 +167,16 @@ pub enum Message {
     VendorCommand {
         command: operand::BufferOperand,
     } = constants::CEC_MSG_VENDOR_COMMAND,
+    #[addressing = "either"]
     VendorCommandWithId {
         vendor_id: crate::VendorId,
         vendor_specific_data: operand::BoundedBufferOperand<11, u8>,
     } = constants::CEC_MSG_VENDOR_COMMAND_WITH_ID,
+    #[addressing = "either"]
     VendorRemoteButtonDown {
         rc_code: operand::BufferOperand,
     } = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_DOWN,
+    #[addressing = "either"]
     VendorRemoteButtonUp = constants::CEC_MSG_VENDOR_REMOTE_BUTTON_UP,
     SetOsdString {
         display_control: operand::DisplayControl,
@@ -185,6 +197,7 @@ pub enum Message {
     } = constants::CEC_MSG_USER_CONTROL_PRESSED,
     UserControlReleased = constants::CEC_MSG_USER_CONTROL_RELEASED,
     GiveDevicePowerStatus = constants::CEC_MSG_GIVE_DEVICE_POWER_STATUS,
+    #[addressing = "either"]
     ReportPowerStatus {
         status: operand::PowerStatus,
     } = constants::CEC_MSG_REPORT_POWER_STATUS,
@@ -204,6 +217,7 @@ pub enum Message {
     RequestShortAudioDescriptor {
         descriptors: operand::BoundedBufferOperand<4, operand::AudioFormatIdAndCode>,
     } = constants::CEC_MSG_REQUEST_SHORT_AUDIO_DESCRIPTOR,
+    #[addressing = "either"]
     SetSystemAudioMode {
         status: bool,
     } = constants::CEC_MSG_SET_SYSTEM_AUDIO_MODE,
@@ -223,11 +237,13 @@ pub enum Message {
     RequestArcInitiation = constants::CEC_MSG_REQUEST_ARC_INITIATION,
     RequestArcTermination = constants::CEC_MSG_REQUEST_ARC_TERMINATION,
     TerminateArc = constants::CEC_MSG_TERMINATE_ARC,
+    #[addressing = "broadcast"]
     CdcMessage {
         initiator: PhysicalAddress,
         message: cdc::Message,
     } = constants::CEC_MSG_CDC_MESSAGE,
     /* HDMI 2.0 */
+    #[addressing = "broadcast"]
     ReportFeatures {
         version: operand::Version,
         device_types: operand::AllDeviceTypes,
@@ -235,9 +251,11 @@ pub enum Message {
         device_features: operand::DeviceFeatures,
     } = constants::CEC_MSG_REPORT_FEATURES,
     GiveFeatures = constants::CEC_MSG_GIVE_FEATURES,
+    #[addressing = "broadcast"]
     RequestCurrentLatency {
         physical_address: PhysicalAddress,
     } = constants::CEC_MSG_REQUEST_CURRENT_LATENCY,
+    #[addressing = "broadcast"]
     ReportCurrentLatency {
         physical_address: PhysicalAddress,
         video_latency: operand::Delay,
@@ -255,6 +273,46 @@ impl Message {
     pub fn opcode(&self) -> Opcode {
         let opcode = unsafe { *<*const _>::from(self).cast::<u8>() };
         Opcode::try_from_primitive(opcode).unwrap()
+    }
+
+    /// Report whether or not this `Message` can be directly
+    /// addressed to a specific logical address.
+    #[must_use]
+    pub fn can_directly_address(&self) -> bool {
+        self.opcode().can_directly_address()
+    }
+
+    /// Report whether or not this `Message` can be
+    /// broadcast to all logical addresses.
+    #[must_use]
+    pub fn can_broadcast(&self) -> bool {
+        self.opcode().can_broadcast()
+    }
+
+    /// Get the [`AddressingType`] that reports whether this `Message` can be
+    /// addressed directly to a specific logical address, broadcast to all
+    /// logical addresses, or both.
+    #[must_use]
+    pub fn addressing_type(&self) -> AddressingType {
+        self.opcode().addressing_type()
+    }
+}
+
+impl Opcode {
+    #[must_use]
+    pub fn can_directly_address(&self) -> bool {
+        matches!(
+            self.addressing_type(),
+            AddressingType::Direct | AddressingType::Either
+        )
+    }
+
+    #[must_use]
+    pub fn can_broadcast(&self) -> bool {
+        matches!(
+            self.addressing_type(),
+            AddressingType::Broadcast | AddressingType::Either
+        )
     }
 }
 
