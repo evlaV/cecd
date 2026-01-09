@@ -56,49 +56,49 @@ impl CecConfig {
         dbg!(&self.cached_config, &old_config);
 
         if self.cached_config.osd_name != old_config.osd_name {
-            if let Err(e) = self.osd_name_changed(&emitter).await {
+            if let Err(e) = self.osd_name_changed(emitter).await {
                 warn!("Failed to emit OsdName changed: {e}");
             }
         }
 
         if self.cached_config.vendor_id != old_config.vendor_id {
-            if let Err(e) = self.vendor_id_changed(&emitter).await {
+            if let Err(e) = self.vendor_id_changed(emitter).await {
                 warn!("Failed to emit VendorId changed: {e}");
             }
         }
 
         if self.cached_config.logical_address != old_config.logical_address {
-            if let Err(e) = self.logical_address_changed(&emitter).await {
+            if let Err(e) = self.logical_address_changed(emitter).await {
                 warn!("Failed to emit LogicalAddress changed: {e}");
             }
         }
 
         if self.cached_config.mappings != old_config.mappings {
-            if let Err(e) = self.mappings_changed(&emitter).await {
+            if let Err(e) = self.mappings_changed(emitter).await {
                 warn!("Failed to emit Mappings changed: {e}");
             }
         }
 
         if self.cached_config.wake_tv != old_config.wake_tv {
-            if let Err(e) = self.wake_tv_changed(&emitter).await {
+            if let Err(e) = self.wake_tv_changed(emitter).await {
                 warn!("Failed to emit WakeTv changed: {e}");
             }
         }
 
         if self.cached_config.suspend_tv != old_config.suspend_tv {
-            if let Err(e) = self.suspend_tv_changed(&emitter).await {
+            if let Err(e) = self.suspend_tv_changed(emitter).await {
                 warn!("Failed to emit SuspendTv changed: {e}");
             }
         }
 
         if self.cached_config.allow_standby != old_config.allow_standby {
-            if let Err(e) = self.allow_standby_changed(&emitter).await {
+            if let Err(e) = self.allow_standby_changed(emitter).await {
                 warn!("Failed to emit AllowStandby changed: {e}");
             }
         }
 
         if self.cached_config.disable_uinput != old_config.disable_uinput {
-            if let Err(e) = self.disable_uinput_changed(&emitter).await {
+            if let Err(e) = self.disable_uinput_changed(emitter).await {
                 warn!("Failed to emit DisableUinput changed: {e}");
             }
         }
@@ -109,11 +109,7 @@ impl CecConfig {
 impl CecConfig {
     #[zbus(property)]
     pub async fn osd_name(&self) -> &str {
-        self.cached_config
-            .osd_name
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("")
+        self.cached_config.osd_name.as_deref().unwrap_or("")
     }
 
     #[zbus(property)]

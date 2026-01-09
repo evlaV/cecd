@@ -462,7 +462,7 @@ impl ConfigTask {
                 continue;
             }
             let emitter = config_obj.signal_emitter();
-            config_obj.get_mut().await.reconfigure(&emitter).await;
+            config_obj.get_mut().await.reconfigure(emitter).await;
         }
     }
 }
