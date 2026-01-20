@@ -2,8 +2,8 @@
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <!--
-      com.steampowered.CecDaemon1.CecDevice1
-      @short_description: An HDMI CEC device.
+      com.steampowered.CecDaemon1.Config1
+      @short_description: The configuration of the daemon, for remote querying.
 
   -->
   <interface name="com.steampowered.CecDaemon1.Config1">
