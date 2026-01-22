@@ -17,6 +17,7 @@ use tokio::task::{spawn, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 use zbus::object_server::SignalEmitter;
+use zbus::zvariant::{ObjectPath, OwnedObjectPath};
 use zbus::{fdo, interface, Connection};
 
 use crate::config::Config;
@@ -164,6 +165,7 @@ pub struct CecDevice {
     pub token: CancellationToken,
     channel: Option<Sender<SystemMessage>>,
     path: PathBuf,
+    dbus_path: OwnedObjectPath,
     pub cached_phys_addr: u16,
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
@@ -175,10 +177,26 @@ impl CecDevice {
     pub async fn open(path: impl AsRef<Path>, token: CancellationToken) -> Result<CecDevice> {
         let path = canonicalize(path).await?;
         let device = ArcDevice::open(&path).await?;
+
+        let dbus_path = path.to_str().ok_or(anyhow!("Invalid path supplied"))?;
+        let dbus_path = dbus_path.strip_prefix("/dev").unwrap_or(dbus_path);
+        let dbus_path = dbus_path
+            .split('/')
+            .filter_map(|node| {
+                // Capitalize the first letter of all path elements, if present
+                let mut chars = node.chars();
+                chars
+                    .next()
+                    .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
+            })
+            .collect::<String>();
+        let dbus_path = OwnedObjectPath::try_from(format!("{PATH}/Devices/{dbus_path}"))?;
+
         Ok(CecDevice {
             device,
             token,
             path,
+            dbus_path,
             channel: None,
             cached_phys_addr: 0xFFFF,
             cached_log_addrs: Vec::new(),
@@ -192,10 +210,10 @@ impl CecDevice {
         debug!("Registering CEC device {} on bus", self.path.display());
 
         let object_server = connection.object_server();
-        let path = self.dbus_path()?;
-        object_server.at(path.clone(), self).await?;
+        let dbus_path = self.dbus_path.clone();
+        object_server.at(dbus_path.as_ref(), self).await?;
 
-        let interface = object_server.interface(path.clone()).await?;
+        let interface = object_server.interface(dbus_path.as_ref()).await?;
         let sender;
         let receiver;
         {
@@ -207,24 +225,12 @@ impl CecDevice {
         spawn(task.run());
         let mut interface = interface.get_mut().await;
         interface.channel = Some(sender);
-        info!("Device {path} registered");
+        info!("Device {dbus_path} registered");
         Ok(())
     }
 
-    pub fn dbus_path(&self) -> Result<String> {
-        let path = self.path.to_str().ok_or(anyhow!("Invalid path supplied"))?;
-        let path = path.strip_prefix("/dev").unwrap_or(path);
-        let path = path
-            .split('/')
-            .filter_map(|node| {
-                // Capitalize the first letter of all path elements, if present
-                let mut chars = node.chars();
-                chars
-                    .next()
-                    .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
-            })
-            .collect::<String>();
-        Ok(format!("{PATH}/Devices/{path}"))
+    pub fn dbus_path(&self) -> &ObjectPath<'_> {
+        &self.dbus_path
     }
 
     pub async fn send_system_message(&self, message: SystemMessage) -> Result<()> {

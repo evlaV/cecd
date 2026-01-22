@@ -18,6 +18,7 @@ use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 use zbus::object_server::InterfaceRef;
+use zbus::zvariant::OwnedObjectPath;
 use zbus::Connection;
 
 use crate::dbus::{CecDevice, CecDeviceSignals};
@@ -36,7 +37,7 @@ pub struct DeviceTask {
     active_key: Option<UiCommand>,
     channel: Receiver<SystemMessage>,
     connection: Connection,
-    path: String,
+    path: OwnedObjectPath,
     log_addr_try: i32,
     awaiting_wake: bool,
     poller: AsyncDevicePoller,
@@ -63,7 +64,7 @@ impl DeviceTask {
         let poller = device.lock().await.get_poller().await?;
         dbus_obj.uinput = system.lock().await.configure_dev(device.clone()).await?;
         let token = dbus_obj.token.clone();
-        let path = dbus_obj.dbus_path()?;
+        let path = OwnedObjectPath::from(dbus_obj.dbus_path().clone());
         Ok(DeviceTask {
             device,
             system,
@@ -122,7 +123,7 @@ impl DeviceTask {
         let path = self.path;
         info!("Deregistering path {path}");
         let object_server = self.connection.object_server();
-        object_server.remove::<CecDevice, String>(path).await?;
+        object_server.remove::<CecDevice, _>(path).await?;
         Ok(())
     }
 
