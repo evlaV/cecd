@@ -28,6 +28,7 @@ use crate::udev::udev_hotplug;
 pub(crate) mod config;
 pub(crate) mod dbus;
 pub(crate) mod device;
+pub(crate) mod message_handler;
 pub(crate) mod system;
 pub(crate) mod udev;
 pub(crate) mod uinput;
@@ -129,6 +130,7 @@ struct Arguments {
 pub async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
+    debug!("cecd starting up");
     let args = Arguments::parse();
     let token = CancellationToken::new();
     let builder = Builder::session()?;
@@ -142,8 +144,8 @@ pub async fn main() -> Result<()> {
         let mut system = system.clone();
         spawn(async move { system.run().await })
     };
+    system.setup_dbus().await?;
 
-    debug!("cecd starting up");
     debug!("OSD name: {}", system.osd_name().await);
     debug!(
         "Vendor ID: {}",

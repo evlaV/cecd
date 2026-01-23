@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use libc::pid_t;
 use nix::sys::signal;
 use nix::unistd::Pid;
@@ -78,6 +78,10 @@ impl MockDBus {
 
     pub fn address(&self) -> Address {
         self.address.clone()
+    }
+
+    pub async fn new_connection(&self) -> Result<Connection> {
+        Ok(Builder::address(self.address.clone())?.build().await?)
     }
 }
 

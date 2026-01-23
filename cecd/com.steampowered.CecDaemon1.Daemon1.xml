@@ -1,0 +1,51 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <!--
+      com.steampowered.CecDaemon1.Daemon1
+      @short_description: Runtime information about the daemon.
+
+  -->
+  <interface name="com.steampowered.CecDaemon1.Daemon1">
+    <!--
+        RegisterMessageHandler:
+        @opcode: The opcode for which to listen.
+        @path: The path to the object to act as a handler.
+        @ok: True if this message handler could be registered. It will fail if
+        there is already one registered or if the specified path does not
+        exist with the com.steampowered.CecDaemon1.MessageHandler1 interface
+        implemented.
+
+        Register a remote message handler. When registered, the given @path on
+        this connection which implements the com.steampowered.CecDaemon1.MessageHandler1
+        interface will receive a HandleMessage call, which must handle the
+        message itself.
+    -->
+    <method name="RegisterMessageHandler">
+      <arg name="opcode" type="y"/>
+      <arg name="path" type="o"/>
+      <arg name="ok" type="b"/>
+    </method>
+
+    <!--
+        UnregisterMessageHandler:
+        @opcode: The associated opcode for which to unregister the handler
+        @ok: True if the message handler was unregistered.
+
+        Unregister a message handler associated with a given opcode and this
+        connection.
+    -->
+    <method name="UnregisterMessageHandler">
+      <arg name="opcode" type="y"/>
+      <arg name="ok" type="b"/>
+    </method>
+
+    <!--
+        HandledMessages:
+
+        A list of all the currently handled opcodes.
+    -->
+    <property name="HandledMessages" type="ay" access="read"/>
+  </interface>
+</node>
+

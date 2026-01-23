@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use linux_cec::device::{Envelope, MessageData, PollResult, PollStatus};
-use linux_cec::message::Message;
+use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress};
 #[cfg(not(test))]
@@ -52,6 +52,16 @@ pub struct KeyRepeat {
 }
 
 impl DeviceTask {
+    pub const STATIC_HANDLERS: &[Opcode] = &[
+        Opcode::GiveDevicePowerStatus,
+        Opcode::UserControlPressed,
+        Opcode::UserControlReleased,
+        Opcode::SetStreamPath,
+        Opcode::Standby,
+        Opcode::RoutingChange,
+        Opcode::RequestActiveSource,
+    ];
+
     pub async fn new(
         iface: InterfaceRef<CecDevice>,
         system: SystemHandle,
@@ -274,13 +284,6 @@ impl DeviceTask {
                     None
                 }
             }
-            _ if envelope.destination != LogicalAddress::Broadcast => Some((
-                Message::FeatureAbort {
-                    opcode: envelope.message.opcode(),
-                    abort_reason: AbortReason::UnrecognizedOp,
-                },
-                initiator,
-            )),
             MessageData::Valid(Message::RoutingChange { new_address, .. }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if new_address == this_address {
@@ -291,6 +294,20 @@ impl DeviceTask {
             MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake => {
                 let address = self.device.lock().await.get_physical_address().await?;
                 Some((Message::ActiveSource { address }, LogicalAddress::Broadcast))
+            }
+            _ if envelope.destination != LogicalAddress::Broadcast => {
+                let opcode = envelope.message.opcode();
+                if let Some(handler) = self.system.get_message_handler(opcode).await {
+                    handler.handle(&self.path, opcode, &envelope).await
+                } else {
+                    Some((
+                        Message::FeatureAbort {
+                            opcode: envelope.message.opcode(),
+                            abort_reason: AbortReason::UnrecognizedOp,
+                        },
+                        initiator,
+                    ))
+                }
             }
             _ => None,
         };

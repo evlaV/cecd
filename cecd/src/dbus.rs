@@ -12,7 +12,7 @@ use linux_cec::{
     TxError,
 };
 use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tokio::fs::canonicalize;
 use tokio::sync::broadcast::Sender;
@@ -106,6 +106,12 @@ impl From<CecError> for Error {
 impl From<fdo::Error> for Error {
     fn from(err: fdo::Error) -> Error {
         Error::FDO(err)
+    }
+}
+
+impl From<zbus::Error> for Error {
+    fn from(err: zbus::Error) -> Error {
+        Error::FDO(err.into())
     }
 }
 
@@ -254,6 +260,88 @@ impl CecConfig {
 
     pub async fn reload(&self) -> Result<()> {
         Ok(self.system.reconfig().await?)
+    }
+}
+
+#[derive(Debug)]
+pub struct Daemon {
+    system: SystemHandle,
+}
+
+impl Daemon {
+    pub fn new(system: &SystemHandle) -> Daemon {
+        Daemon {
+            system: system.clone(),
+        }
+    }
+}
+
+#[interface(name = "com.steampowered.CecDaemon1.Daemon1")]
+impl Daemon {
+    async fn register_message_handler(
+        &mut self,
+        opcode: u8,
+        path: ObjectPath<'_>,
+        #[zbus(header)] header: Header<'_>,
+        #[zbus(signal_emitter)] signal_emitter: SignalEmitter<'_>,
+    ) -> Result<bool> {
+        let handled = self.system.list_handled_messages().await;
+        if handled.contains(&opcode) {
+            return Ok(false);
+        }
+        if !self
+            .system
+            .register_message_handler(
+                opcode,
+                path,
+                header.sender().ok_or_else(|| {
+                    fdo::Error::NameHasNoOwner(String::from(
+                        "Cannot register message handler without a D-Bus unique name",
+                    ))
+                })?,
+            )
+            .await?
+        {
+            return Ok(false);
+        }
+        self.handled_messages_changed(&signal_emitter).await?;
+        Ok(true)
+    }
+
+    async fn unregister_message_handler(
+        &mut self,
+        opcode: u8,
+        #[zbus(header)] header: Header<'_>,
+        #[zbus(signal_emitter)] signal_emitter: SignalEmitter<'_>,
+    ) -> Result<bool> {
+        if !self
+            .system
+            .unregister_message_handler(
+                opcode,
+                header.sender().ok_or_else(|| {
+                    fdo::Error::NameHasNoOwner(String::from(
+                        "Cannot register message handler without a D-Bus unique name",
+                    ))
+                })?,
+            )
+            .await?
+        {
+            return Ok(false);
+        }
+        self.handled_messages_changed(&signal_emitter).await?;
+        Ok(true)
+    }
+
+    #[zbus(property)]
+    async fn handled_messages(&self) -> Vec<u8> {
+        let handled = self.system.list_handled_messages().await;
+        let static_handled: HashSet<u8> = DeviceTask::STATIC_HANDLERS
+            .iter()
+            .map(|opcode| *opcode as u8)
+            .collect();
+        let mut handled: Vec<u8> = (&static_handled | &handled).into_iter().collect();
+        handled.sort();
+        handled
     }
 }
 

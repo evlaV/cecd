@@ -9,7 +9,8 @@ use linux_cec::device::Capabilities;
 use linux_cec::operand::UiCommand;
 use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, PhysicalAddress, VendorId};
 use nix::unistd::gethostname;
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
+use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -23,10 +24,13 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 use zbus::connection::{Builder, Connection};
 use zbus::fdo::ObjectManager;
+use zbus::names::UniqueName;
 use zbus::proxy;
+use zbus::zvariant::ObjectPath;
 
 use crate::config::{read_config_file, read_default_config, Config};
-use crate::dbus::{CecConfig, CecDevice, PATH};
+use crate::dbus::{CecConfig, CecDevice, Daemon, PATH};
+use crate::message_handler::{MessageHandler, MessageHandlerTask};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
@@ -41,6 +45,8 @@ pub(crate) struct System {
     system_bus: Connection,
     token: CancellationToken,
     devs: HashMap<PathBuf, CancellationToken>,
+
+    message_handlers: HashMap<u8, MessageHandlerHandle>,
 }
 
 #[proxy(
@@ -168,11 +174,7 @@ impl System {
         system_bus: Connection,
         config_path: Option<PathBuf>,
     ) -> Result<System> {
-        let connection = builder
-            .name("com.steampowered.CecDaemon1")?
-            .serve_at(PATH, ObjectManager {})?
-            .build()
-            .await?;
+        let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
         let (channel, _) = channel(10);
 
         let hostname = gethostname()
@@ -193,6 +195,7 @@ impl System {
             devs: HashMap::new(),
             channel,
             config_path,
+            message_handlers: HashMap::new(),
         })
     }
 
@@ -524,6 +527,69 @@ impl SystemHandle {
         let login_manager = LoginManagerProxy::new(&self.lock().await.system_bus).await?;
         login_manager.suspend(false).await
     }
+
+    pub(crate) async fn setup_dbus(&self) -> Result<()> {
+        // We can't have the lock held while we install
+        // the ObjectManager to avoid a deadlock
+        let connection = self.lock().await.connection.clone();
+        let object_server = connection.object_server();
+
+        let daemon_obj = Daemon::new(self);
+        object_server
+            .at(format!("{PATH}/Daemon"), daemon_obj)
+            .await?;
+
+        object_server.at(PATH, ObjectManager {}).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn get_message_handler(&self, opcode: u8) -> Option<MessageHandler<'_>> {
+        let system = self.lock().await;
+        system
+            .message_handlers
+            .get(&opcode)
+            .map(|handle| handle.handler.clone())
+    }
+
+    pub(crate) async fn register_message_handler(
+        &self,
+        opcode: impl Into<u8>,
+        object: ObjectPath<'_>,
+        bus_name: &UniqueName<'_>,
+    ) -> Result<bool> {
+        let mut system = self.lock().await;
+        let opcode = opcode.into();
+        if system.message_handlers.contains_key(&opcode) {
+            return Ok(false);
+        }
+        let task =
+            MessageHandlerTask::start(&system.connection, self.clone(), opcode, bus_name).await?;
+        let handler = MessageHandler::new(&system.connection, &object, bus_name).await?;
+        system
+            .message_handlers
+            .insert(opcode, MessageHandlerHandle { handler, task });
+        Ok(true)
+    }
+
+    pub(crate) async fn unregister_message_handler(
+        &self,
+        opcode: impl Into<u8>,
+        bus_name: &UniqueName<'_>,
+    ) -> Result<bool> {
+        let mut system = self.lock().await;
+        let opcode = opcode.into();
+        let entry = system.message_handlers.entry(opcode);
+        let handle = match entry {
+            Entry::Occupied(entry) if entry.get().handler.is_name(bus_name) => entry.remove(),
+            _ => return Ok(false),
+        };
+        handle.task.abort();
+        Ok(true)
+    }
+
+    pub(crate) async fn list_handled_messages(&self) -> HashSet<u8> {
+        self.lock().await.message_handlers.keys().copied().collect()
+    }
 }
 
 #[derive(Debug)]
@@ -576,10 +642,28 @@ impl ConfigTask {
     }
 }
 
+#[derive(Debug)]
+pub struct MessageHandlerHandle {
+    handler: MessageHandler<'static>,
+    task: JoinHandle<Result<()>>,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use linux_cec::device::{Envelope, MessageData};
+    use linux_cec::message::{Message, Opcode};
+    use linux_cec::operand::AbortReason;
+    use linux_cec::{LogicalAddress, PhysicalAddress};
     use std::iter::repeat_n;
+    use std::time::Duration;
+    use tokio::select;
+    use tokio::time::sleep;
+    use zbus::zvariant::OwnedObjectPath;
+    use zbus::{fdo, interface};
+
+    use crate::testing::setup_dbus_test;
 
     #[test]
     fn test_parse_edid_missing() {
@@ -994,5 +1078,292 @@ mod test {
         ];
         let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
         assert_eq!(System::parse_hdmi_edid_pa(&edid), None);
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct RemoteMessage {
+        device: OwnedObjectPath,
+        initiator: u8,
+        destination: u8,
+        timestamp: u64,
+        message: Vec<u8>,
+    }
+
+    #[derive(Debug)]
+    struct MockMessageHandler {
+        last_message: Option<RemoteMessage>,
+        abort: Option<AbortReason>,
+        channel: Sender<()>,
+        timeout: bool,
+    }
+
+    impl MockMessageHandler {
+        fn new() -> MockMessageHandler {
+            MockMessageHandler {
+                last_message: None,
+                abort: None,
+                channel: Sender::new(2),
+                timeout: false,
+            }
+        }
+    }
+
+    #[interface(name = "com.steampowered.CecDaemon1.MessageHandler1")]
+    impl MockMessageHandler {
+        async fn handle_message(
+            &mut self,
+            device: OwnedObjectPath,
+            initiator: u8,
+            destination: u8,
+            timestamp: u64,
+            message: &[u8],
+        ) -> fdo::Result<(bool, u8)> {
+            self.last_message = Some(RemoteMessage {
+                device,
+                initiator,
+                destination,
+                timestamp,
+                message: message.to_vec(),
+            });
+            let _ = self.channel.send(());
+            if self.timeout {
+                sleep(Duration::from_millis(100)).await;
+                let _ = self.channel.send(());
+                Ok((true, 0))
+            } else if let Some(abort) = self.abort.as_ref() {
+                Ok((false, *abort as u8))
+            } else {
+                Ok((true, 0))
+            }
+        }
+    }
+
+    async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+        let mut dev = dev.lock().await;
+        dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+        dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_no_handlers() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+
+        assert!(test.system.list_handled_messages().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_handler_drop() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+        let new_conn = test.dbus.new_connection().await.unwrap();
+
+        let object_server = new_conn.object_server();
+        let path = ObjectPath::try_from("/TestHandler").unwrap();
+        assert!(object_server
+            .at(&path, MockMessageHandler::new())
+            .await
+            .unwrap());
+        let unique_name = new_conn.unique_name().unwrap();
+
+        assert!(test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+        assert_eq!(
+            test.system
+                .list_handled_messages()
+                .await
+                .into_iter()
+                .collect::<Vec<_>>(),
+            &[Opcode::GetCecVersion as u8]
+        );
+
+        new_conn.graceful_shutdown().await;
+        sleep(Duration::from_millis(5)).await; // Wait for the drop to propagate
+        assert!(test.system.list_handled_messages().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_handler_relay() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+        let new_conn = test.dbus.new_connection().await.unwrap();
+
+        let object_server = new_conn.object_server();
+        let path = ObjectPath::try_from("/TestHandler").unwrap();
+        let handler = MockMessageHandler::new();
+        let mut rx = handler.channel.subscribe();
+        assert!(object_server.at(&path, handler).await.unwrap());
+        let handler = object_server
+            .interface::<_, MockMessageHandler>(&path)
+            .await
+            .unwrap();
+        let unique_name = new_conn.unique_name().unwrap();
+
+        assert!(test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::GetCecVersion),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        select! {
+            _ = sleep(Duration::from_millis(50)) => (),
+            _ = rx.recv() => (),
+        };
+        let message = handler.get_mut().await.last_message.take().unwrap();
+        assert_eq!(&message.device.as_ref(), test.proxy.inner().path());
+        assert_eq!(message.initiator, LogicalAddress::Tv as u8);
+        assert_eq!(message.destination, LogicalAddress::PlaybackDevice1 as u8);
+        assert_eq!(message.message, &[Opcode::GetCecVersion as u8]);
+        assert!(test.dev.lock().await.dequeue_tx_message().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_register_handler_timeout() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+        let new_conn = test.dbus.new_connection().await.unwrap();
+
+        let object_server = new_conn.object_server();
+        let path = ObjectPath::try_from("/TestHandler").unwrap();
+        let mut handler = MockMessageHandler::new();
+        let mut rx = handler.channel.subscribe();
+        handler.timeout = true;
+        assert!(object_server.at(&path, handler).await.unwrap());
+        let unique_name = new_conn.unique_name().unwrap();
+
+        assert!(test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::GetCecVersion),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        rx.recv().await.unwrap();
+        assert!(test.dev.lock().await.dequeue_tx_message().await.is_none());
+        rx.recv().await.unwrap();
+        let (message, address) = test.dev.lock().await.dequeue_tx_message().await.unwrap();
+        assert_eq!(address, LogicalAddress::Tv);
+        assert_eq!(
+            message,
+            Message::FeatureAbort {
+                opcode: Opcode::GetCecVersion as u8,
+                abort_reason: AbortReason::Undetermined,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_register_handler_abort() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+        let new_conn = test.dbus.new_connection().await.unwrap();
+
+        let object_server = new_conn.object_server();
+        let path = ObjectPath::try_from("/TestHandler").unwrap();
+        let mut handler = MockMessageHandler::new();
+        let mut rx = handler.channel.subscribe();
+        handler.abort = Some(AbortReason::Refused);
+        assert!(object_server.at(&path, handler).await.unwrap());
+        let unique_name = new_conn.unique_name().unwrap();
+
+        assert!(test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::GetCecVersion),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+        rx.recv().await.unwrap();
+        sleep(Duration::from_millis(1)).await;
+        let (message, address) = test.dev.lock().await.dequeue_tx_message().await.unwrap();
+        assert_eq!(address, LogicalAddress::Tv);
+        assert_eq!(
+            message,
+            Message::FeatureAbort {
+                opcode: Opcode::GetCecVersion as u8,
+                abort_reason: AbortReason::Refused,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_double_register_handler() {
+        let test = setup_dbus_test(cb, None).await.unwrap();
+        let new_conn = test.dbus.new_connection().await.unwrap();
+
+        let object_server = new_conn.object_server();
+        let unique_name = new_conn.unique_name().unwrap();
+
+        let path = ObjectPath::try_from("/TestHandler").unwrap();
+        assert!(object_server
+            .at(&path, MockMessageHandler::new())
+            .await
+            .unwrap());
+        assert!(test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        let path = ObjectPath::try_from("/TestHandler2").unwrap();
+        assert!(object_server
+            .at(&path, MockMessageHandler::new())
+            .await
+            .unwrap());
+        assert!(!test
+            .system
+            .register_message_handler(Opcode::GetCecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        assert_eq!(
+            test.system
+                .list_handled_messages()
+                .await
+                .into_iter()
+                .collect::<Vec<_>>(),
+            &[Opcode::GetCecVersion as u8]
+        );
+
+        assert!(test
+            .system
+            .register_message_handler(Opcode::CecVersion, path.as_ref(), unique_name)
+            .await
+            .unwrap());
+
+        assert_eq!(
+            test.system.list_handled_messages().await,
+            HashSet::from([Opcode::CecVersion as u8, Opcode::GetCecVersion as u8])
+        );
     }
 }

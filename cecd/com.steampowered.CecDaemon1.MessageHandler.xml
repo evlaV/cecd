@@ -1,0 +1,28 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <!--
+      com.steampowered.CecDaemon1.MessageHandler1
+      @short_description: An interface that third-party daemons can implement
+      to be passed messages externally by registering the associated object
+      by calling the RegisterMessageHandler method of the
+      com.steampowered.CecDaemon1.Daemon1 interface on the Daemon object.
+
+  -->
+  <interface name="com.steampowered.CecDaemon1.MessageHandler1">
+    <!--
+        HandleMessage:
+
+        TKTK
+    -->
+    <method name="HandleMessage">
+      <arg name="device" type="o" direction="in"/>
+      <arg name="initiator" type="y" direction="in"/>
+      <arg name="destination" type="y" direction="in"/>
+      <arg name="timestamp" type="t" direction="in"/>
+      <arg name="message" type="ay" direction="in"/>
+      <arg name="ok" type="b" direction="out"/>
+      <arg name="abort_reason" type="y" direction="out"/>
+    </method>
+  </interface>
+</node>

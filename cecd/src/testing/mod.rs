@@ -436,7 +436,7 @@ pub(crate) struct DBusTest<'a> {
     pub proxy: CecDeviceProxy<'a>,
     pub connection: Connection,
     pub system: SystemHandle,
-    _dbus: MockDBus,
+    pub dbus: MockDBus,
     _guard: DefaultGuard,
 }
 
@@ -457,7 +457,7 @@ where
     debug!("Setting up DBus test");
     let dbus = MockDBus::new().await?;
     let builder = Builder::address(dbus.address())?;
-    let connection = Builder::address(dbus.address())?.build().await?;
+    let connection = dbus.new_connection().await?;
     debug!("Got DBus connection");
 
     let token = CancellationToken::new();
@@ -491,7 +491,7 @@ where
             .await?,
         connection,
         system,
-        _dbus: dbus,
+        dbus,
         _guard: guard,
     })
 }
