@@ -253,7 +253,7 @@ impl System {
 
     pub(crate) async fn set_config(&mut self, config: Config) -> Result<()> {
         if let Some(ref osd_name) = config.osd_name {
-            self.osd_name = osd_name.clone();
+            self.osd_name.clone_from(osd_name);
         }
         self.config = config;
 
@@ -273,7 +273,7 @@ impl System {
         }
 
         if self.config.mappings.is_empty() {
-            self.config.mappings = HashMap::from_iter(System::DEFAULT_MAPPINGS.iter().copied());
+            self.config.mappings = System::DEFAULT_MAPPINGS.iter().copied().collect();
         }
 
         debug!("Configuration loaded: {:#?}", self.config);

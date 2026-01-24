@@ -37,7 +37,7 @@ pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken)
     let fd = AsyncFd::new(monitor.as_fd())?;
     loop {
         select! {
-            _ = token.cancelled() => break Ok(()),
+            () = token.cancelled() => break Ok(()),
             guard = fd.ready(Interest::READABLE) => {
                 let mut guard = guard?;
                 for ev in iter.by_ref() {

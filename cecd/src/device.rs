@@ -117,7 +117,7 @@ impl DeviceTask {
                         error!("Message handling failed: {err}");
                     }
                 }
-                _ = self.token.cancelled() => break,
+                () = self.token.cancelled() => break,
             }
         }
         let path = self.path;
@@ -143,14 +143,13 @@ impl DeviceTask {
                     .await
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|v| v.into())
+                    .map(Into::into)
                     .collect();
                 let vendor_id = device
                     .get_vendor_id()
                     .await
                     .unwrap_or_default()
-                    .map(Into::<i32>::into)
-                    .unwrap_or(-1);
+                    .map_or(-1, Into::<i32>::into);
 
                 let emitter = self.interface.signal_emitter();
                 let mut iface = self.interface.get_mut().await;
@@ -335,7 +334,7 @@ impl DeviceTask {
                     result?;
                 }
                 Err(e) => warn!("Failed to activate source: {e}"),
-            };
+            }
             sleep(WAKE_DELAY).await;
         }
         info!("TV did not respond to wake immediately");
@@ -387,8 +386,8 @@ impl KeyRepeat {
                 .press_user_control(self.key, self.log_addr)
                 .await?;
             select! {
-                _ = self.token.cancelled() => break,
-                _ = delay => continue,
+                () = self.token.cancelled() => break,
+                () = delay => continue,
             }
         }
         Ok(self

@@ -191,7 +191,7 @@ pub async fn main() -> Result<()> {
                 let mut sighup = signal(SignalKind::hangup())?;
                 select! {
                     _ = sighup.recv() => (),
-                    _ = token.cancelled() => break,
+                    () = token.cancelled() => break,
                 }
                 let _ = notify_socket.begin_reload().await;
                 system.reconfig().await?;
@@ -209,7 +209,7 @@ pub async fn main() -> Result<()> {
     select! {
         r = ctrl_c() => r?,
         _ = sigterm.recv() => (),
-        _ = local => (),
+        () = local => (),
         r = config_reload => r??,
         r = system_task => r??,
     };

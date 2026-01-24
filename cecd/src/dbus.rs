@@ -115,10 +115,7 @@ impl CecConfig {
 
     #[zbus(property)]
     pub async fn vendor_id(&self) -> i32 {
-        self.cached_config
-            .vendor_id
-            .map(Into::<i32>::into)
-            .unwrap_or(-1)
+        self.cached_config.vendor_id.map_or(-1, Into::<i32>::into)
     }
 
     #[zbus(property)]
@@ -128,11 +125,15 @@ impl CecConfig {
 
     #[zbus(property)]
     pub async fn mappings(&self) -> Vec<(Vec<u8>, u16)> {
-        Vec::from_iter(self.cached_config.mappings.iter().map(|(k, v)| {
-            let mut kv = Vec::new();
-            k.to_bytes(&mut kv);
-            (kv, (*v).into())
-        }))
+        self.cached_config
+            .mappings
+            .iter()
+            .map(|(k, v)| {
+                let mut kv = Vec::new();
+                k.to_bytes(&mut kv);
+                (kv, (*v).into())
+            })
+            .collect()
     }
 
     #[zbus(property)]

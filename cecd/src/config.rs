@@ -183,7 +183,7 @@ pub(crate) async fn read_default_config() -> Result<Config> {
         config_paths.push(home.join("cecd"));
     }
 
-    for config_path in config_paths.into_iter() {
+    for config_path in config_paths {
         builder = builder.add_async_source(AsyncFileSource::from(
             config_path.join("config.toml"),
             FileFormat::Toml,
