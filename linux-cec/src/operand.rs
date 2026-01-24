@@ -638,7 +638,9 @@ where
     fn to_bytes(&self, buf: &mut impl Extend<u8>) {
         let head: u8 = self.fixed_param().into();
         let extra_params = self.extra_params();
-        if !extra_params.is_empty() {
+        if extra_params.is_empty() {
+            buf.extend([head & 0x7F]);
+        } else {
             buf.extend([head | 0x80]);
             buf.extend(
                 extra_params
@@ -647,8 +649,6 @@ where
                     .map(|b| b | 0x80),
             );
             buf.extend([extra_params.last().unwrap() & 0x7F]);
-        } else {
-            buf.extend([head & 0x7F]);
         }
     }
 
@@ -1674,7 +1674,7 @@ impl OperandEncodable for UiCommand {
             UiCommand::SelectAvInputFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
             UiCommand::SelectAudioInputFunction(x) => <_ as OperandEncodable>::to_bytes(x, buf),
             _ => (),
-        };
+        }
     }
 
     fn try_from_bytes(bytes: &[u8]) -> Result<UiCommand> {
@@ -2192,6 +2192,7 @@ pub enum DigitalServiceId {
 }
 
 impl DigitalServiceId {
+    #[must_use]
     pub fn arib_data(&self) -> Option<&'_ AribData> {
         match self {
             DigitalServiceId::AribGeneric(ref data)
@@ -2202,6 +2203,7 @@ impl DigitalServiceId {
         }
     }
 
+    #[must_use]
     pub fn atsc_data(&self) -> Option<&'_ AtscData> {
         match self {
             DigitalServiceId::AtscGeneric(ref data)
@@ -2212,6 +2214,7 @@ impl DigitalServiceId {
         }
     }
 
+    #[must_use]
     pub fn dvb_data(&self) -> Option<&'_ DvbData> {
         match self {
             DigitalServiceId::DvbGeneric(ref data)
@@ -2223,6 +2226,7 @@ impl DigitalServiceId {
         }
     }
 
+    #[must_use]
     pub fn broadcast_system(&self) -> DigitalServiceBroadcastSystem {
         use DigitalServiceBroadcastSystem as System;
         use DigitalServiceId as Id;
@@ -4408,7 +4412,7 @@ impl OperandEncodable for RecordSource {
                 match source {
                     ExternalSource::Plug(_) => RecordSourceType::ExternalPlug.to_bytes(buf),
                     ExternalSource::PhysicalAddress(_) => {
-                        RecordSourceType::ExternalPhysicalAddress.to_bytes(buf)
+                        RecordSourceType::ExternalPhysicalAddress.to_bytes(buf);
                     }
                 }
                 source.to_bytes(buf);

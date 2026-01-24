@@ -63,6 +63,7 @@ pub enum MessageData {
 }
 
 impl MessageData {
+    #[must_use]
     pub fn opcode(&self) -> u8 {
         match self {
             MessageData::Valid(message) => message.opcode().into(),
@@ -70,6 +71,7 @@ impl MessageData {
         }
     }
 
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             MessageData::Valid(message) => message.to_bytes(),
@@ -651,7 +653,7 @@ impl Device {
     }
 
     /// Transmit a [`Message`] to a given [`LogicalAddress`] and wait for a reply of
-    /// a given ['Opcode`]. Use [`LogicalAddress::Broadcast`] for broadcasting to all
+    /// a given [`Opcode`]. Use [`LogicalAddress::Broadcast`] for broadcasting to all
     /// attached devices. Note that the timeout cannot be 0 or more than 1 second,
     /// otherwise they will be coerced to 1 second.
     pub fn tx_rx_message(
