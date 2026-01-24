@@ -54,7 +54,6 @@ impl CecConfig {
         }
         let old_config = self.cached_config.clone();
         self.cached_config = new_config;
-        dbg!(&self.cached_config, &old_config);
 
         if self.cached_config.osd_name != old_config.osd_name {
             if let Err(e) = self.osd_name_changed(emitter).await {
