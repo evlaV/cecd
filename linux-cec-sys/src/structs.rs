@@ -458,8 +458,8 @@ pub struct cec_event_state_change {
     /// The current logical address mask
     pub log_addr_mask: CEC_LOG_ADDR_MASK,
     /** If non-zero, then HDMI connector information is available.
-     *  This field is only valid if CEC_CAP_CONNECTOR_INFO is set. If that
-     *  capability is set and @have_conn_info is zero, then that indicates
+     *  This field is only valid if `CEC_CAP_CONNECTOR_INFO` is set. If that
+     *  capability is set and `have_conn_info` is zero, then that indicates
      *  that the HDMI connector device is not instantiated, either because
      *  the HDMI driver is still configuring the device or because the HDMI
      *  device was unbound.
@@ -478,9 +478,9 @@ pub struct cec_event_lost_msgs {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union cec_event_union {
-    /// The event payload for CEC_EVENT_STATE_CHANGE.
+    /// The event payload for `CEC_EVENT_STATE_CHANGE`.
     pub state_change: cec_event_state_change,
-    /// The event payload for CEC_EVENT_LOST_MSGS.
+    /// The event payload for `CEC_EVENT_LOST_MSGS`.
     pub lost_msgs: cec_event_lost_msgs,
     /// Array to pad the union.
     pub raw: [u32; 16],
