@@ -11,7 +11,7 @@ use config::{
 };
 use input_linux::Key;
 use linux_cec::operand::UiCommand;
-use linux_cec::{LogicalAddressType, VendorId};
+use linux_cec::{LogicalAddressType, PhysicalAddress, VendorId};
 use serde::de::{self, Unexpected};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
@@ -58,6 +58,20 @@ where
         .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"))
 }
 
+fn de_physical_address<'de, D>(deserializer: D) -> Result<PhysicalAddress, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(deserializer)?;
+
+    PhysicalAddress::from_str(string.as_str())
+        .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a physical address"))
+}
+
+fn de_physical_address_default() -> PhysicalAddress {
+    PhysicalAddress::from(0x1fff)
+}
+
 fn de_vendor_id<'de, D>(deserializer: D) -> Result<Option<VendorId>, D::Error>
 where
     D: Deserializer<'de>,
@@ -83,6 +97,14 @@ pub(crate) struct Config {
     /// The type of logical address this device should request. Defaults to `playback`.
     #[serde(deserialize_with = "de_logical_address", default)]
     pub logical_address: LogicalAddressType,
+    /// The requested physical address. In theory you shouldn't need this, but
+    /// some adapters offload this to the OS. This is extremely error-prone so
+    /// you shouldn't mess with this unless you need to. Defaults to `1.F.F.F`.
+    #[serde(
+        deserialize_with = "de_physical_address",
+        default = "de_physical_address_default"
+    )]
+    pub physical_address: PhysicalAddress,
     /// Desired key mappings for uinput. Defaults are found in `system.rs`.
     #[serde(deserialize_with = "de_mappings", default)]
     pub mappings: HashMap<UiCommand, Key>,

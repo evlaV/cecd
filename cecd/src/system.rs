@@ -314,6 +314,11 @@ impl System {
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
         let caps = device.get_capabilities().await?;
         debug!("Device has caps: {caps:?}");
+        if caps.contains(Capabilities::PHYS_ADDR) {
+            device
+                .set_physical_address(self.config.physical_address)
+                .await?;
+        }
         if caps.contains(Capabilities::LOG_ADDRS) {
             device.clear_logical_addresses().await?;
             device.set_osd_name(self.trimmed_osd_name()).await?;
