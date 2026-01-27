@@ -147,7 +147,7 @@
     </method>
 
     <!--
-        VolumeDown:
+        Mute:
         @target: The logical address of the target device.
 
         Convenience method to send <User Control Pressed> [Mute]/<User Control
