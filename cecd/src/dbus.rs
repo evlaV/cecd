@@ -31,6 +31,7 @@ use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
+#[allow(clippy::upper_case_acronyms)]
 pub enum Error {
     Cec(CecError),
     FDO(fdo::Error),
