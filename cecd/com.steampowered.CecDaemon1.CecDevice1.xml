@@ -158,6 +158,22 @@
     </method>
 
     <!--
+        GetAudioStatus:
+        @target: The logical address of the target device.
+        @volume: A volume level between 0 and 100.
+        @mute: Whether or not the audio is muted.
+
+        Send <Give Audio Status> to a given device and return the <Report Audio
+        Status> reply. Note that a reply may not be received, in which case
+        this message will raise an error instead of returning normally.
+    -->
+    <method name="GetAudioStatus">
+      <arg name="target" type="y" direction="in"/>
+      <arg name="volume" type="y" direction="out"/>
+      <arg name="mute" type="b" direction="out"/>
+    </method>
+
+    <!--
         SendRawMessage:
         @raw_message: The raw bytes making up this message. This must be no
         more than 15 bytes.

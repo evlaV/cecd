@@ -4,6 +4,7 @@
  */
 
 use anyhow::{anyhow, bail, Result};
+use linux_cec::device::MessageData;
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
 use linux_cec::{LogicalAddress, LogicalAddressType, PhysicalAddress, Timeout};
@@ -425,6 +426,29 @@ impl CecDevice {
             .release_user_control(target)
             .await
             .map_err(into_fdo_error)
+    }
+
+    async fn get_audio_status(&self, target: u8) -> fdo::Result<(u8, bool)> {
+        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+        let reply = self
+            .device
+            .lock()
+            .await
+            .tx_rx_message(
+                &Message::GiveAudioStatus,
+                target,
+                Opcode::ReportAudioStatus,
+                Timeout::MAX,
+            )
+            .await
+            .map_err(into_fdo_error)?;
+        let MessageData::Valid(Message::ReportAudioStatus { status }) = reply.message else {
+            return Err(fdo::Error::Failed(String::from("Invalid reply")));
+        };
+        Ok((
+            status.volume().try_into().map_err(into_fdo_error)?,
+            status.mute(),
+        ))
     }
 
     async fn send_raw_message(&self, raw_message: &[u8], target: u8) -> fdo::Result<u32> {
