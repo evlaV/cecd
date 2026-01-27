@@ -769,6 +769,9 @@ impl Timeout {
     /// A timeout that never expires.
     pub const NONE: Timeout = Timeout(0);
 
+    /// The maximum timeout allowed by CEC.
+    pub const MAX: Timeout = Timeout(1000);
+
     /// Return the number of milliseconds for this timeout.
     #[must_use]
     #[inline]
