@@ -542,7 +542,7 @@ async fn test_tx_no_log_addr() {
         panic!();
     };
     assert_eq!(
-        OwnedErrorName::try_from("org.freedesktop.DBus.Error.Failed").unwrap(),
+        OwnedErrorName::try_from("com.steampowered.CecDaemon1.Error.NoLogicalAddress").unwrap(),
         name
     );
     assert_eq!(Some(Error::NoLogicalAddress.to_string()), text);
@@ -573,7 +573,7 @@ async fn test_tx_invalid_log_addr() {
         panic!();
     };
     assert_eq!(
-        OwnedErrorName::try_from("org.freedesktop.DBus.Error.Failed").unwrap(),
+        OwnedErrorName::try_from("com.steampowered.CecDaemon1.Error.InvalidData").unwrap(),
         name
     );
     assert_eq!(Some(Error::InvalidData.to_string()), text);

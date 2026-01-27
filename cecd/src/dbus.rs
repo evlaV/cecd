@@ -3,23 +3,27 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail};
 use linux_cec::device::MessageData;
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
-use linux_cec::{LogicalAddress, LogicalAddressType, PhysicalAddress, Timeout};
-use num_enum::TryFromPrimitive;
+use linux_cec::{
+    Error as CecError, LogicalAddress, LogicalAddressType, PhysicalAddress, RxError, Timeout,
+    TxError,
+};
+use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use tokio::fs::canonicalize;
 use tokio::sync::broadcast::Sender;
-use tokio::task::{spawn, JoinHandle};
+use tokio::task::{spawn, JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
+use zbus::message::Header;
+use zbus::names::ErrorName;
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::{ObjectPath, OwnedObjectPath};
-use zbus::{fdo, interface, Connection};
+use zbus::{fdo, interface, Connection, DBusError};
 
 use crate::config::Config;
 use crate::device::{DeviceTask, KeyRepeat};
@@ -27,8 +31,99 @@ use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
-fn into_fdo_error<T: Display>(val: T) -> fdo::Error {
-    fdo::Error::Failed(format!("{val}"))
+pub enum Error {
+    Cec(CecError),
+    FDO(fdo::Error),
+    Anyhow(anyhow::Error),
+}
+
+impl DBusError for Error {
+    fn create_reply(&self, header: &Header<'_>) -> zbus::Result<zbus::Message> {
+        let builder = zbus::Message::error(header, self.name())?;
+        match self {
+            Error::Cec(e) => builder.build(&(format!("{e}"))),
+            Error::FDO(e) => builder.build(&(format!("{e}"))),
+            Error::Anyhow(e) => builder.build(&(format!("{e}"))),
+        }
+    }
+
+    #[allow(deprecated)] // Required by DBusError's interface
+    fn description(&self) -> Option<&str> {
+        match self {
+            Error::Cec(_) => None,
+            Error::FDO(e) => <_ as DBusError>::description(e),
+            Error::Anyhow(_) => None,
+        }
+    }
+
+    fn name(&self) -> ErrorName<'_> {
+        let err = match self {
+            Error::Cec(e) => match e {
+                CecError::OutOfRange { .. } => "com.steampowered.CecDaemon1.Error.OutOfRange",
+                CecError::InvalidValueForType { .. } => {
+                    "com.steampowered.CecDaemon1.Error.InvalidValueForType"
+                }
+                CecError::InvalidData => "com.steampowered.CecDaemon1.Error.InvalidData",
+                CecError::Timeout => "com.steampowered.CecDaemon1.Error.Timeout",
+                CecError::Abort => "com.steampowered.CecDaemon1.Error.Abort",
+                CecError::NoLogicalAddress => "com.steampowered.CecDaemon1.Error.NoLogicalAddress",
+                CecError::Disconnected => "com.steampowered.CecDaemon1.Error.Disconnected",
+                CecError::SystemError(_) => "com.steampowered.CecDaemon1.Error.SystemError",
+                CecError::TxError(e) => match e {
+                    TxError::ArbLost => "com.steampowered.CecDaemon1.TxError.ArbLost",
+                    TxError::Nack => "com.steampowered.CecDaemon1.TxError.Nack",
+                    TxError::LowDrive => "com.steampowered.CecDaemon1.TxError.LowDrive",
+                    TxError::UnknownError => "com.steampowered.CecDaemon1.TxError.Unknown",
+                    TxError::MaxRetries => "com.steampowered.CecDaemon1.TxError.MaxRetries",
+                    TxError::Aborted => "com.steampowered.CecDaemon1.TxError.Aborted",
+                    TxError::Timeout => "com.steampowered.CecDaemon1.TxError.Timeout",
+                    _ => "com.steampowered.CecDaemon1.TxError.Unknown",
+                },
+                CecError::RxError(e) => match e {
+                    RxError::Timeout => "com.steampowered.CecDaemon1.RxError.Timeout",
+                    RxError::FeatureAbort => "com.steampowered.CecDaemon1.RxError.FeatureAbort",
+                    RxError::Aborted => "com.steampowered.CecDaemon1.RxError.Aborted",
+                    _ => "com.steampowered.CecDaemon1.RxError.Unknown",
+                },
+                _ => "com.steampowered.CecDaemon1.Error.Unknown",
+            },
+            Error::FDO(e) => return <_ as DBusError>::name(e),
+            Error::Anyhow(_) => "org.freedesktop.DBus.Error.Failed",
+        };
+        ErrorName::from_str_unchecked(err)
+    }
+}
+
+pub type Result<T> = core::result::Result<T, Error>;
+
+impl From<CecError> for Error {
+    fn from(err: CecError) -> Error {
+        Error::Cec(err)
+    }
+}
+
+impl From<fdo::Error> for Error {
+    fn from(err: fdo::Error) -> Error {
+        Error::FDO(err)
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(err: anyhow::Error) -> Error {
+        Error::Anyhow(err)
+    }
+}
+
+impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
+    fn from(err: TryFromPrimitiveError<T>) -> Error {
+        Error::Cec(CecError::from(err))
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(err: JoinError) -> Error {
+        Error::Anyhow(err.into())
+    }
 }
 
 pub const PATH: &str = "/com/steampowered/CecDaemon1";
@@ -156,8 +251,8 @@ impl CecConfig {
         self.cached_config.disable_uinput
     }
 
-    pub async fn reload(&self) -> fdo::Result<()> {
-        self.system.reconfig().await.map_err(into_fdo_error)
+    pub async fn reload(&self) -> Result<()> {
+        Ok(self.system.reconfig().await?)
     }
 }
 
@@ -170,12 +265,15 @@ pub struct CecDevice {
     pub cached_phys_addr: u16,
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
-    key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<Result<()>>)>,
+    key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<anyhow::Result<()>>)>,
     pub uinput: Option<UInputDevice>,
 }
 
 impl CecDevice {
-    pub async fn open(path: impl AsRef<Path>, token: CancellationToken) -> Result<CecDevice> {
+    pub async fn open(
+        path: impl AsRef<Path>,
+        token: CancellationToken,
+    ) -> anyhow::Result<CecDevice> {
         let path = canonicalize(path).await?;
         let device = ArcDevice::open(&path).await?;
 
@@ -207,7 +305,11 @@ impl CecDevice {
         })
     }
 
-    pub async fn register(self, connection: Connection, system: SystemHandle) -> Result<()> {
+    pub async fn register(
+        self,
+        connection: Connection,
+        system: SystemHandle,
+    ) -> anyhow::Result<()> {
         debug!("Registering CEC device {} on bus", self.path.display());
 
         let object_server = connection.object_server();
@@ -234,7 +336,7 @@ impl CecDevice {
         &self.dbus_path
     }
 
-    pub async fn send_system_message(&self, message: SystemMessage) -> Result<()> {
+    pub async fn send_system_message(&self, message: SystemMessage) -> anyhow::Result<()> {
         let Some(ref tx) = self.channel else {
             bail!("Device task has not started");
         };
@@ -282,57 +384,42 @@ impl CecDevice {
         self.cached_vendor_id
     }
 
-    async fn set_osd_name(&self, name: &str) -> fdo::Result<()> {
-        self.device
-            .lock()
-            .await
-            .set_osd_name(name)
-            .await
-            .map_err(into_fdo_error)
+    async fn set_osd_name(&self, name: &str) -> Result<()> {
+        Ok(self.device.lock().await.set_osd_name(name).await?)
     }
 
-    async fn set_active_source(&self, phys_addr: i32) -> fdo::Result<()> {
+    async fn set_active_source(&self, phys_addr: i32) -> Result<()> {
         let phys_addr = match <_ as TryInto<u16>>::try_into(phys_addr) {
             Ok(phys_addr) => Some(PhysicalAddress::from(phys_addr)),
             Err(_) => None,
         };
-        self.device
+        Ok(self
+            .device
             .lock()
             .await
             .set_active_source(phys_addr)
-            .await
-            .map_err(into_fdo_error)
+            .await?)
     }
 
-    async fn wake(&self) -> fdo::Result<()> {
-        self.send_system_message(SystemMessage::Wake)
-            .await
-            .map_err(into_fdo_error)
+    async fn wake(&self) -> Result<()> {
+        Ok(self.send_system_message(SystemMessage::Wake).await?)
     }
 
-    async fn standby(&self, target: u8) -> fdo::Result<()> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        self.device
-            .lock()
-            .await
-            .standby(target)
-            .await
-            .map_err(into_fdo_error)
+    async fn standby(&self, target: u8) -> Result<()> {
+        let target = LogicalAddress::try_from_primitive(target)?;
+        Ok(self.device.lock().await.standby(target).await?)
     }
 
-    async fn press_user_control(&mut self, button: &[u8], target: u8) -> fdo::Result<()> {
-        let log_addr = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        let key = UiCommand::try_from_bytes(button).map_err(into_fdo_error)?;
+    async fn press_user_control(&mut self, button: &[u8], target: u8) -> Result<()> {
+        let log_addr = LogicalAddress::try_from_primitive(target)?;
+        let key = UiCommand::try_from_bytes(button)?;
         if let Some((current_key, token, _)) = self.key_repeat.get(&target) {
             if &key == current_key {
                 return Ok(());
             }
             token.cancel();
             let (_, _, handle) = self.key_repeat.remove(&target).unwrap();
-            handle
-                .await
-                .map_err(into_fdo_error)?
-                .map_err(into_fdo_error)?;
+            handle.await??;
         }
         let token = self.token.child_token();
         let task = KeyRepeat {
@@ -346,90 +433,69 @@ impl CecDevice {
         Ok(())
     }
 
-    async fn release_user_control(&mut self, target: u8) -> fdo::Result<()> {
+    async fn release_user_control(&mut self, target: u8) -> Result<()> {
         if let Some((_, token, handle)) = self.key_repeat.remove(&target) {
             token.cancel();
-            handle
-                .await
-                .map_err(into_fdo_error)?
-                .map_err(into_fdo_error)
+            handle.await??;
+            Ok(())
         } else {
-            let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-            self.device
+            let target = LogicalAddress::try_from_primitive(target)?;
+            Ok(self
+                .device
                 .lock()
                 .await
                 .release_user_control(target)
-                .await
-                .map_err(into_fdo_error)
+                .await?)
         }
     }
 
-    async fn press_once_user_control(&mut self, button: &[u8], target: u8) -> fdo::Result<()> {
-        let log_addr = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        let key = UiCommand::try_from_bytes(button).map_err(into_fdo_error)?;
+    async fn press_once_user_control(&mut self, button: &[u8], target: u8) -> Result<()> {
+        let log_addr = LogicalAddress::try_from_primitive(target)?;
+        let key = UiCommand::try_from_bytes(button)?;
         if let Some((_, token, _)) = self.key_repeat.get(&target) {
             token.cancel();
             let (current_key, _, handle) = self.key_repeat.remove(&target).unwrap();
-            handle
-                .await
-                .map_err(into_fdo_error)?
-                .map_err(into_fdo_error)?;
+            handle.await??;
             if key == current_key {
                 return Ok(());
             }
         }
         let device = self.device.lock().await;
-        device
-            .press_user_control(key, log_addr)
-            .await
-            .map_err(into_fdo_error)?;
-        device
-            .release_user_control(log_addr)
-            .await
-            .map_err(into_fdo_error)
+        device.press_user_control(key, log_addr).await?;
+        device.release_user_control(log_addr).await?;
+        Ok(())
     }
 
-    async fn volume_up(&self, target: u8) -> fdo::Result<()> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+    async fn volume_up(&self, target: u8) -> Result<()> {
+        let target = LogicalAddress::try_from_primitive(target)?;
         let device = self.device.lock().await;
         device
             .press_user_control(UiCommand::VolumeUp, target)
-            .await
-            .map_err(into_fdo_error)?;
-        device
-            .release_user_control(target)
-            .await
-            .map_err(into_fdo_error)
+            .await?;
+        device.release_user_control(target).await?;
+        Ok(())
     }
 
-    async fn volume_down(&self, target: u8) -> fdo::Result<()> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+    async fn volume_down(&self, target: u8) -> Result<()> {
+        let target = LogicalAddress::try_from_primitive(target)?;
         let device = self.device.lock().await;
         device
             .press_user_control(UiCommand::VolumeDown, target)
-            .await
-            .map_err(into_fdo_error)?;
-        device
-            .release_user_control(target)
-            .await
-            .map_err(into_fdo_error)
+            .await?;
+        device.release_user_control(target).await?;
+        Ok(())
     }
 
-    async fn mute(&self, target: u8) -> fdo::Result<()> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+    async fn mute(&self, target: u8) -> Result<()> {
+        let target = LogicalAddress::try_from_primitive(target)?;
         let device = self.device.lock().await;
-        device
-            .press_user_control(UiCommand::Mute, target)
-            .await
-            .map_err(into_fdo_error)?;
-        device
-            .release_user_control(target)
-            .await
-            .map_err(into_fdo_error)
+        device.press_user_control(UiCommand::Mute, target).await?;
+        device.release_user_control(target).await?;
+        Ok(())
     }
 
-    async fn get_audio_status(&self, target: u8) -> fdo::Result<(u8, bool)> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
+    async fn get_audio_status(&self, target: u8) -> Result<(u8, bool)> {
+        let target = LogicalAddress::try_from_primitive(target)?;
         let reply = self
             .device
             .lock()
@@ -440,26 +506,22 @@ impl CecDevice {
                 Opcode::ReportAudioStatus,
                 Timeout::MAX,
             )
-            .await
-            .map_err(into_fdo_error)?;
+            .await?;
         let MessageData::Valid(Message::ReportAudioStatus { status }) = reply.message else {
-            return Err(fdo::Error::Failed(String::from("Invalid reply")));
+            return Err(Error::Cec(CecError::InvalidData));
         };
-        Ok((
-            status.volume().try_into().map_err(into_fdo_error)?,
-            status.mute(),
-        ))
+        Ok((status.volume().try_into().unwrap(), status.mute()))
     }
 
-    async fn send_raw_message(&self, raw_message: &[u8], target: u8) -> fdo::Result<u32> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        let raw_message = Message::try_from_bytes(raw_message).map_err(into_fdo_error)?;
-        self.device
+    async fn send_raw_message(&self, raw_message: &[u8], target: u8) -> Result<u32> {
+        let target = LogicalAddress::try_from_primitive(target)?;
+        let raw_message = Message::try_from_bytes(raw_message)?;
+        Ok(self
+            .device
             .lock()
             .await
             .tx_message(&raw_message, target)
-            .await
-            .map_err(into_fdo_error)
+            .await?)
     }
 
     async fn send_receive_raw_message(
@@ -468,9 +530,9 @@ impl CecDevice {
         target: u8,
         opcode: u8,
         timeout: u16,
-    ) -> fdo::Result<Vec<u8>> {
-        let target = LogicalAddress::try_from_primitive(target).map_err(into_fdo_error)?;
-        let raw_message = Message::try_from_bytes(raw_message).map_err(into_fdo_error)?;
+    ) -> Result<Vec<u8>> {
+        let target = LogicalAddress::try_from_primitive(target)?;
+        let raw_message = Message::try_from_bytes(raw_message)?;
         let reply = self
             .device
             .lock()
@@ -478,11 +540,10 @@ impl CecDevice {
             .tx_rx_message(
                 &raw_message,
                 target,
-                Opcode::try_from_primitive(opcode).map_err(into_fdo_error)?,
+                Opcode::try_from_primitive(opcode)?,
                 Timeout::from_ms(timeout.into()),
             )
-            .await
-            .map_err(into_fdo_error)?;
+            .await?;
         Ok(reply.message.to_bytes())
     }
 }
@@ -501,7 +562,7 @@ mod test {
 
     async fn setup_config_test(
         config: &Config,
-    ) -> Result<(DBusTest<'static>, Config1Proxy<'static>)> {
+    ) -> anyhow::Result<(DBusTest<'static>, Config1Proxy<'static>)> {
         async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
             let mut dev = dev.lock().await;
             dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
