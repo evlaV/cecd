@@ -607,7 +607,7 @@ impl FromStr for PhysicalAddress {
             if split.len() != 4 {
                 return Err(Error::InvalidData);
             }
-            if !split.iter().fold(true, |ok, place| ok && place.len() == 1) {
+            if !split.iter().all(|place| place.len() == 1) {
                 return Err(Error::InvalidData);
             }
             let Ok(a) = u16::from_str_radix(split[0], 16) else {
@@ -624,7 +624,7 @@ impl FromStr for PhysicalAddress {
             };
             return Ok(PhysicalAddress((a << 12) | (b << 8) | (c << 4) | d));
         }
-        return Err(Error::InvalidData);
+        Err(Error::InvalidData)
     }
 }
 
@@ -689,72 +689,52 @@ mod test_physical_address {
 
     #[test]
     fn test_from_str_too_short() {
-        assert!(
-            PhysicalAddress::from_str("12a").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("12a").is_err(),);
     }
 
     #[test]
     fn test_from_str_too_long() {
-        assert!(
-            PhysicalAddress::from_str("12abcd").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("12abcd").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_too_short() {
-        assert!(
-            PhysicalAddress::from_str("1.2.a").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.a").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_too_long() {
-        assert!(
-            PhysicalAddress::from_str("1.2.a.b.c").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.a.b.c").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_missing() {
-        assert!(
-            PhysicalAddress::from_str("1.2.ab").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.ab").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_too_long_group() {
-        assert!(
-            PhysicalAddress::from_str("1.2.a.bc").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.a.bc").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_too_short_group() {
-        assert!(
-            PhysicalAddress::from_str("1.2.a.").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.a.").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_extra_group_before() {
-        assert!(
-            PhysicalAddress::from_str(".1.2.a.b").is_err(),
-        );
+        assert!(PhysicalAddress::from_str(".1.2.a.b").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_extra_group_mid() {
-        assert!(
-            PhysicalAddress::from_str("1..2.a.b").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1..2.a.b").is_err(),);
     }
 
     #[test]
     fn test_from_str_dotted_extra_group_after() {
-        assert!(
-            PhysicalAddress::from_str("1.2.a.b.").is_err(),
-        );
+        assert!(PhysicalAddress::from_str("1.2.a.b.").is_err(),);
     }
 }
 
