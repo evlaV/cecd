@@ -101,9 +101,8 @@ pub(crate) struct Config {
     /// The type of logical address this device should request. Defaults to `playback`.
     #[serde(deserialize_with = "de_logical_address", default)]
     pub logical_address: LogicalAddressType,
-    /// The requested physical address. In theory you shouldn't need this, but
-    /// some adapters offload this to the OS. This is extremely error-prone so
-    /// you shouldn't mess with this unless you need to. Defaults to `1.F.F.F`.
+    /// The requested physical address. If the device offloads this to the OS and
+    /// we're unable to determine the correct one, use this. Defaults to `1.F.F.F`.
     #[serde(
         deserialize_with = "de_physical_address",
         default = "de_physical_address_default"
