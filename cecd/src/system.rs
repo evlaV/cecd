@@ -300,7 +300,7 @@ impl System {
     }
 
     pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
-        let uinput = if !self.config.mappings.is_empty() && !self.config.disable_uinput {
+        let uinput = if !self.config.mappings.is_empty() && self.config.uinput {
             let mut uinput_dev = UInputDevice::new()?;
             uinput_dev.set_mappings(self.config.mappings.clone())?;
             uinput_dev.set_name(self.osd_name.clone())?;

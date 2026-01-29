@@ -85,6 +85,10 @@ where
     })?))
 }
 
+fn de_true() -> bool {
+    true
+}
+
 #[derive(Deserialize, Clone, Debug, Default)]
 pub(crate) struct Config {
     /// The default advertised OSD name for this device, max 14 bytes. If not
@@ -117,9 +121,9 @@ pub(crate) struct Config {
     /// Should cecd attempt to suspend when receiving a Standby command? Defaults to false.
     #[serde(default)]
     pub allow_standby: bool,
-    /// Should uinput mappings be disabled. Defaults to false.
-    #[serde(default)]
-    pub disable_uinput: bool,
+    /// Should uinput mappings be enabled. Defaults to true.
+    #[serde(default = "de_true")]
+    pub uinput: bool,
 }
 
 #[derive(Debug)]

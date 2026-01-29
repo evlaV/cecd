@@ -194,9 +194,9 @@ impl CecConfig {
             }
         }
 
-        if self.cached_config.disable_uinput != old_config.disable_uinput {
-            if let Err(e) = self.disable_uinput_changed(emitter).await {
-                warn!("Failed to emit DisableUinput changed: {e}");
+        if self.cached_config.uinput != old_config.uinput {
+            if let Err(e) = self.uinput_changed(emitter).await {
+                warn!("Failed to emit Uinput changed: {e}");
             }
         }
     }
@@ -248,8 +248,8 @@ impl CecConfig {
     }
 
     #[zbus(property)]
-    pub async fn disable_uinput(&self) -> bool {
-        self.cached_config.disable_uinput
+    pub async fn uinput(&self) -> bool {
+        self.cached_config.uinput
     }
 
     pub async fn reload(&self) -> Result<()> {
@@ -636,10 +636,7 @@ mod test {
             config_proxy.allow_standby().await.unwrap(),
             config.allow_standby
         );
-        assert_eq!(
-            config_proxy.disable_uinput().await.unwrap(),
-            config.disable_uinput
-        );
+        assert_eq!(config_proxy.uinput().await.unwrap(), config.uinput);
     }
 
     #[tokio::test]
@@ -729,14 +726,11 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_disabled_uinput_config_readout() {
+    async fn test_uinput_config_readout() {
         let mut config = Config::default();
-        config.disable_uinput = !config.disable_uinput;
+        config.uinput = !config.uinput;
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
-        assert_eq!(
-            config_proxy.disable_uinput().await.unwrap(),
-            config.disable_uinput
-        );
+        assert_eq!(config_proxy.uinput().await.unwrap(), config.uinput);
     }
 }

@@ -432,7 +432,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -457,7 +457,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -493,7 +493,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -535,7 +535,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -576,7 +576,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -621,7 +621,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -663,7 +663,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -718,7 +718,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -767,7 +767,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -831,7 +831,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -891,7 +891,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -936,7 +936,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config.logical_address = LogicalAddressType::Playback;
         let mut test = setup_dbus_test(cb, Some(config)).await.unwrap();
         assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
@@ -966,7 +966,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = false;
+        config.uinput = true;
         config.mappings = [(UiCommand::Enter, Key::Enter)].into();
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
@@ -1036,7 +1036,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = false;
+        config.uinput = true;
         config.mappings = [(UiCommand::Enter, Key::Enter)].into();
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
@@ -1088,7 +1088,7 @@ mod test {
             Ok(())
         }
         let mut config = Config::default();
-        config.disable_uinput = false;
+        config.uinput = true;
         config.mappings = [(UiCommand::Enter, Key::Enter), (UiCommand::Back, Key::Exit)].into();
         config.logical_address = LogicalAddressType::Playback;
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();

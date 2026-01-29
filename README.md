@@ -77,7 +77,7 @@ The configuration files are stored in [TOML format](https://toml.io/en/), with t
 - `wake_tv`: Should cecd attempt to wake the TV when the device is woken? Defaults to false.
 - `suspend_tv`: Should cecd attempt to suspend the TV when the device is suspended? Defaults to false.
 - `allow_standby`: Should cecd attempt to suspend when receiving a Standby command? Defaults to false.
-- `disable_uinput`: Should uinput mappings be disabled. Defaults to false.
+- `uinput`: Should uinput mappings be enabled. Defaults to true.
 
 #### UI Commands
 

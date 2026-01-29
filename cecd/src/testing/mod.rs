@@ -462,7 +462,7 @@ where
     )));
     let config = config.unwrap_or_else(|| {
         let mut config = Config::default();
-        config.disable_uinput = true;
+        config.uinput = false;
         config
     });
     system.lock().await.set_config(config).await?;

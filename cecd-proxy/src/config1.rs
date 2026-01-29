@@ -33,9 +33,9 @@ pub trait Config1 {
     #[zbus(property)]
     fn allow_standby(&self) -> zbus::Result<bool>;
 
-    /// DisableUinput property
+    /// Uinput property
     #[zbus(property)]
-    fn disable_uinput(&self) -> zbus::Result<bool>;
+    fn uinput(&self) -> zbus::Result<bool>;
 
     /// LogicalAddress property
     #[zbus(property)]
