@@ -349,46 +349,49 @@ impl System {
 
     fn parse_hdmi_edid_pa(edid: &[u8]) -> Option<PhysicalAddress> {
         const HDMI_OUI: &[u8] = &[0x03, 0x0C, 0x00];
-        if edid.len() < 256 {
-            return None;
-        }
-        if edid[128] != 2 && edid[129] < 3 {
-            // Requires CTA EDID version 3 or newer
-            return None;
-        }
+        let mut block = 128;
         // We ignore a lot of the spec and let through a bunch of bad EDIDs.
         // As it turns out, a lot of vendors ship bad EDIDs. We want to be as
         // permissive as possible without misparsing things that are
         // definitively what we're looking for.
-        let mut offset = 132;
-        let end = if edid[130] >= 4 {
-            usize::min(128 + edid[130] as usize, 255)
-        } else {
-            255
-        };
-        while offset + 6 < edid.len() && offset < end {
-            let header = edid[offset];
-            let size = ((header & 0x1F) + 1) as usize;
-            if size < 6 {
-                offset += size;
+        while block + 128 <= edid.len() {
+            if edid[block] != 2 && edid[block + 1] < 3 {
+                // Requires CTA EDID version 3 or newer
+                block += 128;
                 continue;
             }
-            if offset + size > end {
-                break;
+            let end = block
+                + (if edid[block + 2] >= 4 {
+                    usize::min(edid[block + 2] as usize, 127)
+                } else {
+                    127
+                });
+            let mut offset = block + 4;
+            while offset + 1 < edid.len() && offset < end {
+                let header = edid[offset];
+                let size = ((header & 0x1F) + 1) as usize;
+                if size < 6 {
+                    offset += size;
+                    continue;
+                }
+                if offset + size > end {
+                    break;
+                }
+                if (header & 0xE0) != 0x60 {
+                    // Not a vendor specific data block
+                    offset += size;
+                    continue;
+                }
+                if &edid[offset + 1..offset + 4] != HDMI_OUI {
+                    // Not an HDMI block
+                    offset += size;
+                    continue;
+                }
+                return Some(PhysicalAddress::from(
+                    ((edid[offset + 4] as u16) << 8) | edid[offset + 5] as u16,
+                ));
             }
-            if (header & 0xE0) != 0x60 {
-                // Not a vendor specific data block
-                offset += size;
-                continue;
-            }
-            if &edid[offset + 1..offset + 4] != HDMI_OUI {
-                // Not an HDMI block
-                offset += size;
-                continue;
-            }
-            return Some(PhysicalAddress::from(
-                ((edid[offset + 4] as u16) << 8) | edid[offset + 5] as u16,
-            ));
+            block += 128;
         }
         None
     }
@@ -620,6 +623,34 @@ mod test {
     #[test]
     fn test_parse_edid_early() {
         let header = repeat_n(0u8, 0x80);
+        let edid: [u8; 0x80] = [
+            0x02, 0x03, 0x00, 0x00, 0x65, 0x03, 0x0c, 0x00, // 80
+            0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 88
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 90
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 98
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // A0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // A8
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // B0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // B8
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // C0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // C8
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // D0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // D8
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // E0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // E8
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
+        ];
+        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        assert_eq!(
+            System::parse_hdmi_edid_pa(&edid),
+            Some(PhysicalAddress::from(0x1234))
+        );
+    }
+
+    #[test]
+    fn test_parse_edid_extra_block() {
+        let header = repeat_n(0u8, 0x100);
         let edid: [u8; 0x80] = [
             0x02, 0x03, 0x00, 0x00, 0x65, 0x03, 0x0c, 0x00, // 80
             0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 88
