@@ -72,6 +72,7 @@ enum DeviceCommand {
     ),
     ReceiveMessage(Timeout, ResultChannel<Envelope>),
     ReceiveRawMessage(u32, ResultChannel<cec_msg>),
+    PollAddress(LogicalAddress, ResultChannel<()>),
     HandleStatus(PollStatus, ResultChannel<Vec<PollResult>>),
     GetConnectorInfo(ResultChannel<ConnectorInfo>),
     SetActiveSource(Option<PhysicalAddress>, ResultChannel<()>),
@@ -226,6 +227,10 @@ impl AsyncDevice {
         relay! { self, ReceiveRawMessage => timeout }
     }
 
+    pub async fn poll_address(&self, destination: LogicalAddress) -> Result<()> {
+        relay! { self, PollAddress => destination }
+    }
+
     pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
         relay! { self, HandleStatus => status }
     }
@@ -378,6 +383,9 @@ impl DeviceThread {
                 }
                 DeviceCommand::ReceiveRawMessage(timeout, tx) => {
                     let _ = tx.send(self.device.rx_raw_message(timeout));
+                }
+                DeviceCommand::PollAddress(dest, tx) => {
+                    let _ = tx.send(self.device.poll_address(dest));
                 }
                 DeviceCommand::HandleStatus(status, tx) => {
                     let _ = tx.send(self.device.handle_status(status));

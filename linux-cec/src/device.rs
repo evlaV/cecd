@@ -700,6 +700,24 @@ impl Device {
         Ok(message)
     }
 
+    /// Poll the bus for the presence of a given [`LogicalAddress`]. If the
+    /// device is present, this returns `Ok`, otherwise it returns with a
+    /// specific error detailing the manner of failure. Usually this will be
+    /// [`TxError::Nack`] if the device isn't present, but other manners of
+    /// failure are theoretically possible.
+    pub fn poll_address(&self, destination: LogicalAddress) -> Result<()> {
+        let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
+        #[cfg(feature = "tracing")]
+        debug!("Sending poll to {destination} ({:x})", destination as u8);
+        self.tx_raw_message(&mut raw_message)?;
+        if !raw_message.tx_status.contains(CEC_TX_STATUS::OK) {
+            #[cfg(feature = "tracing")]
+            warn!("Poll failed: {:?}", raw_message.tx_status);
+            return Err(raw_message.tx_status.into());
+        }
+        Ok(())
+    }
+
     pub(crate) fn dequeue_event(&self) -> Result<cec_event> {
         let mut event = cec_event::default();
         unsafe {
