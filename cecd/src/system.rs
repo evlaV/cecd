@@ -436,7 +436,7 @@ impl System {
 pub(crate) struct SystemHandle(pub Arc<Mutex<System>>);
 
 impl SystemHandle {
-    pub(crate) async fn lock(&self) -> MutexGuard<System> {
+    pub(crate) async fn lock(&self) -> MutexGuard<'_, System> {
         self.0.lock().await
     }
 
