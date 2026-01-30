@@ -4,10 +4,13 @@
  */
 
 use clap::{Parser, Subcommand};
-use linux_cec::device::Device;
-use linux_cec::message::Message;
+use linux_cec::device::{Device, MessageData};
+use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{BufferOperand, UiCommand};
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, Result};
+use linux_cec::{
+    FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Result,
+    Timeout,
+};
 use num_enum::TryFromPrimitive;
 use std::str::FromStr;
 
@@ -32,6 +35,11 @@ enum Command {
     GetConnectorInfo,
     /// Get the physical address of the CEC adapter
     GetPhysicalAddress,
+    /// Set the physical address of the CEC adapter
+    SetPhysicalAddress {
+        /// The desired physical address type
+        phys_addr: PhysicalAddress,
+    },
     /// Get the logical address of the CEC adapter
     GetLogicalAddress,
     /// Set the logical address of the CEC adapter
@@ -68,6 +76,12 @@ enum Command {
         #[arg(default_value_t = LogicalAddress::Tv)]
         target: LogicalAddress,
     },
+    /// Get audio status
+    GetAudioStatus {
+        /// The logical address of the target device
+        #[arg(default_value_t = LogicalAddress::Tv)]
+        target: LogicalAddress,
+    },
     /// Send a specified user command key
     SendUserControl {
         /// The name of the specified command key
@@ -98,6 +112,9 @@ fn main() -> Result<()> {
         }
         Command::GetPhysicalAddress => {
             println!("Physical address: {}", dev.get_physical_address()?);
+        }
+        Command::SetPhysicalAddress { phys_addr } => {
+            dev.set_physical_address(phys_addr)?;
         }
         Command::GetLogicalAddress => {
             for addr in dev.get_logical_addresses()? {
@@ -143,6 +160,22 @@ fn main() -> Result<()> {
             dev.set_initiator_mode(InitiatorMode::Enabled)?;
             dev.press_user_control(UiCommand::Mute, target)?;
             dev.release_user_control(target)?;
+        }
+        Command::GetAudioStatus { target } => {
+            dev.set_initiator_mode(InitiatorMode::Enabled)?;
+            dev.set_follower_mode(FollowerMode::Enabled)?;
+            let message = Message::GiveAudioStatus {};
+            let envelope =
+                dev.tx_rx_message(&message, target, Opcode::ReportAudioStatus, Timeout::MAX)?;
+            if let MessageData::Valid(Message::ReportAudioStatus { status }) = envelope.message {
+                println!(
+                    "Volume: {}%, {}muted",
+                    status.volume(),
+                    if status.mute() { "" } else { "not " }
+                );
+            } else {
+                println!("Got invalid reply");
+            }
         }
         Command::SendUserControl { key, target } => {
             dev.set_initiator_mode(InitiatorMode::Enabled)?;
