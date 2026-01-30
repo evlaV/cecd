@@ -4,7 +4,7 @@
  */
 
 use linux_cec_macros::Operand;
-use linux_cec_sys::{constants, VendorId as SysVendorId};
+use linux_cec_sys::{constants, VendorId as SysVendorId, CEC_TX_STATUS};
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 use std::fmt::{self, Debug, Display, Formatter};
@@ -525,6 +525,30 @@ impl From<Errno> for Error {
             Errno::ENONET => Error::NoLogicalAddress,
             x => Error::SystemError(x),
         }
+    }
+}
+
+impl From<CEC_TX_STATUS> for Error {
+    fn from(tx_status: CEC_TX_STATUS) -> Error {
+        if tx_status.contains(CEC_TX_STATUS::TIMEOUT) {
+            return Error::Timeout;
+        }
+        if tx_status.contains(CEC_TX_STATUS::ABORTED) {
+            return Error::Abort;
+        }
+        if tx_status.contains(CEC_TX_STATUS::ARB_LOST) {
+            return TxError::ArbLost.into();
+        }
+        if tx_status.contains(CEC_TX_STATUS::NACK) {
+            return TxError::Nack.into();
+        }
+        if tx_status.contains(CEC_TX_STATUS::LOW_DRIVE) {
+            return TxError::LowDrive.into();
+        }
+        if tx_status.contains(CEC_TX_STATUS::MAX_RETRIES) {
+            return TxError::MaxRetries.into();
+        }
+        Error::UnknownError(format!("{tx_status:?}"))
     }
 }
 

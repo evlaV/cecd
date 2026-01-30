@@ -39,7 +39,7 @@ use crate::message::{Message, Opcode};
 use crate::operand::{BufferOperand, UiCommand};
 use crate::{
     Error, FollowerMode, InitiatorMode, LogicalAddress, LogicalAddressType, PhysicalAddress, Range,
-    Result, RxError, Timeout, TxError, VendorId,
+    Result, RxError, Timeout, VendorId,
 };
 
 #[cfg(feature = "async")]
@@ -679,25 +679,7 @@ impl Device {
         if !raw_message.tx_status.contains(CEC_TX_STATUS::OK) {
             #[cfg(feature = "tracing")]
             warn!("Message failed to send: {:?}", raw_message.tx_status);
-            if raw_message.tx_status.contains(CEC_TX_STATUS::TIMEOUT) {
-                return Err(Error::Timeout);
-            }
-            if raw_message.tx_status.contains(CEC_TX_STATUS::ABORTED) {
-                return Err(Error::Abort);
-            }
-            if raw_message.tx_status.contains(CEC_TX_STATUS::ARB_LOST) {
-                return Err(TxError::ArbLost.into());
-            }
-            if raw_message.tx_status.contains(CEC_TX_STATUS::NACK) {
-                return Err(TxError::Nack.into());
-            }
-            if raw_message.tx_status.contains(CEC_TX_STATUS::LOW_DRIVE) {
-                return Err(TxError::LowDrive.into());
-            }
-            if raw_message.tx_status.contains(CEC_TX_STATUS::MAX_RETRIES) {
-                return Err(TxError::MaxRetries.into());
-            }
-            return Err(Error::UnknownError(format!("{:?}", raw_message.tx_status)));
+            return Err(raw_message.tx_status.into());
         }
         raw_message.try_into()
     }
