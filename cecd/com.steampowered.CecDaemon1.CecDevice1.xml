@@ -210,6 +210,20 @@
     </method>
 
     <!--
+        Poll:
+        @target: The logical address of the target device.
+
+        Poll the CEC bus for the presence of a given logical address. If
+        the device isn't present, this method will raise an error instead of
+        returning a boolean. The specific error will expose more information
+        about the failure, with com.steampowered.CecDaemon1.TxError.Nack being
+        the usual error for a device that isn't present.
+    -->
+    <method name="Poll">
+      <arg name="target" type="y" direction="in"/>
+    </method>
+
+    <!--
         LogicalAddresses:
 
         An array of the logical addresses assigned to this device. Generally,

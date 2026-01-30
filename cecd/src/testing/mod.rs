@@ -290,6 +290,10 @@ impl AsyncDevice {
         }
     }
 
+    pub async fn poll_address(&self, _destination: LogicalAddress) -> Result<()> {
+        todo!();
+    }
+
     pub async fn handle_status(&self, status: PollStatus) -> Result<Vec<PollResult>> {
         let mut results = Vec::new();
         if status.got_event() {

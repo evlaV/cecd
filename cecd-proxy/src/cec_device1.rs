@@ -24,6 +24,9 @@ pub trait CecDevice1 {
     /// Mute method
     fn mute(&self, target: u8) -> zbus::Result<()>;
 
+    /// Poll method
+    fn poll(&self, target: u8) -> zbus::Result<()>;
+
     /// PressOnceUserControl method
     fn press_once_user_control(&self, button: &[u8], target: u8) -> zbus::Result<()>;
 

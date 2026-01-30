@@ -547,6 +547,11 @@ impl CecDevice {
             .await?;
         Ok(reply.message.to_bytes())
     }
+
+    async fn poll(&self, target: u8) -> Result<()> {
+        let target = LogicalAddress::try_from_primitive(target)?;
+        Ok(self.device.lock().await.poll_address(target).await?)
+    }
 }
 
 #[cfg(test)]
