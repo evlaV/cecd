@@ -160,7 +160,16 @@ pub async fn main() -> Result<()> {
             token.cancelled().await;
         });
     } else {
-        for token in system.find_devs().await? {
+        let devs = system.find_devs().await;
+        let devs = if args.enable_hotplug {
+            // If we're hotplugging, don't fail on error
+            // here; we may get valid devices later
+            devs.inspect_err(|err| warn!("Unable to get iniital device list: {err}"))
+                .unwrap_or_default()
+        } else {
+            devs?
+        };
+        for token in devs {
             joinset.spawn(async move {
                 token.cancelled().await;
             });
