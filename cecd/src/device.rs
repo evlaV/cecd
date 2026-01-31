@@ -344,8 +344,15 @@ impl DeviceTask {
     async fn handle_system_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
             SystemMessage::Wake => self.wake().await,
-            SystemMessage::Standby => {
-                self.device.lock().await.standby(LogicalAddress::Tv).await?;
+            SystemMessage::Standby { standby_tv } => {
+                let device = self.device.lock().await;
+                let address = device.get_physical_address().await?;
+                device
+                    .tx_message(&Message::InactiveSource { address }, LogicalAddress::Tv)
+                    .await?;
+                if standby_tv {
+                    device.standby(LogicalAddress::Tv).await?;
+                }
                 Ok(())
             }
             SystemMessage::ReloadConfig => {
@@ -474,14 +481,65 @@ mod test {
             .unwrap();
         {
             let dev = interface.get_mut().await;
-            dev.send_system_message(SystemMessage::Standby)
+            dev.send_system_message(SystemMessage::Standby { standby_tv: true })
                 .await
                 .unwrap();
         }
         assert_eq!(
             rx_message(&test.dev).await.unwrap(),
+            (
+                Message::InactiveSource {
+                    address: PhysicalAddress::from(0x1000)
+                },
+                LogicalAddress::Tv
+            )
+        );
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
             (Message::Standby {}, LogicalAddress::Tv)
         );
+    }
+
+    #[tokio::test]
+    async fn test_system_message_standby_no_sleep() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.uinput = false;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
+            .await
+            .unwrap();
+        {
+            let dev = interface.get_mut().await;
+            dev.send_system_message(SystemMessage::Standby { standby_tv: false })
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::InactiveSource {
+                    address: PhysicalAddress::from(0x1000)
+                },
+                LogicalAddress::Tv
+            )
+        );
+        assert!(rx_message(&test.dev).await.is_none(),);
     }
 
     #[tokio::test]

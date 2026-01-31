@@ -58,7 +58,7 @@ trait LoginManager {
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum SystemMessage {
     Wake,
-    Standby,
+    Standby { standby_tv: bool },
     ReloadConfig,
 }
 
@@ -508,10 +508,14 @@ impl SystemHandle {
                     continue;
                 }
             };
-            if !sleep && self.lock().await.config.wake_tv {
-                self.lock().await.send_message(SystemMessage::Wake).await;
-            } else if sleep && self.lock().await.config.suspend_tv {
-                self.lock().await.send_message(SystemMessage::Standby).await;
+            let mut system = self.lock().await;
+            if !sleep && system.config.wake_tv {
+                system.send_message(SystemMessage::Wake).await;
+            } else if sleep {
+                let standby_tv = system.config.suspend_tv;
+                system
+                    .send_message(SystemMessage::Standby { standby_tv })
+                    .await;
             }
         }
     }
