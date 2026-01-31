@@ -21,22 +21,22 @@ auto-binding of external adapters. These are located `data` directory and can be
 
 ## Why not libCEC FFI?
 
-[LibCEC](http://libcec.pulse-eight.com/) has been the de facto library for interacting with CEC devices across
-multiple operating systems for years. However, there are some significant shortcomings with the library. The most
-important one is that the library has been unmaintained for years, with no releases since 2020, and is rife with
-issues that could use tackling. However, forking the library is hampered by the fact that libCEC is itself claimed to
-be a registered trademark of Pulse-Eight per the source. The library itself is also GPL2+, which restricts the range
-of software that can directly use it.
+[LibCEC](http://libcec.pulse-eight.com/) has been the de facto library for interacting with CEC devices across multiple
+operating systems for years. However, there are some significant shortcomings with the library. The most important one
+is that the library has been unmaintained for years, with minimal support since 2020, and is rife with issues that
+could use tackling. However, forking the library is hampered by the fact that libCEC is itself claimed to be a
+registered trademark of Pulse-Eight per the source. The library itself is also GPL2+, which restricts the range of
+software that can directly use it.
 
 Some of these issues apply specifically to the Linux CEC API. For example, it's hardcoded to only support /dev/cec0,
 and does not support hotplugging. If the device is disconnected while in use by an application, a thread will just
 continuously poll the device, get an error, and then try again. This cannot be programmatically detected except for
-scanning log messages. This is anything but robust, and there wasn't really a good way to fix this without some
-massive overhauls.
+scanning log messages. This is anything but robust, and there wasn't really a good way to fix this without some massive
+overhauls.
 
-Given all of these factors, it seemed like a fresh start specifically targeting the Linux subsystem
-instead of a more pluggable system. Many of the devices libCEC supports have since gotten kernel drivers as well, so
-the need for a userspace library handling it all directly has diminished since libCEC was started.
+Given all of these factors, it seemed like a fresh start specifically targeting the Linux subsystem instead of a more
+pluggable system. Many of the devices libCEC supports have since gotten kernel drivers as well, so the need for a
+userspace library handling it all directly has diminished since libCEC was started.
 
 ## cecd
 
