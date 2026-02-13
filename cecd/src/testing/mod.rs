@@ -14,8 +14,10 @@ use linux_cec::{
 };
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
+use std::ffi::{OsStr, OsString};
 use std::future::Future;
 use std::mem::drop;
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -59,6 +61,8 @@ pub struct AsyncDevice {
     caps: Capabilities,
     token: CancellationToken,
     force_unregistered: bool,
+    driver_name: OsString,
+    adapter_name: OsString,
     state: RwLock<DeviceState>,
     pub key_repeat: Arc<Notify>,
 }
@@ -79,6 +83,8 @@ impl AsyncDevice {
             token: CancellationToken::new(),
             force_unregistered: false,
             key_repeat: Arc::new(Notify::new()),
+            driver_name: OsString::new(),
+            adapter_name: OsString::new(),
             state: RwLock::new(DeviceState {
                 pollers: Vec::new(),
                 follower: FollowerMode::Disabled,
@@ -159,6 +165,14 @@ impl AsyncDevice {
         Ok(self.caps.clone())
     }
 
+    pub async fn get_driver_name(&self) -> Result<OsString> {
+        Ok(self.driver_name.clone())
+    }
+
+    pub async fn get_adapter_name(&self) -> Result<OsString> {
+        Ok(self.adapter_name.clone())
+    }
+
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
         Ok(self.state.read().await.phys_addr)
     }
@@ -226,8 +240,8 @@ impl AsyncDevice {
         Ok(())
     }
 
-    pub async fn get_osd_name(&self) -> Result<String> {
-        Ok(String::from_utf8_lossy(self.state.read().await.osd_name.as_bytes()).to_string())
+    pub async fn get_osd_name(&self) -> Result<OsString> {
+        Ok(OsStr::from_bytes(self.state.read().await.osd_name.as_bytes()).to_os_string())
     }
 
     pub async fn set_osd_name(&self, name: &str) -> Result<()> {

@@ -23,8 +23,11 @@ use linux_cec_sys::{PhysicalAddress as SysPhysicalAddress, Timestamp, VendorId a
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
+use std::ffi::{c_char, OsStr, OsString};
 use std::fs::{File, OpenOptions};
+use std::mem::transmute;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::str::FromStr;
 use tinyvec::ArrayVec;
@@ -491,6 +494,22 @@ impl Device {
         self.get_raw_capabilities().map(|caps| caps.capabilities)
     }
 
+    /// Get the name of the driver that is backing this device.
+    pub fn get_driver_name(&self) -> Result<OsString> {
+        self.get_raw_capabilities().map(|caps| {
+            let driver = unsafe { transmute::<&[c_char; 32], &[u8; 32]>(&caps.driver) };
+            OsStr::from_bytes(driver).to_os_string()
+        })
+    }
+
+    /// Get the name of the adapter that is backing this device.
+    pub fn get_adapter_name(&self) -> Result<OsString> {
+        self.get_raw_capabilities().map(|caps| {
+            let adapter = unsafe { transmute::<&[c_char; 32], &[u8; 32]>(&caps.name) };
+            OsStr::from_bytes(adapter).to_os_string()
+        })
+    }
+
     /// Get the currently configured [`PhysicalAddress`] of the device.
     pub fn get_physical_address(&self) -> Result<PhysicalAddress> {
         let mut phys_addr: SysPhysicalAddress = 0;
@@ -576,11 +595,11 @@ impl Device {
     }
 
     /// Get the configured OSD name.
-    pub fn get_osd_name(&mut self) -> Result<String> {
+    pub fn get_osd_name(&mut self) -> Result<OsString> {
         unsafe {
             adapter_get_logical_addresses(self.file.as_raw_fd(), &mut self.internal_log_addrs)?;
         }
-        Ok(String::from_utf8_lossy(&self.internal_log_addrs.osd_name).to_string())
+        Ok(OsStr::from_bytes(&self.internal_log_addrs.osd_name).to_os_string())
     }
 
     /// Set the advertised OSD name. This is used by TV sets to display the name

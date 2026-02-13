@@ -5,6 +5,7 @@
 
 use linux_cec_sys::structs::{cec_caps, cec_msg};
 use nix::poll::PollTimeout;
+use std::ffi::OsString;
 use std::fs::File;
 use std::panic::resume_unwind;
 use std::path::Path;
@@ -51,13 +52,15 @@ enum DeviceCommand {
     SetFollowerMode(FollowerMode, ResultChannel<()>),
     GetRawCapabilities(ResultChannel<cec_caps>),
     GetCapabilities(ResultChannel<Capabilities>),
+    GetDriverName(ResultChannel<OsString>),
+    GetAdapterName(ResultChannel<OsString>),
     GetPhysicalAddress(ResultChannel<PhysicalAddress>),
     SetPhysicalAddress(PhysicalAddress, ResultChannel<()>),
     GetLogicalAddresses(ResultChannel<Vec<LogicalAddress>>),
     SetLogicalAddresses(Vec<LogicalAddressType>, ResultChannel<()>),
     SetLogicalAddress(LogicalAddressType, ResultChannel<()>),
     ClearLogicalAddresses(ResultChannel<()>),
-    GetOsdName(ResultChannel<String>),
+    GetOsdName(ResultChannel<OsString>),
     SetOsdName(String, ResultChannel<()>),
     GetVendorId(ResultChannel<Option<VendorId>>),
     SetVendorId(Option<VendorId>, ResultChannel<()>),
@@ -159,6 +162,14 @@ impl AsyncDevice {
         relay! { self, GetRawCapabilities }
     }
 
+    pub async fn get_driver_name(&self) -> Result<OsString> {
+        relay! { self, GetDriverName }
+    }
+
+    pub async fn get_adapter_name(&self) -> Result<OsString> {
+        relay! { self, GetAdapterName }
+    }
+
     pub async fn get_physical_address(&self) -> Result<PhysicalAddress> {
         relay! { self, GetPhysicalAddress }
     }
@@ -183,7 +194,7 @@ impl AsyncDevice {
         relay! { self, ClearLogicalAddresses }
     }
 
-    pub async fn get_osd_name(&self) -> Result<String> {
+    pub async fn get_osd_name(&self) -> Result<OsString> {
         relay! { self, GetOsdName }
     }
 
@@ -337,6 +348,12 @@ impl DeviceThread {
                 }
                 DeviceCommand::GetRawCapabilities(tx) => {
                     let _ = tx.send(self.device.get_raw_capabilities());
+                }
+                DeviceCommand::GetDriverName(tx) => {
+                    let _ = tx.send(self.device.get_driver_name());
+                }
+                DeviceCommand::GetAdapterName(tx) => {
+                    let _ = tx.send(self.device.get_adapter_name());
                 }
                 DeviceCommand::GetPhysicalAddress(tx) => {
                     let _ = tx.send(self.device.get_physical_address());
