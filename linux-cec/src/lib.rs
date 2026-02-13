@@ -450,7 +450,7 @@ pub enum Error {
     UnknownError(String),
 }
 
-/// A set of error codes that correspond to [`CEC_TX_STATUS`](sys::CEC_TX_STATUS).
+/// A set of error codes that correspond to [`CEC_TX_STATUS`].
 #[derive(Error, Clone, Debug, PartialEq)]
 #[non_exhaustive]
 #[repr(u8)]

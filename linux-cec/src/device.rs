@@ -703,8 +703,8 @@ impl Device {
     /// Poll the bus for the presence of a given [`LogicalAddress`]. If the
     /// device is present, this returns `Ok`, otherwise it returns with a
     /// specific error detailing the manner of failure. Usually this will be
-    /// [`TxError::Nack`] if the device isn't present, but other manners of
-    /// failure are theoretically possible.
+    /// [`TxError::Nack`](crate::TxError::Nack) if the device isn't present,
+    /// but other manners of failure are theoretically possible.
     pub fn poll_address(&self, destination: LogicalAddress) -> Result<()> {
         let mut raw_message = cec_msg::new(self.tx_logical_address.into(), destination.into());
         #[cfg(feature = "tracing")]
