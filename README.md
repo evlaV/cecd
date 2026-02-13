@@ -187,6 +187,6 @@ are marked in brackets.
 
 ---
 
-linux-cec is copyright © 2024, Valve Software.
+linux-cec is copyright © 2024 – 2026, Valve Software.
 Excluding the linux-cec-sys crate, all crates are licensed under the LGPL 2.1 or newer. linux-cec-sys is licensed
 under the BSD 3-clause license and incorporates code written by Cisco Systems, Inc. for the Linux kernel.
