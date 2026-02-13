@@ -7,18 +7,21 @@ use anyhow::{ensure, Result};
 use input_linux::Key;
 use linux_cec::device::Capabilities;
 use linux_cec::operand::UiCommand;
-use linux_cec::{FollowerMode, InitiatorMode, LogicalAddressType, PhysicalAddress, VendorId};
+use linux_cec::{self, FollowerMode, InitiatorMode, LogicalAddressType, PhysicalAddress, VendorId};
+use nix::errno::Errno;
 use nix::unistd::gethostname;
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs::{read, read_dir, read_to_string};
 use tokio::spawn;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::task::JoinHandle;
+use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
@@ -343,7 +346,18 @@ impl System {
             }
         }
         if caps.contains(Capabilities::LOG_ADDRS) {
-            device.clear_logical_addresses().await?;
+            for i in 0..5 {
+                match device.clear_logical_addresses().await {
+                    Err(linux_cec::Error::SystemError(e)) if e == Errno::EBUSY => {
+                        if i == 4 {
+                            return Err(e.into());
+                        }
+                        sleep(Duration::from_millis(200)).await
+                    }
+                    Err(e) => return Err(e.into()),
+                    Ok(()) => break,
+                }
+            }
             device.set_osd_name(self.trimmed_osd_name()).await?;
             device.set_vendor_id(self.config.vendor_id).await?;
             device
