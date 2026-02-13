@@ -33,7 +33,7 @@ async fn handle_cec_event(ev: Event, system: &SystemHandle) {
 
 async fn handle_drm_event(ev: Event, system: &SystemHandle) {
     debug!("Got udev event {ev:#?}");
-    if !ev.property_value("HOTPLUG").is_some() {
+    if ev.property_value("HOTPLUG").is_none() {
         return;
     }
     let _ = system.reconfig().await;
