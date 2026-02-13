@@ -87,14 +87,14 @@ The configuration files are stored in [TOML format](https://toml.io/en/), with t
 
 #### UI Commands
 
-CEC specifies a large list of "UI Commands" that be sent to devices to tell them to do various things. What the devices
-do is not well-specified for most commands, excluding the "function" commands, and various devices have been known to
-behave very differently. As the "function" commands have specific definitions of their behaviors it is recommended to
-use them carefully, if at all, and most are left unmapped by default. Some commands are specified to be relayed from
-remote contols, which are marked in **bold**, though other commands may be relayed too. The full list, as usable in
-cectool and cecd mapping names, is as follows, with the default mapping in cecd listed. Some commands have multiple
-valid names, which are separated by commas. A few commands also optionally take additional parameters. The parameters
-are marked in brackets.
+CEC specifies a large list of "UI Commands" that can be sent to devices to tell them to do various things. What the
+devices do is not well-specified for most commands, excluding the "function" commands, and various devices have been
+known to behave very differently. As the "function" commands have specific definitions of their behaviors it is
+recommended to use them carefully, if at all, and most are left unmapped by default. Some commands are specified to be
+relayed from remote contols, which are marked in **bold**, though other commands may be relayed too. The full list, as
+usable in cectool and cecd mapping names, is as follows, with the default mapping in cecd listed. Some commands have
+multiple valid names, which are separated by commas. A few commands also optionally take additional parameters. The
+parameters are marked in brackets.
 
 - **select**, **ok** (This is generally marked as "OK", "Enter", or "Select" on remote controls.): `KEY_ENTER`
 - **up**: `KEY_UP`
