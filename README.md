@@ -73,7 +73,9 @@ The configuration files are stored in [TOML format](https://toml.io/en/), with t
 - `physical_address`: The requested physical address. In theory you shouldn't need this, but some adapters offload this
   to the OS and we're not necessarily able to properly correlate adapter with the display and determine the correct
   device. In this case, we still need a physical address for the device to work. This is extremely error-prone so you
-  shouldn't mess with this unless you need to. Defaults to `1.F.F.F`.
+  shouldn't mess with this unless you need to, for example if this device is in an environment where the connections to
+  the TV and any HDMI switches isn't changing. By default, no physical address is provided, so cecd won't try to
+  configure one.
 - `mappings`: Desired key mappings for uinput. This is a table of the CEC-specified UI Command names (listed below) to
   [Linux key code values](https://web.git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/include/uapi/linux/input-event-codes.h).
   Note that the key code value must be the numeric value, not the name. Defaults are listed below, and overriding the

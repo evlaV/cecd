@@ -329,13 +329,16 @@ impl System {
             if let Ok(Some(physical_address)) = System::find_pa().await {
                 debug!("Found physical address {physical_address} in EDID");
                 device.set_physical_address(physical_address).await?;
-            } else {
+            } else if let Some(physical_address) = self.config.physical_address {
                 debug!(
                     "Physical address required but not found, using fallback {}",
-                    self.config.physical_address
+                    physical_address
                 );
+                device.set_physical_address(physical_address).await?;
+            } else {
+                warn!("Couldn't determine physical address");
                 device
-                    .set_physical_address(self.config.physical_address)
+                    .set_physical_address(PhysicalAddress::default())
                     .await?;
             }
         }

@@ -14,7 +14,7 @@ use udev::{Event, EventType, MonitorBuilder};
 
 use crate::system::SystemHandle;
 
-async fn handle_event(ev: Event, system: &SystemHandle) {
+async fn handle_cec_event(ev: Event, system: &SystemHandle) {
     debug!("Got udev event {ev:#?}");
     let Some(node) = ev.devnode() else {
         return;
@@ -31,21 +31,42 @@ async fn handle_event(ev: Event, system: &SystemHandle) {
     }
 }
 
+async fn handle_drm_event(ev: Event, system: &SystemHandle) {
+    debug!("Got udev event {ev:#?}");
+    if !ev.property_value("HOTPLUG").is_some() {
+        return;
+    }
+    let _ = system.reconfig().await;
+}
+
 pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken) -> Result<()> {
-    let monitor = MonitorBuilder::new()?.match_subsystem("cec")?.listen()?;
-    let mut iter = monitor.iter();
-    let fd = AsyncFd::new(monitor.as_fd())?;
+    let cec_monitor = MonitorBuilder::new()?.match_subsystem("cec")?.listen()?;
+    let drm_monitor = MonitorBuilder::new()?
+        .match_subsystem_devtype("drm", "drm_minor")?
+        .listen()?;
+    let mut cec_iter = cec_monitor.iter();
+    let mut drm_iter = drm_monitor.iter();
+    let cec_fd = AsyncFd::new(cec_monitor.as_fd())?;
+    let drm_fd = AsyncFd::new(drm_monitor.as_fd())?;
     loop {
         select! {
             () = token.cancelled() => break Ok(()),
-            guard = fd.ready(Interest::READABLE) => {
+            guard = cec_fd.ready(Interest::READABLE) => {
                 let mut guard = guard?;
-                for ev in iter.by_ref() {
-                    handle_event(ev, &system).await;
+                for ev in cec_iter.by_ref() {
+                    handle_cec_event(ev, &system).await;
                 };
                 guard.clear_ready();
             },
-            _ = fd.ready(Interest::ERROR) => break Ok(()),
+            guard = drm_fd.ready(Interest::READABLE) => {
+                let mut guard = guard?;
+                for ev in drm_iter.by_ref() {
+                    handle_drm_event(ev, &system).await;
+                };
+                guard.clear_ready();
+            },
+            _ = cec_fd.ready(Interest::ERROR) => break Ok(()),
+            _ = drm_fd.ready(Interest::ERROR) => break Ok(()),
         };
     }
 }
