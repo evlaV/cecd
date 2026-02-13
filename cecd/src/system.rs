@@ -307,12 +307,16 @@ impl System {
     }
 
     pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
-        let uinput = if !self.config.mappings.is_empty() && self.config.uinput {
+        let device = device.lock().await;
+        let driver_name = device.get_driver_name().await?;
+        let driver_name = driver_name.to_string_lossy();
+        let adapter_name = device.get_adapter_name().await?;
+        let adapter_name = adapter_name.to_string_lossy();
+        let mut uinput = if !self.config.mappings.is_empty() && self.config.uinput {
             match UInputDevice::new() {
                 Ok(mut uinput_dev) => {
                     uinput_dev.set_mappings(self.config.mappings.clone())?;
-                    uinput_dev.set_name(self.osd_name.clone())?;
-                    uinput_dev.open()?;
+                    uinput_dev.set_name(format!("cecd {adapter_name}"))?;
                     Some(uinput_dev)
                 }
                 Err(e) => {
@@ -324,9 +328,10 @@ impl System {
             None
         };
 
-        let device = device.lock().await;
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
         let caps = device.get_capabilities().await?;
+        debug!("Device driver: {driver_name}");
+        debug!("Device adapter: {adapter_name}");
         debug!("Device has caps: {caps:?}");
         if caps.contains(Capabilities::PHYS_ADDR) {
             if let Ok(Some(physical_address)) = System::find_pa().await {
@@ -365,6 +370,9 @@ impl System {
                 .await?;
         }
         device.set_follower_mode(FollowerMode::Enabled).await?;
+        if let Some(uinput) = uinput.as_mut() {
+            uinput.open()?;
+        }
 
         Ok(uinput)
     }
