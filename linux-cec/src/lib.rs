@@ -15,7 +15,6 @@ use std::string::ToString;
 use std::time::Duration;
 use strum::{Display, EnumString};
 use thiserror::Error;
-use tinyvec::{Array, ArrayVec};
 
 pub mod cdc;
 pub mod device;
@@ -328,15 +327,11 @@ pub enum AddressingType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Range<T: PartialOrd + Clone + Display + Default + Debug, const S: usize = 4>
-where
-    [T; S]: Array,
-    <[T; S] as Array>::Item: Clone + Debug + Eq,
-{
+pub enum Range<T: PartialOrd + Clone + Display + Default + Debug> {
     AtMost(T),
     AtLeast(T),
     Exact(T),
-    Only(ArrayVec<[T; S]>),
+    Only(Vec<T>),
     Interval { min: T, max: T },
 }
 

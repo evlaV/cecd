@@ -13,8 +13,6 @@ use linux_cec_macros::{MessageEnum, Operand};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[cfg(test)]
 use std::str::FromStr;
-#[cfg(test)]
-use tinyvec::array_vec;
 
 use crate::operand::OperandEncodable;
 use crate::{cdc, constants, operand, AddressingType, PhysicalAddress, Result};
@@ -944,7 +942,7 @@ mod test_clear_ext_timer {
                 constants::CEC_OP_REC_SEQ_SUNDAY,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 8,
                 quantity: "bytes",
             })
@@ -964,7 +962,7 @@ mod test_clear_ext_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 7,
                 quantity: "bytes",
             })
@@ -982,7 +980,7 @@ mod test_clear_ext_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 5,
                 quantity: "bytes",
             })
@@ -998,7 +996,7 @@ mod test_clear_ext_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1013,7 +1011,7 @@ mod test_clear_ext_timer {
                 operand::DayOfMonth::Day1 as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1025,7 +1023,7 @@ mod test_clear_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::ClearExtTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 1,
                 quantity: "bytes",
             })
@@ -1410,7 +1408,7 @@ mod test_set_ext_timer {
                 constants::CEC_OP_REC_SEQ_SUNDAY,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 8,
                 quantity: "bytes",
             })
@@ -1430,7 +1428,7 @@ mod test_set_ext_timer {
                 0x59,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 7,
                 quantity: "bytes",
             })
@@ -1448,7 +1446,7 @@ mod test_set_ext_timer {
                 0x30,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 5,
                 quantity: "bytes",
             })
@@ -1464,7 +1462,7 @@ mod test_set_ext_timer {
                 operand::MonthOfYear::January as u8,
             ]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 3,
                 quantity: "bytes",
             })
@@ -1476,7 +1474,7 @@ mod test_set_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetExtTimer as u8, operand::DayOfMonth::Day1 as u8]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 2,
                 quantity: "bytes",
             })
@@ -1488,7 +1486,7 @@ mod test_set_ext_timer {
         assert_eq!(
             Message::try_from_bytes(&[Opcode::SetExtTimer as u8]),
             Err(Error::OutOfRange {
-                expected: Range::Only(array_vec![9, 10]),
+                expected: Range::Only(vec![9, 10]),
                 got: 1,
                 quantity: "bytes",
             })
