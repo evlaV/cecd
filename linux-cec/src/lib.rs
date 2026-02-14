@@ -405,6 +405,71 @@ impl<T: PartialOrd + Clone + Display + Default + Debug + Eq + Add<Output = T> + 
     }
 }
 
+#[cfg(test)]
+mod test_range {
+    use super::Range;
+
+    #[test]
+    fn test_display_at_most() {
+        assert_eq!(Range::AtMost(10).to_string(), "at most 10");
+    }
+
+    #[test]
+    fn test_display_at_least() {
+        assert_eq!(Range::AtLeast(10).to_string(), "at least 10");
+    }
+
+    #[test]
+    fn test_display_exact() {
+        assert_eq!(Range::Exact(10).to_string(), "10");
+    }
+
+    #[test]
+    fn test_display_only_1() {
+        assert_eq!(Range::Only(vec![10]).to_string(), "one of 10");
+    }
+
+    #[test]
+    fn test_display_only_2() {
+        assert_eq!(Range::Only(vec![10, 11]).to_string(), "one of 10, 11");
+    }
+
+    #[test]
+    fn test_display_only_3() {
+        assert_eq!(Range::Only(vec![10, 11, 12]).to_string(), "one of 10, 11, 12");
+    }
+
+    #[test]
+    fn test_display_interval() {
+        assert_eq!(Range::Interval { min: 1, max: 10 }.to_string(), "between 1 and 10");
+    }
+
+    #[test]
+    fn test_add_at_most() {
+        assert_eq!(Range::AtMost(10) + 1, Range::AtMost(11));
+    }
+
+    #[test]
+    fn test_add_at_least() {
+        assert_eq!(Range::AtLeast(10) + 1, Range::AtLeast(11));
+    }
+
+    #[test]
+    fn test_add_exact() {
+        assert_eq!(Range::Exact(10) + 1, Range::Exact(11));
+    }
+
+    #[test]
+    fn test_add_only() {
+        assert_eq!(Range::Only(vec![10, 11, 12]) + 1, Range::Only(vec![11, 12, 13]));
+    }
+
+    #[test]
+    fn test_add_interval() {
+        assert_eq!(Range::Interval { min: 1, max: 10 } + 1, Range::Interval { min: 2, max: 11 });
+    }
+}
+
 /// A set of common errors.
 #[derive(Error, Clone, Debug, PartialEq)]
 #[non_exhaustive]
