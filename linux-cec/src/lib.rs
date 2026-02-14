@@ -628,11 +628,24 @@ impl<T: TryFromPrimitive> From<TryFromPrimitiveError<T>> for Error {
 pub struct PhysicalAddress(pub(crate) u16);
 
 impl PhysicalAddress {
+    /// The physical address reserved for the root device of the CEC hierarchy
+    pub const ROOT: PhysicalAddress = PhysicalAddress(0x0000);
+
+    /// The physical address reserved to denote an invalid address
+    pub const INVALID: PhysicalAddress = PhysicalAddress(0xFFFF);
+
     /// Check whether or not the physical address is valid, i.e. not `f.f.f.f`.
     #[must_use]
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.0 != 0xFFFF
+    }
+
+    /// Check whether or not the physical address is the root device, i.e. `0.0.0.0`.
+    #[must_use]
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        self.0 == 0x0000
     }
 }
 
