@@ -460,6 +460,9 @@ impl System {
                 debug!("Found multiple connected monitors with physical addresses");
                 return Ok(None);
             }
+            if !this_pa.is_valid() || this_pa.is_root() {
+                continue;
+            }
             pa = Some(this_pa);
         }
         Ok(pa)
