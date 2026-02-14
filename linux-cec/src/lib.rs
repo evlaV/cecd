@@ -436,12 +436,18 @@ mod test_range {
 
     #[test]
     fn test_display_only_3() {
-        assert_eq!(Range::Only(vec![10, 11, 12]).to_string(), "one of 10, 11, 12");
+        assert_eq!(
+            Range::Only(vec![10, 11, 12]).to_string(),
+            "one of 10, 11, 12"
+        );
     }
 
     #[test]
     fn test_display_interval() {
-        assert_eq!(Range::Interval { min: 1, max: 10 }.to_string(), "between 1 and 10");
+        assert_eq!(
+            Range::Interval { min: 1, max: 10 }.to_string(),
+            "between 1 and 10"
+        );
     }
 
     #[test]
@@ -461,12 +467,18 @@ mod test_range {
 
     #[test]
     fn test_add_only() {
-        assert_eq!(Range::Only(vec![10, 11, 12]) + 1, Range::Only(vec![11, 12, 13]));
+        assert_eq!(
+            Range::Only(vec![10, 11, 12]) + 1,
+            Range::Only(vec![11, 12, 13])
+        );
     }
 
     #[test]
     fn test_add_interval() {
-        assert_eq!(Range::Interval { min: 1, max: 10 } + 1, Range::Interval { min: 2, max: 11 });
+        assert_eq!(
+            Range::Interval { min: 1, max: 10 } + 1,
+            Range::Interval { min: 2, max: 11 }
+        );
     }
 }
 
