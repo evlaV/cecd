@@ -41,6 +41,7 @@ pub struct DeviceTask {
     log_addr_try: i32,
     awaiting_wake: bool,
     poller: AsyncDevicePoller,
+    active: bool,
 }
 
 #[derive(Debug)]
@@ -86,6 +87,7 @@ impl DeviceTask {
             path,
             log_addr_try: LOG_ADDR_RETRIES,
             awaiting_wake: false,
+            active: false,
             poller,
         })
     }
@@ -288,10 +290,13 @@ impl DeviceTask {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if new_address == this_address {
                     self.awaiting_wake = false;
+                    self.active = true;
+                } else {
+                    self.active = false;
                 }
                 None
             }
-            MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake => {
+            MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake || self.active => {
                 let address = self.device.lock().await.get_physical_address().await?;
                 Some((Message::ActiveSource { address }, LogicalAddress::Broadcast))
             }
