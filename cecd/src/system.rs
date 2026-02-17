@@ -34,7 +34,6 @@ use zbus::zvariant::ObjectPath;
 use crate::config::{read_config_file, read_default_config, Config};
 use crate::dbus::{CecConfig, CecDevice, Daemon, PATH};
 use crate::message_handler::{MessageHandler, MessageHandlerTask};
-use crate::uinput::UInputDevice;
 use crate::ArcDevice;
 
 #[derive(Debug)]
@@ -306,27 +305,12 @@ impl System {
         unreachable!();
     }
 
-    pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<Option<UInputDevice>> {
+    pub(crate) async fn configure_dev(&self, device: ArcDevice) -> Result<()> {
         let device = device.lock().await;
         let driver_name = device.get_driver_name().await?;
         let driver_name = driver_name.to_string_lossy();
         let adapter_name = device.get_adapter_name().await?;
         let adapter_name = adapter_name.to_string_lossy();
-        let mut uinput = if !self.config.mappings.is_empty() && self.config.uinput {
-            match UInputDevice::new() {
-                Ok(mut uinput_dev) => {
-                    uinput_dev.set_mappings(self.config.mappings.clone())?;
-                    uinput_dev.set_name(format!("cecd {adapter_name}"))?;
-                    Some(uinput_dev)
-                }
-                Err(e) => {
-                    warn!("Failed to open uinput device: {e}");
-                    None
-                }
-            }
-        } else {
-            None
-        };
 
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
         let caps = device.get_capabilities().await?;
@@ -370,11 +354,7 @@ impl System {
                 .await?;
         }
         device.set_follower_mode(FollowerMode::Enabled).await?;
-        if let Some(uinput) = uinput.as_mut() {
-            uinput.open()?;
-        }
-
-        Ok(uinput)
+        Ok(())
     }
 
     async fn send_message(&mut self, message: SystemMessage) {

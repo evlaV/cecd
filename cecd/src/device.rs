@@ -23,6 +23,7 @@ use zbus::Connection;
 
 use crate::dbus::{CecDevice, CecDeviceSignals};
 use crate::system::{SystemHandle, SystemMessage};
+use crate::uinput::UInputDevice;
 use crate::{ArcDevice, AsyncDevicePoller};
 
 const LOG_ADDR_RETRIES: i32 = 20;
@@ -70,13 +71,18 @@ impl DeviceTask {
         connection: Connection,
     ) -> Result<DeviceTask> {
         let interface = iface.clone();
-        let mut dbus_obj = iface.get_mut().await;
-        let device = dbus_obj.device.clone();
+        let device;
+        let token;
+        let path;
+        {
+            let dbus_obj = iface.get().await;
+            device = dbus_obj.device.clone();
+            token = dbus_obj.token.clone();
+            path = OwnedObjectPath::from(dbus_obj.dbus_path().clone());
+        }
         let poller = device.lock().await.get_poller().await?;
-        dbus_obj.uinput = system.lock().await.configure_dev(device.clone()).await?;
-        let token = dbus_obj.token.clone();
-        let path = OwnedObjectPath::from(dbus_obj.dbus_path().clone());
-        Ok(DeviceTask {
+        system.lock().await.configure_dev(device.clone()).await?;
+        let mut device_task = DeviceTask {
             device,
             system,
             token,
@@ -89,7 +95,9 @@ impl DeviceTask {
             awaiting_wake: false,
             active: false,
             poller,
-        })
+        };
+        device_task.configure_uinput().await?;
+        Ok(device_task)
     }
 
     pub async fn run(mut self) -> Result<()> {
@@ -380,17 +388,32 @@ impl DeviceTask {
                 Ok(())
             }
             SystemMessage::ReloadConfig => {
-                let mut interface = self.interface.get_mut().await;
-                interface.uinput = None; // Drop old UInputDevice before opening a new one
-                interface.uinput = self
-                    .system
-                    .lock()
-                    .await
-                    .configure_dev(self.device.clone())
-                    .await?;
+                self.configure_uinput().await?;
                 Ok(())
             }
         }
+    }
+
+    async fn configure_uinput(&mut self) -> Result<()> {
+        let mut interface = self.interface.get_mut().await;
+        let system = self.system.lock().await;
+        interface.uinput = None; // Drop old UInputDevice before opening a new one
+        if system.config.mappings.is_empty() || !system.config.uinput {
+            return Ok(());
+        }
+
+        let mappings = system.config.mappings.clone();
+        drop(system);
+
+        let adapter_name = self.device.lock().await.get_adapter_name().await?;
+        let adapter_name = adapter_name.to_string_lossy();
+        let mut uinput =
+            UInputDevice::new().inspect_err(|e| warn!("Failed to open uinput device: {e}"))?;
+        uinput.set_mappings(mappings)?;
+        uinput.set_name(format!("cecd {adapter_name}"))?;
+        uinput.open()?;
+        interface.uinput = Some(uinput);
+        Ok(())
     }
 }
 
