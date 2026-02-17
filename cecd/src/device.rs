@@ -296,7 +296,9 @@ impl DeviceTask {
                 }
                 None
             }
-            MessageData::Valid(Message::RequestActiveSource) if self.awaiting_wake || self.active => {
+            MessageData::Valid(Message::RequestActiveSource)
+                if self.awaiting_wake || self.active =>
+            {
                 let address = self.device.lock().await.get_physical_address().await?;
                 Some((Message::ActiveSource { address }, LogicalAddress::Broadcast))
             }
