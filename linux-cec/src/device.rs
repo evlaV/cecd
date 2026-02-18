@@ -397,7 +397,7 @@ pub enum PollResult {
 }
 
 /// Information about how the CEC device is connected to the system.
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum ConnectorInfo {
     None,
