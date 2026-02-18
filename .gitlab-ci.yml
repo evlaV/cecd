@@ -8,7 +8,7 @@ test:
   tags:
     - x86_64-linux-kvm-docker
   script:
-    - pacman -Sy --noconfirm --needed rust cargo-tarpaulin
+    - pacman -Syu --noconfirm --needed rust cargo-tarpaulin
     - cargo tarpaulin --out xml --engine llvm
   artifacts:
     reports:
@@ -21,7 +21,7 @@ fmt:
   tags:
     - x86_64-linux-kvm-docker
   script:
-    - pacman -Sy --noconfirm --needed rust
+    - pacman -Syu --noconfirm --needed rust
     - cargo fmt --check
 
 clippy:
@@ -29,5 +29,5 @@ clippy:
   tags:
     - x86_64-linux-kvm-docker
   script:
-    - pacman -Sy --noconfirm --needed rust
+    - pacman -Syu --noconfirm --needed rust
     - cargo clippy
