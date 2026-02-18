@@ -9,13 +9,13 @@ use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::{error, trace};
 use udev::{Event, EventType, MonitorBuilder};
 
 use crate::system::SystemHandle;
 
 async fn handle_cec_event(ev: Event, system: &SystemHandle) {
-    debug!("Got udev event {ev:#?}");
+    trace!("Got udev event {ev:#?}");
     let Some(node) = ev.devnode() else {
         return;
     };
@@ -32,7 +32,7 @@ async fn handle_cec_event(ev: Event, system: &SystemHandle) {
 }
 
 async fn handle_drm_event(ev: Event, system: &SystemHandle) {
-    debug!("Got udev event {ev:#?}");
+    trace!("Got udev event {ev:#?}");
     if ev.property_value("HOTPLUG").is_none() {
         return;
     }
