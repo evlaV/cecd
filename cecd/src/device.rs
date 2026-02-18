@@ -388,6 +388,11 @@ impl DeviceTask {
                 Ok(())
             }
             SystemMessage::ReloadConfig => {
+                self.system
+                    .lock()
+                    .await
+                    .configure_dev(self.device.clone())
+                    .await?;
                 self.configure_uinput().await?;
                 Ok(())
             }
