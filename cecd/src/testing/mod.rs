@@ -364,7 +364,7 @@ impl AsyncDevice {
     }
 
     pub async fn get_connector_info(&self) -> Result<ConnectorInfo> {
-        todo!();
+        Ok(ConnectorInfo::None)
     }
 
     pub async fn set_active_source(&self, _address: Option<PhysicalAddress>) -> Result<()> {
