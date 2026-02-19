@@ -511,6 +511,9 @@ pub enum Error {
     /// The device was disconnected from the system.
     #[error("The device was disconnected")]
     Disconnected,
+    /// An unsupported operation was attempted on this device.
+    #[error("This device does not support this operation")]
+    Unsupported,
     /// A generic system error occurred.
     #[error("Got unexpected result from system: {0}")]
     SystemError(Errno),
@@ -595,6 +598,7 @@ impl From<Errno> for Error {
             Errno::ETIMEDOUT => Error::Timeout,
             Errno::ENODEV => Error::Disconnected,
             Errno::ENONET => Error::NoLogicalAddress,
+            Errno::ENOTTY => Error::Unsupported,
             x => Error::SystemError(x),
         }
     }
