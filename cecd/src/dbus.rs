@@ -413,15 +413,16 @@ impl CecDevice {
             sender = system.channel.clone();
             receiver = system.subscribe();
         }
-        let task = match DeviceTask::new(interface.clone(), system, receiver, connection.clone()).await {
-            Ok(task) => task,
-            Err(e) => {
-                object_server
-                    .remove::<CecDevice, _>(dbus_path.as_ref())
-                    .await?;
-                return Err(e.into());
-            }
-        };
+        let task =
+            match DeviceTask::new(interface.clone(), system, receiver, connection.clone()).await {
+                Ok(task) => task,
+                Err(e) => {
+                    object_server
+                        .remove::<CecDevice, _>(dbus_path.as_ref())
+                        .await?;
+                    return Err(e);
+                }
+            };
         spawn(task.run());
         let mut interface = interface.get_mut().await;
         interface.channel = Some(sender);
