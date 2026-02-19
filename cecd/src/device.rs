@@ -418,6 +418,26 @@ impl DeviceTask {
                 self.configure_uinput().await?;
                 Ok(())
             }
+            SystemMessage::ReconfigureConnector(conn_info) => {
+                match conn_info {
+                    ConnectorInfo::DrmConnector { .. } => {
+                        if let Some(connector) = self.connector.as_ref() {
+                            if connector.to_connector_info().await? != conn_info {
+                                return Ok(());
+                            }
+                        }
+                    }
+                    ConnectorInfo::None => (),
+                    _ => return Ok(()),
+                }
+                self.connector = self
+                    .system
+                    .lock()
+                    .await
+                    .configure_dev(self.device.clone(), self.connector.as_ref())
+                    .await?;
+                Ok(())
+            }
         }
     }
 

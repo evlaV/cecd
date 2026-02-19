@@ -65,11 +65,12 @@ trait LoginManager {
     fn suspend(&self, interactive: bool) -> Result<()>;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) enum SystemMessage {
     Wake,
     Standby { standby_tv: bool },
     ReloadConfig,
+    ReconfigureConnector(ConnectorInfo),
 }
 
 impl System {
@@ -290,6 +291,11 @@ impl System {
         Ok(())
     }
 
+    async fn reconfig_connector(&mut self, connector: ConnectorInfo) {
+        self.send_message(SystemMessage::ReconfigureConnector(connector))
+            .await;
+    }
+
     pub(crate) fn subscribe(&self) -> Receiver<SystemMessage> {
         self.channel.subscribe()
     }
@@ -486,6 +492,11 @@ impl SystemHandle {
     pub(crate) async fn reconfig(&self) -> Result<()> {
         let mut system = self.lock().await;
         system.reconfig().await
+    }
+
+    pub(crate) async fn reconfig_connector(&self, connector: ConnectorInfo) {
+        let mut system = self.lock().await;
+        system.reconfig_connector(connector).await;
     }
 
     pub(crate) async fn run(&mut self) -> Result<()> {

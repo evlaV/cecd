@@ -4,12 +4,13 @@
  */
 
 use anyhow::Result;
+use linux_cec::device::ConnectorInfo;
 use std::os::fd::AsFd;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, trace};
+use tracing::{debug, error, trace};
 use udev::{Event, EventType, MonitorBuilder};
 
 use crate::system::SystemHandle;
@@ -36,7 +37,36 @@ async fn handle_drm_event(ev: Event, system: &SystemHandle) {
     if ev.property_value("HOTPLUG").is_none() {
         return;
     }
-    let _ = system.reconfig().await;
+    let Some(connector_id) = ev.property_value("CONNECTOR") else {
+        return;
+    };
+    let Some(connector_id) = connector_id
+        .to_str()
+        .and_then(|connector_id| connector_id.parse::<u32>().ok())
+    else {
+        debug!("Invalid hotplug connector {}", connector_id.display());
+        return;
+    };
+
+    let path = ev.devpath();
+    let Some(card) = path.to_str().and_then(|card| card.split('/').next_back()) else {
+        debug!("Invalid hotplug path {}", path.display());
+        return;
+    };
+    let Some(card_no) = card
+        .strip_prefix("card")
+        .and_then(|card| card.parse::<u32>().ok())
+    else {
+        debug!("Invalid hotplug card {card}");
+        return;
+    };
+
+    let connector_info = ConnectorInfo::DrmConnector {
+        card_no,
+        connector_id,
+    };
+
+    let _ = system.reconfig_connector(connector_info).await;
 }
 
 pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken) -> Result<()> {
