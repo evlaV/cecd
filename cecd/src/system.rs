@@ -417,7 +417,7 @@ impl System {
         while let Some(entry) = dir.next_entry().await? {
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
-            if !file_name.starts_with("card") && !file_name.contains('-') {
+            if !file_name.starts_with("card") || !file_name.contains('-') {
                 continue;
             }
             let status = match read_to_string(entry.path().join("status")).await {
