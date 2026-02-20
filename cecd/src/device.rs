@@ -382,7 +382,7 @@ impl DeviceTask {
                 device
                     .tx_message(&Message::InactiveSource { address }, LogicalAddress::Tv)
                     .await?;
-                if standby_tv {
+                if self.active && standby_tv {
                     device.standby(LogicalAddress::Tv).await?;
                 }
                 Ok(())
