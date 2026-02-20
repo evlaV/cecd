@@ -525,6 +525,21 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x1000),
+                    original_address: PhysicalAddress::from(0),
+                }),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+
         let interface: InterfaceRef<CecDevice> = test
             .connection
             .object_server()
@@ -550,6 +565,64 @@ mod test {
             rx_message(&test.dev).await.unwrap(),
             (Message::Standby {}, LogicalAddress::Tv)
         );
+        assert!(rx_message(&test.dev).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_system_message_standby_inactive() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.uinput = false;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+        assert_eq!(test.proxy.physical_address().await.unwrap(), 0x1000);
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x2000),
+                    original_address: PhysicalAddress::from(0x1000),
+                }),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
+            .await
+            .unwrap();
+        {
+            let dev = interface.get_mut().await;
+            dev.send_system_message(SystemMessage::Standby { standby_tv: true })
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::InactiveSource {
+                    address: PhysicalAddress::from(0x1000)
+                },
+                LogicalAddress::Tv
+            )
+        );
+        assert!(rx_message(&test.dev).await.is_none());
     }
 
     #[tokio::test]
@@ -569,6 +642,21 @@ mod test {
             test.proxy.logical_addresses().await.unwrap(),
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
+
+        test.dev
+            .lock()
+            .await
+            .queue_rx_message(Envelope {
+                message: MessageData::Valid(Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x1000),
+                    original_address: PhysicalAddress::from(0),
+                }),
+                initiator: LogicalAddress::Tv,
+                destination: LogicalAddress::PlaybackDevice1,
+                timestamp: 0,
+                sequence: 1,
+            })
+            .await;
 
         let interface: InterfaceRef<CecDevice> = test
             .connection
@@ -591,7 +679,7 @@ mod test {
                 LogicalAddress::Tv
             )
         );
-        assert!(rx_message(&test.dev).await.is_none(),);
+        assert!(rx_message(&test.dev).await.is_none());
     }
 
     #[tokio::test]
