@@ -525,13 +525,12 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        test.dev
-            .lock()
-            .await
-            .queue_rx_message(Envelope {
+        let notify = {
+            let mut dev = test.dev.lock().await;
+            dev.queue_rx_message(Envelope {
                 message: MessageData::Valid(Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x1000),
-                    original_address: PhysicalAddress::from(0),
+                    original_address: PhysicalAddress::from(0x0000),
                 }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
@@ -539,6 +538,9 @@ mod test {
                 sequence: 1,
             })
             .await;
+            dev.rx_queue_empty().await.unwrap()
+        };
+        notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
             .connection
@@ -586,10 +588,9 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        test.dev
-            .lock()
-            .await
-            .queue_rx_message(Envelope {
+        let notify = {
+            let mut dev = test.dev.lock().await;
+            dev.queue_rx_message(Envelope {
                 message: MessageData::Valid(Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x2000),
                     original_address: PhysicalAddress::from(0x1000),
@@ -600,6 +601,9 @@ mod test {
                 sequence: 1,
             })
             .await;
+            dev.rx_queue_empty().await.unwrap()
+        };
+        notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
             .connection
@@ -643,13 +647,12 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        test.dev
-            .lock()
-            .await
-            .queue_rx_message(Envelope {
+        let notify = {
+            let mut dev = test.dev.lock().await;
+            dev.queue_rx_message(Envelope {
                 message: MessageData::Valid(Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x1000),
-                    original_address: PhysicalAddress::from(0),
+                    original_address: PhysicalAddress::from(0x0000),
                 }),
                 initiator: LogicalAddress::Tv,
                 destination: LogicalAddress::PlaybackDevice1,
@@ -657,6 +660,9 @@ mod test {
                 sequence: 1,
             })
             .await;
+            dev.rx_queue_empty().await.unwrap()
+        };
+        notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
             .connection
