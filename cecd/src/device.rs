@@ -525,21 +525,18 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        let notify = {
-            let mut dev = test.dev.lock().await;
-            dev.queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::RoutingChange {
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x1000),
                     original_address: PhysicalAddress::from(0x0000),
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
-            dev.rx_queue_empty().await.unwrap()
-        };
         notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
@@ -588,21 +585,18 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        let notify = {
-            let mut dev = test.dev.lock().await;
-            dev.queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::RoutingChange {
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x2000),
                     original_address: PhysicalAddress::from(0x1000),
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
-            dev.rx_queue_empty().await.unwrap()
-        };
         notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
@@ -647,21 +641,18 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        let notify = {
-            let mut dev = test.dev.lock().await;
-            dev.queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::RoutingChange {
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
                     new_address: PhysicalAddress::from(0x1000),
                     original_address: PhysicalAddress::from(0x0000),
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
-            dev.rx_queue_empty().await.unwrap()
-        };
         notify.notified().await;
 
         let interface: InterfaceRef<CecDevice> = test
@@ -706,17 +697,13 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        test.dev
+        let notify = test
+            .dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::RecordOff {}),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .send_rx_message(Message::RecordOff {}, LogicalAddress::Tv)
             .await;
+        notify.notified().await;
 
         assert_eq!(
             rx_message(&test.dev).await.unwrap(),
@@ -748,17 +735,13 @@ mod test {
             &[u8::from(LogicalAddress::PlaybackDevice1)]
         );
 
-        test.dev
+        let notify = test
+            .dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::GiveDevicePowerStatus {}),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .send_rx_message(Message::GiveDevicePowerStatus {}, LogicalAddress::Tv)
             .await;
+        notify.notified().await;
 
         assert_eq!(
             rx_message(&test.dev).await.unwrap(),
@@ -1178,26 +1161,17 @@ mod test {
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlPressed {
+            .queue_rx_message(
+                Message::UserControlPressed {
                     ui_command: UiCommand::Enter,
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlReleased {}),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .queue_rx_message(Message::UserControlReleased {}, LogicalAddress::Tv)
             .await;
         let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
         notify.notified().await;
@@ -1248,26 +1222,17 @@ mod test {
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlPressed {
+            .queue_rx_message(
+                Message::UserControlPressed {
                     ui_command: UiCommand::Back,
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlReleased {}),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .queue_rx_message(Message::UserControlReleased {}, LogicalAddress::Tv)
             .await;
         let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
         notify.notified().await;
@@ -1300,39 +1265,27 @@ mod test {
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlPressed {
+            .queue_rx_message(
+                Message::UserControlPressed {
                     ui_command: UiCommand::Enter,
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlPressed {
+            .queue_rx_message(
+                Message::UserControlPressed {
                     ui_command: UiCommand::Back,
-                }),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+                },
+                LogicalAddress::Tv,
+            )
             .await;
         test.dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::UserControlReleased {}),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .queue_rx_message(Message::UserControlReleased {}, LogicalAddress::Tv)
             .await;
         let notify = test.dev.lock().await.rx_queue_empty().await.unwrap();
         notify.notified().await;

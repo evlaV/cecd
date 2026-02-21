@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+use anyhow::bail;
 use linux_cec::device::{
-    Capabilities, ConnectorInfo, Envelope, PollResult, PollStatus, PollTimeout,
+    Capabilities, ConnectorInfo, Envelope, MessageData, PollResult, PollStatus, PollTimeout,
 };
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{BufferOperand, UiCommand};
@@ -21,9 +22,11 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::select;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::{Mutex, Notify, RwLock};
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::dispatcher::DefaultGuard;
 use tracing::{debug, subscriber};
@@ -109,12 +112,43 @@ impl AsyncDevice {
         self.state.write().await.phys_addr = phys_addr;
     }
 
-    pub(crate) async fn queue_rx_message(&self, message: Envelope) {
+    pub(crate) async fn queue_rx_message(&self, message: Message, destination: LogicalAddress) {
         let mut state = self.state.write().await;
-        state.rx_queue.push_back(message);
+        let envelope = Envelope {
+            message: MessageData::Valid(message),
+            initiator: state.log_addrs[0],
+            destination,
+            timestamp: 0,
+            sequence: state.sequence,
+        };
+        state.sequence += 1;
+        state.rx_queue.push_back(envelope);
         for poller in state.pollers.iter() {
             poller.send(PollStatus::GotMessage).await.unwrap();
         }
+    }
+
+    pub(crate) async fn send_rx_message(
+        &self,
+        message: Message,
+        initiator: LogicalAddress,
+    ) -> Arc<Notify> {
+        let mut state = self.state.write().await;
+        let envelope = Envelope {
+            message: MessageData::Valid(message),
+            initiator,
+            destination: state.log_addrs[0],
+            timestamp: 0,
+            sequence: state.sequence,
+        };
+        state.sequence += 1;
+        state.rx_queue.push_back(envelope);
+        let notify = Arc::new(Notify::new());
+        state.rx_empty.push(notify.clone());
+        for poller in state.pollers.iter() {
+            poller.send(PollStatus::GotMessage).await.unwrap();
+        }
+        notify
     }
 
     pub(crate) async fn rx_queue_empty(&mut self) -> Option<Arc<Notify>> {
@@ -326,6 +360,7 @@ impl AsyncDevice {
                 results.push(PollResult::Message(message));
             }
         }
+        dbg!(&results);
         Ok(results)
     }
 
@@ -508,6 +543,16 @@ where
         dbus,
         _guard: guard,
     })
+}
+
+pub async fn wait_timeout<Fut>(method: Fut, timeout: Duration) -> anyhow::Result<()>
+where
+    Fut: Future,
+{
+    select! {
+        _ = sleep(timeout) => bail!("Timeout reached"),
+        _ = method => Ok(())
+    }
 }
 
 #[tokio::test]

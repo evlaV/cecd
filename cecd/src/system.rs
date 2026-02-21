@@ -660,18 +660,16 @@ pub struct MessageHandlerHandle {
 mod test {
     use super::*;
 
-    use linux_cec::device::{Envelope, MessageData};
     use linux_cec::message::{Message, Opcode};
     use linux_cec::operand::AbortReason;
     use linux_cec::{LogicalAddress, PhysicalAddress};
     use std::iter::repeat_n;
     use std::time::Duration;
-    use tokio::select;
     use tokio::time::sleep;
     use zbus::zvariant::OwnedObjectPath;
     use zbus::{fdo, interface};
 
-    use crate::testing::setup_dbus_test;
+    use crate::testing::{setup_dbus_test, wait_timeout};
 
     #[test]
     fn test_parse_edid_missing() {
@@ -1214,21 +1212,16 @@ mod test {
             .await
             .unwrap());
 
-        test.dev
+        let notify = test
+            .dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::GetCecVersion),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .send_rx_message(Message::GetCecVersion {}, LogicalAddress::Tv)
             .await;
-        select! {
-            _ = sleep(Duration::from_millis(50)) => (),
-            _ = rx.recv() => (),
-        };
+        notify.notified().await;
+        wait_timeout(rx.recv(), Duration::from_millis(50))
+            .await
+            .unwrap();
         let message = handler.get_mut().await.last_message.take().unwrap();
         assert_eq!(&message.device.as_ref(), test.proxy.inner().path());
         assert_eq!(message.initiator, LogicalAddress::Tv as u8);
@@ -1256,17 +1249,13 @@ mod test {
             .await
             .unwrap());
 
-        test.dev
+        let notify = test
+            .dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::GetCecVersion),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .send_rx_message(Message::GetCecVersion {}, LogicalAddress::Tv)
             .await;
+        notify.notified().await;
         rx.recv().await.unwrap();
         assert!(test.dev.lock().await.dequeue_tx_message().await.is_none());
         rx.recv().await.unwrap();
@@ -1300,17 +1289,13 @@ mod test {
             .await
             .unwrap());
 
-        test.dev
+        let notify = test
+            .dev
             .lock()
             .await
-            .queue_rx_message(Envelope {
-                message: MessageData::Valid(Message::GetCecVersion),
-                initiator: LogicalAddress::Tv,
-                destination: LogicalAddress::PlaybackDevice1,
-                timestamp: 0,
-                sequence: 1,
-            })
+            .send_rx_message(Message::GetCecVersion {}, LogicalAddress::Tv)
             .await;
+        notify.notified().await;
         rx.recv().await.unwrap();
         sleep(Duration::from_millis(1)).await;
         let (message, address) = test.dev.lock().await.dequeue_tx_message().await.unwrap();
