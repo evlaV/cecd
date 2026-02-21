@@ -360,7 +360,6 @@ impl AsyncDevice {
                 results.push(PollResult::Message(message));
             }
         }
-        dbg!(&results);
         Ok(results)
     }
 
