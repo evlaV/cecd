@@ -7,9 +7,7 @@ use anyhow::{ensure, Result};
 use input_linux::Key;
 use linux_cec::device::{Capabilities, ConnectorInfo};
 use linux_cec::operand::UiCommand;
-use linux_cec::{
-    self, Error, FollowerMode, InitiatorMode, LogicalAddressType, PhysicalAddress, VendorId,
-};
+use linux_cec::{self, FollowerMode, InitiatorMode, LogicalAddressType, PhysicalAddress, VendorId};
 use nix::errno::Errno;
 use nix::unistd::gethostname;
 use std::collections::hash_map::{Entry, HashMap};
@@ -323,18 +321,16 @@ impl System {
         let driver_name = driver_name.to_string_lossy();
         let adapter_name = device.get_adapter_name().await?;
         let adapter_name = adapter_name.to_string_lossy();
+        let caps = device.get_capabilities().await?;
         let conn_info = if let Some(connector) = connector {
             connector.to_connector_info().await?
+        } else if caps.contains(Capabilities::CONNECTOR_INFO) {
+            device.get_connector_info().await?
         } else {
-            match device.get_connector_info().await {
-                Ok(connector) => connector,
-                Err(Error::Unsupported) => ConnectorInfo::None,
-                Err(e) => return Err(e.into()),
-            }
+            ConnectorInfo::None
         };
         let mut new_connector = None;
         device.set_initiator_mode(InitiatorMode::Enabled).await?;
-        let caps = device.get_capabilities().await?;
         debug!("Device driver: {driver_name}");
         debug!("Device adapter: {adapter_name}");
         debug!("Device has caps: {caps:?}");
