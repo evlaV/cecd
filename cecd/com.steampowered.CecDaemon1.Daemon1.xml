@@ -46,6 +46,24 @@
         A list of all the currently handled opcodes.
     -->
     <property name="HandledMessages" type="ay" access="read"/>
+
+    <!--
+        Wake:
+
+        Attempt to wake any connected TVs and change the source to this device.
+    -->
+    <method name="Wake">
+    </method>
+
+    <!--
+        Standby:
+        @force: If false, only standby if this is the active source
+
+        Tell any connected TVs to enter standby.
+    -->
+    <method name="Standby">
+      <arg name="force" type="b"/>
+    </method>
   </interface>
 </node>
 

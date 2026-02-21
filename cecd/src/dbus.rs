@@ -343,6 +343,14 @@ impl Daemon {
         handled.sort();
         handled
     }
+
+    async fn wake(&self) {
+        self.system.wake_all().await
+    }
+
+    async fn standby(&self, force: bool) {
+        self.system.standby_all(force).await
+    }
 }
 
 pub struct CecDevice {

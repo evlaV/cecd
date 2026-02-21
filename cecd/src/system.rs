@@ -68,7 +68,7 @@ trait LoginManager {
 #[derive(Debug, Clone)]
 pub(crate) enum SystemMessage {
     Wake,
-    Standby { standby_tv: bool },
+    Standby { standby_tv: bool, force: bool },
     ReloadConfig,
     ReconfigureConnector(ConnectorInfo),
 }
@@ -519,7 +519,10 @@ impl SystemHandle {
             } else if sleep {
                 let standby_tv = system.config.suspend_tv;
                 system
-                    .send_message(SystemMessage::Standby { standby_tv })
+                    .send_message(SystemMessage::Standby {
+                        standby_tv,
+                        force: false,
+                    })
                     .await;
             }
         }
@@ -591,6 +594,21 @@ impl SystemHandle {
 
     pub(crate) async fn list_handled_messages(&self) -> HashSet<u8> {
         self.lock().await.message_handlers.keys().copied().collect()
+    }
+
+    pub(crate) async fn wake_all(&self) {
+        let mut system = self.lock().await;
+        system.send_message(SystemMessage::Wake).await;
+    }
+
+    pub(crate) async fn standby_all(&self, force: bool) {
+        let mut system = self.lock().await;
+        system
+            .send_message(SystemMessage::Standby {
+                standby_tv: true,
+                force,
+            })
+            .await;
     }
 }
 

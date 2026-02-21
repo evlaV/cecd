@@ -26,8 +26,14 @@ pub trait Daemon1 {
         ok: bool,
     ) -> zbus::Result<()>;
 
+    /// Standby method
+    fn standby(&self, force: bool) -> zbus::Result<()>;
+
     /// UnregisterMessageHandler method
     fn unregister_message_handler(&self, opcode: u8, ok: bool) -> zbus::Result<()>;
+
+    /// Wake method
+    fn wake(&self) -> zbus::Result<()>;
 
     /// HandledMessages property
     #[zbus(property)]
