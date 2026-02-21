@@ -354,6 +354,7 @@ pub struct CecDevice {
     pub cached_phys_addr: u16,
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
+    pub cached_active: bool,
     key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<anyhow::Result<()>>)>,
     pub uinput: Option<UInputDevice>,
 }
@@ -389,6 +390,7 @@ impl CecDevice {
             cached_phys_addr: 0xFFFF,
             cached_log_addrs: Vec::new(),
             cached_vendor_id: -1,
+            cached_active: false,
             key_repeat: HashMap::new(),
             uinput: None,
         })
@@ -480,6 +482,11 @@ impl CecDevice {
     #[zbus(property)]
     async fn vendor_id(&self) -> i32 {
         self.cached_vendor_id
+    }
+
+    #[zbus(property)]
+    async fn active(&self) -> bool {
+        self.cached_active
     }
 
     async fn set_osd_name(&self, name: &str) -> Result<()> {

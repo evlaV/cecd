@@ -84,6 +84,10 @@ pub trait CecDevice1 {
     #[zbus(signal)]
     fn user_control_released(&self, initiator: u8) -> zbus::Result<()>;
 
+    /// Active property
+    #[zbus(property)]
+    fn active(&self) -> zbus::Result<bool>;
+
     /// LogicalAddresses property
     #[zbus(property)]
     fn logical_addresses(&self) -> zbus::Result<Vec<u8>>;

@@ -799,6 +799,7 @@ mod test {
         notify.notified().await;
         wait_timeout(rx.recv(), Duration::from_millis(50))
             .await
+            .unwrap()
             .unwrap();
         let message = handler.get_mut().await.last_message.take().unwrap();
         assert_eq!(&message.device.as_ref(), test.proxy.inner().path());

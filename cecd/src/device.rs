@@ -316,9 +316,9 @@ impl DeviceTask {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if new_address == this_address {
                     self.awaiting_wake = false;
-                    self.active = true;
+                    self.set_active(true).await?;
                 } else {
-                    self.active = false;
+                    self.set_active(false).await?;
                 }
                 None
             }
@@ -460,6 +460,25 @@ impl DeviceTask {
         uinput.set_name(format!("cecd {adapter_name}"))?;
         uinput.open()?;
         interface.uinput = Some(uinput);
+        Ok(())
+    }
+
+    async fn set_active(&mut self, active: bool) -> Result<()> {
+        if self.active == active {
+            return Ok(());
+        }
+        info!(
+            "Device {} became {}",
+            self.path,
+            if active { "active" } else { "inactive" }
+        );
+        self.active = active;
+        let emitter = self.interface.signal_emitter();
+        let mut iface = self.interface.get_mut().await;
+        if iface.cached_active != active {
+            iface.cached_active = active;
+            iface.active_changed(emitter).await?;
+        }
         Ok(())
     }
 }
@@ -672,6 +691,7 @@ impl KeyRepeat {
 mod test {
     use super::*;
 
+    use cecd_proxy::CecDevice1Proxy;
     use input_linux::{EventKind, Key, KeyEvent, KeyState};
     use linux_cec::device::Capabilities;
     use linux_cec::message::Opcode;
@@ -679,9 +699,10 @@ mod test {
     use std::iter::repeat_n;
     use std::num::ParseIntError;
     use std::time::Duration;
+    use tokio_stream::StreamExt;
 
     use crate::config::Config;
-    use crate::testing::setup_dbus_test;
+    use crate::testing::{setup_dbus_test, wait_timeout};
 
     async fn rx_message(dev: &ArcDevice) -> Option<(Message, LogicalAddress)> {
         for _ in 0..100 {
@@ -1549,6 +1570,83 @@ mod test {
             uinput.get_next_event().unwrap().kind,
             EventKind::Synchronize
         );
+    }
+
+    #[tokio::test]
+    async fn test_active_changed() {
+        async fn cb(dev: ArcDevice) -> anyhow::Result<()> {
+            let mut dev = dev.lock().await;
+            dev.set_caps(Capabilities::LOG_ADDRS | Capabilities::TRANSMIT);
+            dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
+            Ok(())
+        }
+        let mut config = Config::default();
+        config.uinput = false;
+        config.logical_address = LogicalAddressType::Playback;
+        let test = setup_dbus_test(cb, Some(config)).await.unwrap();
+
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x1000),
+                    original_address: PhysicalAddress::from(0x0),
+                },
+                LogicalAddress::Tv,
+            )
+            .await;
+        notify.notified().await;
+
+        let proxy = CecDevice1Proxy::builder(&test.connection)
+            .path("/com/steampowered/CecDaemon1/Devices/Null")
+            .unwrap()
+            //.cache_properties(zbus::proxy::CacheProperties::No)
+            .build()
+            .await
+            .unwrap();
+
+        let mut receiver = proxy.receive_active_changed().await;
+        while let Ok(Some(signal)) = wait_timeout(receiver.next(), Duration::from_millis(100)).await
+        {
+            assert!(signal.get().await.unwrap());
+        }
+        assert!(proxy.active().await.unwrap());
+
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x2000),
+                    original_address: PhysicalAddress::from(0x1000),
+                },
+                LogicalAddress::Tv,
+            )
+            .await;
+        notify.notified().await;
+
+        assert!(!receiver.next().await.unwrap().get().await.unwrap());
+        assert!(!proxy.active().await.unwrap());
+
+        let notify = test
+            .dev
+            .lock()
+            .await
+            .send_rx_message(
+                Message::RoutingChange {
+                    new_address: PhysicalAddress::from(0x1000),
+                    original_address: PhysicalAddress::from(0x2000),
+                },
+                LogicalAddress::Tv,
+            )
+            .await;
+        notify.notified().await;
+
+        assert!(receiver.next().await.unwrap().get().await.unwrap());
+        assert!(proxy.active().await.unwrap());
     }
 
     #[test]

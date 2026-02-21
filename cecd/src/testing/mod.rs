@@ -544,13 +544,13 @@ where
     })
 }
 
-pub async fn wait_timeout<Fut>(method: Fut, timeout: Duration) -> anyhow::Result<()>
+pub async fn wait_timeout<Fut, T>(method: Fut, timeout: Duration) -> anyhow::Result<T>
 where
-    Fut: Future,
+    Fut: Future<Output = T>,
 {
     select! {
         _ = sleep(timeout) => bail!("Timeout reached"),
-        _ = method => Ok(())
+        o = method => Ok(o)
     }
 }
 

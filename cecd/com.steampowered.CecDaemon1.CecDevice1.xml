@@ -247,6 +247,13 @@
         will be negative.
     -->
     <property name="VendorId" type="i" access="read"/>
+
+    <!--
+        Active:
+
+        Whether or not this device is the currently active, displayed output.
+    -->
+    <property name="Active" type="b" access="read"/>
   </interface>
 </node>
 
