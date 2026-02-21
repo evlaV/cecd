@@ -1602,7 +1602,6 @@ mod test {
         let proxy = CecDevice1Proxy::builder(&test.connection)
             .path("/com/steampowered/CecDaemon1/Devices/Null")
             .unwrap()
-            //.cache_properties(zbus::proxy::CacheProperties::No)
             .build()
             .await
             .unwrap();
