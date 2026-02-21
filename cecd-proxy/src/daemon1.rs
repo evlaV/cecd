@@ -14,7 +14,8 @@
 use zbus::proxy;
 #[proxy(
     interface = "com.steampowered.CecDaemon1.Daemon1",
-    assume_defaults = true
+    default_service = "com.steampowered.CecDaemon1",
+    default_path = "/com/steampowered/CecDaemon1/Daemon"
 )]
 pub trait Daemon1 {
     /// RegisterMessageHandler method
