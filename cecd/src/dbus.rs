@@ -15,7 +15,7 @@ use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tokio::fs::canonicalize;
-use tokio::sync::broadcast::Sender;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::task::{spawn, JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
@@ -357,7 +357,7 @@ impl Daemon {
 pub struct CecDevice {
     pub device: ArcDevice,
     pub token: CancellationToken,
-    channel: Option<Sender<SystemMessage>>,
+    channel: Option<UnboundedSender<SystemMessage>>,
     path: PathBuf,
     dbus_path: OwnedObjectPath,
     pub cached_phys_addr: u16,
@@ -417,26 +417,28 @@ impl CecDevice {
         object_server.at(dbus_path.as_ref(), self).await?;
 
         let interface = object_server.interface(dbus_path.as_ref()).await?;
-        let sender;
-        let receiver;
+        let broadcast_receiver = system.lock().await.subscribe();
+        let (unicast_sender, unicast_receiver) = unbounded_channel();
+        let task = match DeviceTask::new(
+            interface.clone(),
+            system,
+            broadcast_receiver,
+            unicast_receiver,
+            connection.clone(),
+        )
+        .await
         {
-            let system = system.lock().await;
-            sender = system.channel.clone();
-            receiver = system.subscribe();
-        }
-        let task =
-            match DeviceTask::new(interface.clone(), system, receiver, connection.clone()).await {
-                Ok(task) => task,
-                Err(e) => {
-                    object_server
-                        .remove::<CecDevice, _>(dbus_path.as_ref())
-                        .await?;
-                    return Err(e);
-                }
-            };
+            Ok(task) => task,
+            Err(e) => {
+                object_server
+                    .remove::<CecDevice, _>(dbus_path.as_ref())
+                    .await?;
+                return Err(e);
+            }
+        };
         spawn(task.run());
         let mut interface = interface.get_mut().await;
-        interface.channel = Some(sender);
+        interface.channel = Some(unicast_sender);
         info!("Device {dbus_path} registered");
         Ok(())
     }

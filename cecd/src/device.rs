@@ -18,6 +18,7 @@ use std::time::Duration;
 use tokio::fs::{read, read_dir, read_to_string};
 use tokio::select;
 use tokio::sync::broadcast::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -40,7 +41,8 @@ pub struct DeviceTask {
     token: CancellationToken,
     interface: InterfaceRef<CecDevice>,
     active_key: Option<UiCommand>,
-    channel: Receiver<SystemMessage>,
+    broadcast_channel: Receiver<SystemMessage>,
+    unicast_channel: UnboundedReceiver<SystemMessage>,
     connection: Connection,
     path: OwnedObjectPath,
     log_addr_try: i32,
@@ -79,7 +81,8 @@ impl DeviceTask {
     pub async fn new(
         iface: InterfaceRef<CecDevice>,
         system: SystemHandle,
-        channel: Receiver<SystemMessage>,
+        broadcast_channel: Receiver<SystemMessage>,
+        unicast_channel: UnboundedReceiver<SystemMessage>,
         connection: Connection,
     ) -> Result<DeviceTask> {
         let interface = iface.clone();
@@ -104,7 +107,8 @@ impl DeviceTask {
             token,
             interface,
             active_key: None,
-            channel,
+            broadcast_channel,
+            unicast_channel,
             connection,
             path,
             log_addr_try: LOG_ADDR_RETRIES,
@@ -146,8 +150,16 @@ impl DeviceTask {
                         }
                     }
                 }
-                message = self.channel.recv() => {
+                message = self.broadcast_channel.recv() => {
                     let Ok(message) = message else {
+                        break;
+                    };
+                    if let Err(err) = self.handle_system_message(message).await {
+                        error!("Message handling failed: {err}");
+                    }
+                }
+                message = self.unicast_channel.recv() => {
+                    let Some(message) = message else {
                         break;
                     };
                     if let Err(err) = self.handle_system_message(message).await {
