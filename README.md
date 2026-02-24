@@ -12,12 +12,13 @@ linux-cec is a collection of Rust crates intended for interfacing with Linux's
   You should not use this directly, and no stability is guaranteed between versions.
 - cecd: A daemon that runs on the host and exposes high level control for CEC over DBus, optionally exposing an input
   device for the remote control via [uinput](https://www.kernel.org/doc/html/latest/input/uinput.html).
+- cecd-proxy: A set of zbus proxies for third-party crates to interface with a running instance of cecd over DBus.
 
 Note that most GPUs do not expose CEC to the OS, and as such you may need an adapter supported by the kernel to use
-CEC. Please see the Linux admin guide [page on CEC](https://docs.kernel.org/admin-guide/media/cec.html) for more
-details on supported devices. This repo also contains versions of the systemd units and udev rules to enable
-auto-binding of external adapters. These are located `data` directory and can be installed into
-`/usr/lib/systemd/system/` and `/usr/lib/udev/rules.d/` respectively.
+CEC.  Please see the Linux admin guide [page on CEC](https://docs.kernel.org/admin-guide/media/cec.html) for more
+details on supported devices. Modified versions of these files can be found in the accompanying [inputattach-cec-units
+repo](https://gitlab.steamos.cloud/holo/inputattach-cec-units). In theory any device supported by Linux's CEC subsystem
+should be supported by linux-cec, though only a small handful of devices have been tested so far.
 
 ## Why not libCEC FFI?
 
