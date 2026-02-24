@@ -52,7 +52,7 @@ struct MessageEnum {
 impl MessageEnum {
     fn add_message(
         &mut self,
-        ident: Ident,
+        ident: &Ident,
         fields: Fields,
         addressing: &Ident,
     ) -> Result<(), String> {
@@ -79,7 +79,7 @@ impl MessageEnum {
 
                     match typename {
                         Type::Path(ref path) if path.path.get_ident().is_none() => {
-                            sizes.push(quote!(#name.len()))
+                            sizes.push(quote!(#name.len()));
                         }
                         _ => sizes.push(quote!(::core::mem::size_of::<#typename>())),
                     }
@@ -287,7 +287,7 @@ impl MessageEnum {
                 };
                 if meta.path.get_ident() != Some(&addressing) {
                     continue;
-                };
+                }
                 let Expr::Lit(ExprLit {
                     lit: Lit::Str(lit), ..
                 }) = meta.value
@@ -304,7 +304,7 @@ impl MessageEnum {
                 };
             }
 
-            self.add_message(ident, variant.fields, addressing_type)?;
+            self.add_message(&ident, variant.fields, addressing_type)?;
         }
 
         let message = self.message;
@@ -425,7 +425,7 @@ pub fn message_enum(input: TokenStream) -> TokenStream {
     }
 }
 
-fn bits_u8_encodable(ident: Ident) -> TokenStream {
+fn bits_u8_encodable(ident: &Ident) -> TokenStream {
     quote! {
         impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
@@ -450,7 +450,7 @@ fn bits_u8_encodable(ident: Ident) -> TokenStream {
     .into()
 }
 
-fn try_into_u8_encodable(ident: Ident) -> TokenStream {
+fn try_into_u8_encodable(ident: &Ident) -> TokenStream {
     quote! {
         impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
@@ -475,7 +475,7 @@ fn try_into_u8_encodable(ident: Ident) -> TokenStream {
     .into()
 }
 
-fn into_u8_encodable(ident: Ident) -> TokenStream {
+fn into_u8_encodable(ident: &Ident) -> TokenStream {
     quote! {
         impl crate::operand::OperandEncodable for #ident {
             fn to_bytes(&self, buf: &mut impl Extend<u8>) {
@@ -512,7 +512,7 @@ pub fn operand(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
 
     match data {
-        Data::Enum(_) => try_into_u8_encodable(ident),
+        Data::Enum(_) => try_into_u8_encodable(&ident),
         Data::Struct(data) => match data.fields {
             Fields::Named(_) => {
                 let mut to = Vec::new();
@@ -571,9 +571,9 @@ pub fn operand(input: TokenStream) -> TokenStream {
                     ty: Type::Path(ty), ..
                 }) => {
                     if ty.qself.is_some() {
-                        bits_u8_encodable(ident)
+                        bits_u8_encodable(&ident)
                     } else {
-                        into_u8_encodable(ident)
+                        into_u8_encodable(&ident)
                     }
                 }
                 Some(Field {
@@ -691,7 +691,7 @@ pub fn bitfield_specifier(input: TokenStream) -> TokenStream {
                 continue;
             }
             _ => bail!("Variant contains fields, which is unsupported"),
-        };
+        }
         let Some((_, ref expr)) = variant.discriminant else {
             bail!("Variant has no explicit value");
         };
@@ -886,7 +886,7 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         decode_name = format_ident!("test_decode");
         len_name = format_ident!("test_len");
         overfull_name = format_ident!("test_decode_overfull");
-    };
+    }
 
     let test_overfull = if extra.take("Overfull").is_some() {
         Some(quote! {
@@ -961,7 +961,7 @@ pub fn message_test(input: TokenStream) -> TokenStream {
                 assert_eq!(#instance.opcode(), Opcode::#ty);
             }
         });
-    };
+    }
 
     let test_overfull = if extra.take("Overfull").is_some() {
         Some(quote! {
