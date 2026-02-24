@@ -69,6 +69,7 @@ impl DBusError for Error {
                 CecError::Abort => "com.steampowered.CecDaemon1.Error.Abort",
                 CecError::NoLogicalAddress => "com.steampowered.CecDaemon1.Error.NoLogicalAddress",
                 CecError::Disconnected => "com.steampowered.CecDaemon1.Error.Disconnected",
+                CecError::Unsupported => "com.steampowered.CecDaemon1.Error.Unsupported",
                 CecError::SystemError(_) => "com.steampowered.CecDaemon1.Error.SystemError",
                 CecError::TxError(e) => match e {
                     TxError::ArbLost => "com.steampowered.CecDaemon1.TxError.ArbLost",
