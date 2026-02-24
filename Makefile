@@ -31,6 +31,7 @@ install: target/release/cecd target/release/cectool
 	install -d -m 755 "$(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)"
 	install -d -m 755 "$(DESTDIR)$(DBUS_INTERFACES_DIR)"
 	install -m 644 linux-cec/data/udev-rules.d/60-cec-uaccess.rules "$(DESTDIR)$(UDEV_RULES_DIR)"
+	install -m 644 cecd/data/udev-rules.d/60-cecd-uinput.rules "$(DESTDIR)$(UDEV_RULES_DIR)"
 	install -m 755 target/release/cecd "$(DESTDIR)$(BINDIR)/cecd"
 	install -m 755 target/release/cectool "$(DESTDIR)$(BINDIR)/cectool"
 	install -m 644 cecd/data/cecd.service "$(DESTDIR)$(SYSTEMD_USER_UNIT_DIR)"
