@@ -341,16 +341,16 @@ impl Daemon {
             .map(|opcode| *opcode as u8)
             .collect();
         let mut handled: Vec<u8> = (&static_handled | &handled).into_iter().collect();
-        handled.sort();
+        handled.sort_unstable();
         handled
     }
 
     async fn wake(&self) {
-        self.system.wake_all().await
+        self.system.wake_all().await;
     }
 
     async fn standby(&self, force: bool) {
-        self.system.standby_all(force).await
+        self.system.standby_all(force).await;
     }
 }
 

@@ -601,7 +601,7 @@ impl DrmConnector {
                     continue;
                 }
                 return Some(PhysicalAddress::from(
-                    ((edid[offset + 4] as u16) << 8) | edid[offset + 5] as u16,
+                    (u16::from(edid[offset + 4]) << 8) | u16::from(edid[offset + 5]),
                 ));
             }
             block += 128;
@@ -665,6 +665,7 @@ impl DrmConnector {
 
 impl KeyRepeat {
     #[cfg(not(test))]
+    #[allow(clippy::unused_self)]
     fn delay(&self) -> impl Future<Output = ()> {
         // Recommended interval of 450ms is per H14b CEC 13.13.3,
         // starting at the beginning of message transmission

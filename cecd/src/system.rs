@@ -390,7 +390,7 @@ impl System {
                         if i == 4 {
                             return Err(e.into());
                         }
-                        sleep(Duration::from_millis(200)).await
+                        sleep(Duration::from_millis(200)).await;
                     }
                     Err(e) => return Err(e.into()),
                     Ok(()) => break,

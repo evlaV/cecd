@@ -25,7 +25,6 @@ use nix::poll::{poll, PollFd, PollFlags};
 use num_enum::TryFromPrimitive;
 use std::ffi::{c_char, OsStr, OsString};
 use std::fs::{File, OpenOptions};
-use std::mem::transmute;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
@@ -497,7 +496,8 @@ impl Device {
     /// Get the name of the driver that is backing this device.
     pub fn get_driver_name(&self) -> Result<OsString> {
         self.get_raw_capabilities().map(|caps| {
-            let driver = unsafe { transmute::<&[c_char; 32], &[u8; 32]>(&caps.driver) };
+            let driver =
+                unsafe { &*std::ptr::from_ref::<[c_char; 32]>(&caps.driver).cast::<[u8; 32]>() };
             OsStr::from_bytes(driver).to_os_string()
         })
     }
@@ -505,7 +505,8 @@ impl Device {
     /// Get the name of the adapter that is backing this device.
     pub fn get_adapter_name(&self) -> Result<OsString> {
         self.get_raw_capabilities().map(|caps| {
-            let adapter = unsafe { transmute::<&[c_char; 32], &[u8; 32]>(&caps.name) };
+            let adapter =
+                unsafe { &*std::ptr::from_ref::<[c_char; 32]>(&caps.name).cast::<[u8; 32]>() };
             OsStr::from_bytes(adapter).to_os_string()
         })
     }

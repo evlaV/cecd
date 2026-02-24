@@ -74,7 +74,7 @@ impl<'proxy> MessageHandler<'proxy> {
         const TIMEOUT: Duration = Duration::from_millis(50);
         let message = envelope.message.to_bytes();
         select! {
-            _ = sleep(TIMEOUT) => {
+            () = sleep(TIMEOUT) => {
                 warn!("Remote didn't reply in time");
                 Some((
                     Message::FeatureAbort {
@@ -164,7 +164,7 @@ impl MessageHandlerTask {
                 warn!(
                     "Failed unregister MessageHandler1 or opcode {:02x}: {err}",
                     self.opcode
-                )
+                );
             });
         res.and(shutdown.map(|_| ()))
     }

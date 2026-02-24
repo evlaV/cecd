@@ -66,7 +66,7 @@ async fn handle_drm_event(ev: Event, system: &SystemHandle) {
         connector_id,
     };
 
-    let _ = system.reconfig_connector(connector_info).await;
+    let () = system.reconfig_connector(connector_info).await;
 }
 
 pub(crate) async fn udev_hotplug(system: SystemHandle, token: CancellationToken) -> Result<()> {
