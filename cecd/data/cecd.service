@@ -5,7 +5,7 @@ Description=Consumer Electronics Control (CEC) Daemon
 Type=notify-reload
 BusName=com.steampowered.CecDaemon1
 Environment=RUST_LOG=info
-ExecStart=/usr/lib/cecd -e
+ExecStart=/usr/bin/cecd -e
 
 [Install]
 WantedBy=graphical-session.target
