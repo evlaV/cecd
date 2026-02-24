@@ -27,7 +27,7 @@ impl MockDBus {
             .args([
                 "--nofork",
                 "--print-address",
-                "--config-file=test-dbus.conf",
+                "--config-file=data/test/dbus.conf",
             ])
             .stdout(Stdio::piped())
             .kill_on_drop(true)
