@@ -30,7 +30,7 @@ nix = { version = "0.31", default-features = false, features = ["fs", "ioctl", "
 linux-cec-macros = { path = "../linux-cec-macros" }
 linux-cec-sys = { path = "../linux-cec-sys" }
 num_enum = "0.7"
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 thiserror = "2.0"
 tinyvec = "1.9"
 tracing = { version = "0.1", default-features = false, optional = true }
