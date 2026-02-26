@@ -27,8 +27,8 @@ bitfield-struct = "0.12"
 bitflags = "2.6"
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"], optional = true }
 nix = { version = "0.31", default-features = false, features = ["fs", "ioctl", "poll"] }
-linux-cec-macros = { path = "../linux-cec-macros" }
-linux-cec-sys = { path = "../linux-cec-sys" }
+linux-cec-macros = { version = "0.1.0", path = "../linux-cec-macros" }
+linux-cec-sys = { version = "0.1.0", path = "../linux-cec-sys" }
 num_enum = "0.7"
 strum = { version = "0.28", features = ["derive"] }
 thiserror = "2.0"
