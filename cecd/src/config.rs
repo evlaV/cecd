@@ -48,42 +48,8 @@ where
     Ok(mappings)
 }
 
-fn de_logical_address<'de, D>(deserializer: D) -> Result<LogicalAddressType, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let string = String::deserialize(deserializer)?;
-
-    LogicalAddressType::from_str(string.as_str())
-        .map_err(|_| de::Error::invalid_value(Unexpected::Str(&string), &"a logical address"))
-}
-
-fn de_physical_address<'de, D>(deserializer: D) -> Result<Option<PhysicalAddress>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let string = String::deserialize(deserializer)?;
-
-    Ok(Some(PhysicalAddress::from_str(string.as_str()).map_err(
-        |_| de::Error::invalid_value(Unexpected::Str(&string), &"a physical address"),
-    )?))
-}
-
 fn de_physical_address_default() -> Option<PhysicalAddress> {
     None
-}
-
-fn de_vendor_id<'de, D>(deserializer: D) -> Result<Option<VendorId>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let string = String::deserialize(deserializer)?;
-    Ok(Some(VendorId::from_str(&string).map_err(|_| {
-        de::Error::invalid_value(
-            Unexpected::Str(&string),
-            &"a 3-byte vendor identifier delimited by hyphens",
-        )
-    })?))
 }
 
 fn de_true() -> bool {
@@ -97,17 +63,14 @@ pub(crate) struct Config {
     #[serde(default)]
     pub osd_name: Option<String>,
     /// The vendor OUI for this device. Defaults to `None`.
-    #[serde(deserialize_with = "de_vendor_id", default)]
+    #[serde(default)]
     pub vendor_id: Option<VendorId>,
     /// The type of logical address this device should request. Defaults to `playback`.
-    #[serde(deserialize_with = "de_logical_address", default)]
+    #[serde(default)]
     pub logical_address: LogicalAddressType,
     /// The requested physical address. If the device offloads this to the OS and
     /// we're unable to determine the correct one, use this.
-    #[serde(
-        deserialize_with = "de_physical_address",
-        default = "de_physical_address_default"
-    )]
+    #[serde(default = "de_physical_address_default")]
     pub physical_address: Option<PhysicalAddress>,
     /// Desired key mappings for uinput. Defaults are found in `system.rs`.
     #[serde(deserialize_with = "de_mappings", default)]

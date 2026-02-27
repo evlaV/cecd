@@ -459,6 +459,8 @@ dependencies = [
  "linux-cec-sys",
  "nix 0.31.1",
  "num_enum",
+ "serde",
+ "serde_json",
  "strum",
  "thiserror",
  "tinyvec",

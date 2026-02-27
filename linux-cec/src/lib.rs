@@ -7,9 +7,15 @@ use linux_cec_macros::Operand;
 use linux_cec_sys::{constants, VendorId as SysVendorId, CEC_TX_STATUS};
 use nix::errno::Errno;
 use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
+#[cfg(feature = "serde")]
+use serde::de::{self, Unexpected, Visitor};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::io;
 use std::ops::{Add, Deref, RangeInclusive};
+#[cfg(feature = "serde")]
+use std::result;
 use std::str::FromStr;
 use std::string::ToString;
 use std::time::Duration;
@@ -43,6 +49,7 @@ pub use linux_cec_sys::Timestamp;
     Display,
     EnumString,
 )]
+#[strum(ascii_case_insensitive)]
 #[repr(u8)]
 pub enum LogicalAddress {
     #[strum(serialize = "tv", serialize = "0")]
@@ -203,6 +210,122 @@ impl LogicalAddress {
     }
 }
 
+#[cfg(feature = "serde")]
+impl Serialize for LogicalAddress {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u8(*self as u8)
+    }
+}
+
+#[cfg(feature = "serde")]
+struct LogicalAddressVisitor;
+
+impl<'de> Visitor<'de> for LogicalAddressVisitor {
+    type Value = LogicalAddress;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a logical address")
+    }
+
+    fn visit_u64<E>(self, value: u64) -> result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let Ok(value) = u8::try_from(value) else {
+            return Err(de::Error::invalid_value(
+                Unexpected::Unsigned(value),
+                &"a logical address",
+            ));
+        };
+        LogicalAddress::try_from_primitive(value).map_err(|_| {
+            de::Error::invalid_value(Unexpected::Unsigned(value.into()), &"a logical address")
+        })
+    }
+
+    fn visit_str<E>(self, string: &str) -> result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        LogicalAddress::from_str(string)
+            .map_err(|_| de::Error::invalid_value(Unexpected::Str(string), &"a logical address"))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for LogicalAddress {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<LogicalAddress, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(LogicalAddressVisitor)
+    }
+}
+
+#[cfg(test)]
+mod test_logical_address {
+    use super::*;
+
+    #[cfg(feature = "serde")]
+    use serde_json::{from_str, to_string};
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialize() {
+        assert_eq!(to_string(&LogicalAddress::Tv).unwrap(), "0");
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_int() {
+        assert_eq!(
+            from_str::<LogicalAddress>("1").unwrap(),
+            LogicalAddress::RecordingDevice1
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_int_invalid() {
+        assert!(from_str::<LogicalAddress>("16").is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_str() {
+        assert_eq!(
+            from_str::<LogicalAddress>("\"Tv\"").unwrap(),
+            LogicalAddress::Tv
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_str_invalid() {
+        assert!(from_str::<LogicalAddress>("\"radio\"").is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_lowercase() {
+        assert_eq!(
+            from_str::<LogicalAddress>("\"tv\"").unwrap(),
+            LogicalAddress::Tv
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_alt_name() {
+        assert_eq!(
+            from_str::<LogicalAddress>("\"recording-device\"").unwrap(),
+            LogicalAddress::RecordingDevice1
+        );
+    }
+}
+
 /// The type of a CEC logical address, used for determining what type
 /// type of device is at the given address and for requesting an address.
 #[derive(
@@ -218,7 +341,9 @@ impl LogicalAddress {
     Display,
     EnumString,
 )]
-#[strum(serialize_all = "kebab-case")]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[strum(serialize_all = "kebab-case", ascii_case_insensitive)]
+#[serde(rename_all = "kebab-case")]
 #[repr(u8)]
 pub enum LogicalAddressType {
     Tv = constants::CEC_LOG_ADDR_TYPE_TV,
@@ -257,6 +382,41 @@ impl LogicalAddressType {
                 operand::AllDeviceTypes::empty()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test_logical_address_type {
+    use super::*;
+
+    #[cfg(feature = "serde")]
+    use serde_json::{from_str, to_string};
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialize() {
+        assert_eq!(to_string(&LogicalAddressType::Tv).unwrap(), "\"tv\"");
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_int() {
+        assert!(from_str::<LogicalAddressType>("1").is_err(),);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_str() {
+        assert_eq!(
+            from_str::<LogicalAddressType>("\"tv\"").unwrap(),
+            LogicalAddressType::Tv
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_str_invalid() {
+        assert!(from_str::<LogicalAddressType>("\"radio\"").is_err());
     }
 }
 
@@ -699,6 +859,58 @@ impl From<PhysicalAddress> for u16 {
     }
 }
 
+#[cfg(feature = "serde")]
+impl Serialize for PhysicalAddress {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(format!("{self}").as_str())
+    }
+}
+
+#[cfg(feature = "serde")]
+struct PhysicalAddressVisitor;
+
+impl<'de> Visitor<'de> for PhysicalAddressVisitor {
+    type Value = PhysicalAddress;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a physical address")
+    }
+
+    fn visit_u64<E>(self, value: u64) -> result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let Ok(value) = u16::try_from(value) else {
+            return Err(de::Error::invalid_value(
+                Unexpected::Unsigned(value),
+                &"a physical address",
+            ));
+        };
+        Ok(PhysicalAddress::from(value))
+    }
+
+    fn visit_str<E>(self, string: &str) -> result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        PhysicalAddress::from_str(string)
+            .map_err(|_| de::Error::invalid_value(Unexpected::Str(string), &"a physical address"))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for PhysicalAddress {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<PhysicalAddress, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(PhysicalAddressVisitor)
+    }
+}
+
 impl FromStr for PhysicalAddress {
     type Err = Error;
 
@@ -744,6 +956,9 @@ impl FromStr for PhysicalAddress {
 #[cfg(test)]
 mod test_physical_address {
     use super::*;
+
+    #[cfg(feature = "serde")]
+    use serde_json::{from_str, to_string};
 
     #[test]
     fn test_fmt() {
@@ -849,6 +1064,54 @@ mod test_physical_address {
     fn test_from_str_dotted_extra_group_after() {
         assert!(PhysicalAddress::from_str("1.2.a.b.").is_err(),);
     }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialize() {
+        assert_eq!(to_string(&PhysicalAddress(0x123f)).unwrap(), "\"1.2.3.f\"");
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_dotted() {
+        assert_eq!(
+            from_str::<PhysicalAddress>("\"1.2.3.f\"").unwrap(),
+            PhysicalAddress(0x123f)
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_hex_unprefixed() {
+        assert_eq!(
+            from_str::<PhysicalAddress>("\"1234\"").unwrap(),
+            PhysicalAddress(0x1234)
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_hex_prefixed() {
+        assert_eq!(
+            from_str::<PhysicalAddress>("\"0x123f\"").unwrap(),
+            PhysicalAddress(0x123f)
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_invalid() {
+        assert!(from_str::<PhysicalAddress>("\"abcdg\"").is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_numeric() {
+        assert_eq!(
+            from_str::<PhysicalAddress>("16").unwrap(),
+            PhysicalAddress(0x10)
+        );
+    }
 }
 
 /// A 24-bit [MA-L/OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier)
@@ -937,9 +1200,36 @@ impl VendorId {
     }
 }
 
+#[cfg(feature = "serde")]
+impl Serialize for VendorId {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(format!("{self}").as_str())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for VendorId {
+    fn deserialize<D>(deserializer: D) -> result::Result<VendorId, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = <&str>::deserialize(deserializer)?;
+
+        VendorId::from_str(string).map_err(|_| {
+            de::Error::invalid_value(Unexpected::Str(&string), &"3 hyphen-separated octets")
+        })
+    }
+}
+
 #[cfg(test)]
 mod test_vendor_id {
     use super::*;
+
+    #[cfg(feature = "serde")]
+    use serde_json::{from_str, to_string};
 
     #[test]
     fn test_parsing() {
@@ -1001,6 +1291,30 @@ mod test_vendor_id {
             <_ as Into<SysVendorId>>::into(VendorId([0x01, 0xAB, 0x2C])),
             SysVendorId::try_from(0x01ab2c).unwrap()
         );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialize() {
+        assert_eq!(
+            to_string(&VendorId([0x01, 0xAB, 0x2C])).unwrap(),
+            "\"01-ab-2c\""
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize() {
+        assert_eq!(
+            from_str::<VendorId>("\"01-ab-2c\"").unwrap(),
+            VendorId([0x01, 0xAB, 0x2C])
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_deserialize_invalid() {
+        assert!(from_str::<VendorId>("\"01-ab-2g\"").is_err());
     }
 }
 

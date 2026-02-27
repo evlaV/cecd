@@ -910,7 +910,8 @@ pub fn opcode_test(input: TokenStream) -> TokenStream {
         fn #encode_name() {
             let mut buf = Vec::new();
             <#ty as OperandEncodable>::to_bytes(&#instance, &mut buf);
-            assert_eq!(buf, #bytes);
+            let bytes: &[u8] = &#bytes;
+            assert_eq!(buf, bytes);
         }
 
         #[test]
