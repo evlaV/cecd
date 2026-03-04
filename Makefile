@@ -18,13 +18,13 @@ target/release/cecd: build
 target/release/cectool: build
 
 build:
-	@cargo build -r --target-dir target
+	@cargo $(CARGOFLAGS) build -r --target-dir target
 
 clean:
-	@cargo clean
+	@cargo $(CARGOFLAGS) clean
 
 test:
-	@cargo test
+	@cargo $(CARGOFLAGS) test
 
 install: target/release/cecd target/release/cectool
 	install -d -m 755 "$(DESTDIR)$(UDEV_RULES_DIR)"
