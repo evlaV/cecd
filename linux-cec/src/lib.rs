@@ -1216,9 +1216,9 @@ impl<'de> Deserialize<'de> for VendorId {
     where
         D: Deserializer<'de>,
     {
-        let string = <&str>::deserialize(deserializer)?;
+        let string = String::deserialize(deserializer)?;
 
-        VendorId::from_str(string).map_err(|_| {
+        VendorId::from_str(string.as_str()).map_err(|_| {
             de::Error::invalid_value(Unexpected::Str(&string), &"3 hyphen-separated octets")
         })
     }
