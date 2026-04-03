@@ -24,7 +24,7 @@ use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
-use zbus::connection::{Builder, Connection};
+use zbus::connection::Connection;
 use zbus::fdo::ObjectManager;
 use zbus::names::UniqueName;
 use zbus::proxy;
@@ -173,11 +173,10 @@ impl System {
 
     pub(crate) async fn new(
         token: CancellationToken,
-        builder: Builder<'_>,
+        connection: Connection,
         system_bus: Connection,
         config_path: Option<PathBuf>,
     ) -> Result<System> {
-        let connection = builder.name("com.steampowered.CecDaemon1")?.build().await?;
         let (channel, _) = channel(10);
 
         let hostname = gethostname()

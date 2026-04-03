@@ -20,7 +20,7 @@ use tokio::sync::Mutex;
 use tokio::task::{spawn, JoinHandle, JoinSet, LocalSet};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, trace, warn};
-use zbus::connection::{Builder, Connection};
+use zbus::connection::Connection;
 
 use crate::system::{ConfigTask, System, SystemHandle};
 use crate::udev::udev_hotplug;
@@ -133,10 +133,10 @@ pub async fn main() -> Result<()> {
     debug!("cecd starting up");
     let args = Arguments::parse();
     let token = CancellationToken::new();
-    let builder = Builder::session()?;
+    let session_bus = Connection::session().await?;
     let system_bus = Connection::system().await?;
     let system = SystemHandle(Arc::new(Mutex::new(
-        System::new(token.clone(), builder, system_bus, args.config).await?,
+        System::new(token.clone(), session_bus.clone(), system_bus, args.config).await?,
     )));
     system.reconfig().await?;
     ConfigTask::start(system.clone()).await?;
@@ -213,6 +213,9 @@ pub async fn main() -> Result<()> {
     };
     let _guard = token.drop_guard();
 
+    session_bus
+        .request_name("com.steampowered.CecDaemon1")
+        .await?;
     let mut notify_socket = NotifySocket::default();
     let _ = notify_socket.ready().await;
 
