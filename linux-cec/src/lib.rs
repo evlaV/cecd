@@ -223,6 +223,7 @@ impl Serialize for LogicalAddress {
 #[cfg(feature = "serde")]
 struct LogicalAddressVisitor;
 
+#[cfg(feature = "serde")]
 impl<'de> Visitor<'de> for LogicalAddressVisitor {
     type Value = LogicalAddress;
 
@@ -343,7 +344,7 @@ mod test_logical_address {
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[strum(serialize_all = "kebab-case", ascii_case_insensitive)]
-#[serde(rename_all = "kebab-case")]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[repr(u8)]
 pub enum LogicalAddressType {
     Tv = constants::CEC_LOG_ADDR_TYPE_TV,
@@ -872,6 +873,7 @@ impl Serialize for PhysicalAddress {
 #[cfg(feature = "serde")]
 struct PhysicalAddressVisitor;
 
+#[cfg(feature = "serde")]
 impl<'de> Visitor<'de> for PhysicalAddressVisitor {
     type Value = PhysicalAddress;
 
