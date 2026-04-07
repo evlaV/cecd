@@ -1,6 +1,6 @@
 [package]
 name = "linux-cec-macros"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "LGPL-2.1-or-later"

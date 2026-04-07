@@ -22,7 +22,7 @@ cecd-proxy = { version = "0.1.0", path = "../cecd-proxy" }
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
 config = { version = "0.15", default-features = false, features = ["async", "toml"] }
 input-linux = "0.7"
-linux-cec = { version = "0.1", path = "../linux-cec", features = ["async", "tracing", "serde"] }
+linux-cec = { version = "0.2", path = "../linux-cec", features = ["async", "tracing", "serde"] }
 nix = { version = "0.31", default-features = false, features = ["fs", "hostname", "time"] }
 num_enum = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
