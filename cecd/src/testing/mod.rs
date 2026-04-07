@@ -504,13 +504,16 @@ where
 
     debug!("Setting up DBus test");
     let dbus = MockDBus::new().await?;
-    let builder = Builder::address(dbus.address())?;
-    let connection = dbus.new_connection().await?;
+    let daemon_conn = Builder::address(dbus.address())?
+        .name("com.steampowered.CecDaemon1")?
+        .build()
+        .await?;
+    let client_conn = dbus.new_connection().await?;
     debug!("Got DBus connection");
 
     let token = CancellationToken::new();
     let system = SystemHandle(Arc::new(Mutex::new(
-        System::new(token.clone(), builder, connection.clone(), None).await?,
+        System::new(token.clone(), daemon_conn, client_conn, None).await?,
     )));
     let config = config.unwrap_or_else(|| {
         let mut config = Config::default();
