@@ -30,4 +30,5 @@ clippy:
     - x86_64-linux-kvm-docker
   script:
     - pacman -Syu --noconfirm --needed rust
-    - cargo clippy
+    - cargo clippy -- -Dwarnings
+    - cargo clippy --tests -- -Dwarnings
