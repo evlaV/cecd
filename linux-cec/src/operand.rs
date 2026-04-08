@@ -686,9 +686,9 @@ mod test_tagged_length_buffer {
     #[repr(transparent)]
     struct U8(pub u8);
 
-    impl Into<u8> for U8 {
-        fn into(self) -> u8 {
-            self.0
+    impl From<U8> for u8 {
+        fn from(val: U8) -> Self {
+            val.0
         }
     }
 
@@ -1067,7 +1067,7 @@ mod test_buffer_operand {
         let buffer = BoundedBufferOperand::<4, u8>::from_str(s).unwrap();
         assert_eq!(buffer.len, 3);
         assert_ne!(&buffer.buffer, s.as_bytes());
-        assert_eq!(&buffer.buffer, &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(&buffer.buffer, &[b'a', b'b', b'c', 0]);
     }
 
     #[test]
