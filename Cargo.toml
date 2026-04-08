@@ -3,3 +3,8 @@ resolver = "2"
 members = [
     "linux-cec", "linux-cec-macros", "linux-cec-sys", "cecd", "cecd-proxy",
 ]
+
+[profile.release]
+lto = "fat"
+opt-level = "s"
+strip="symbols"
