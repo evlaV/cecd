@@ -761,8 +761,10 @@ mod test {
 
     #[tokio::test]
     async fn test_osd_name_config_readout() {
-        let mut config = Config::default();
-        config.osd_name = Some(String::from("CEC2"));
+        let config = Config {
+            osd_name: Some(String::from("CEC2")),
+            ..Config::default()
+        };
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
         assert_eq!(
@@ -773,8 +775,10 @@ mod test {
 
     #[tokio::test]
     async fn test_vendor_id_config_readout() {
-        let mut config = Config::default();
-        config.vendor_id = Some(VendorId([0x12, 0x34, 0x56]));
+        let config = Config {
+            vendor_id: Some(VendorId([0x12, 0x34, 0x56])),
+            ..Config::default()
+        };
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
         assert_eq!(
@@ -785,8 +789,10 @@ mod test {
 
     #[tokio::test]
     async fn test_logical_address_config_readout() {
-        let mut config = Config::default();
-        config.logical_address = LogicalAddressType::AudioSystem;
+        let config = Config {
+            logical_address: LogicalAddressType::AudioSystem,
+            ..Config::default()
+        };
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
         assert_eq!(
@@ -797,8 +803,10 @@ mod test {
 
     #[tokio::test]
     async fn test_mappings_config_readout() {
-        let mut config = Config::default();
-        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
+        let config = Config {
+            mappings: [(UiCommand::Enter, Key::Enter)].into(),
+            ..Config::default()
+        };
         let (_test, config_proxy) = setup_config_test(&config).await.unwrap();
 
         assert_eq!(

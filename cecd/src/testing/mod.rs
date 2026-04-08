@@ -196,7 +196,7 @@ impl AsyncDevice {
     }
 
     pub async fn get_capabilities(&self) -> Result<Capabilities> {
-        Ok(self.caps.clone())
+        Ok(self.caps)
     }
 
     pub async fn get_driver_name(&self) -> Result<OsString> {
@@ -244,7 +244,7 @@ impl AsyncDevice {
             state.log_addrs = vec![LogicalAddress::Unregistered];
         } else {
             state.log_addrs = log_addrs
-                .into_iter()
+                .iter()
                 .map(|ty| match *ty {
                     LogicalAddressType::Tv => LogicalAddress::Tv,
                     LogicalAddressType::Record => LogicalAddress::RecordingDevice1,
@@ -307,7 +307,7 @@ impl AsyncDevice {
         if state.initiator == InitiatorMode::Disabled {
             return Err(Error::InvalidData);
         }
-        state.tx_queue.push_back((message.clone(), destination));
+        state.tx_queue.push_back((*message, destination));
         let seq = state.sequence;
         state.sequence += 1;
         Ok(seq)
@@ -405,18 +405,16 @@ impl AsyncDevice {
 
 impl AsyncDevicePoller {
     pub async fn poll(&self, _timeout: PollTimeout) -> Result<PollStatus> {
-        loop {
-            let channel = unsafe { &mut *self.channel.get() };
-            select! {
-                _ = self.token.cancelled() => return Ok(PollStatus::Destroyed),
-                status = channel.recv() => if let Some(status) = status {
-                    debug!("Got message {status:?}");
-                    return Ok(status);
-                } else {
-                    return Ok(PollStatus::Destroyed);
-                },
-            };
-        }
+        let channel = unsafe { &mut *self.channel.get() };
+        Ok(select! {
+            _ = self.token.cancelled() => PollStatus::Destroyed,
+            status = channel.recv() => if let Some(status) = status {
+                debug!("Got message {status:?}");
+                status
+            } else {
+                PollStatus::Destroyed
+            }
+        })
     }
 }
 
@@ -515,10 +513,9 @@ where
     let system = SystemHandle(Arc::new(Mutex::new(
         System::new(token.clone(), daemon_conn, client_conn, None).await?,
     )));
-    let config = config.unwrap_or_else(|| {
-        let mut config = Config::default();
-        config.uinput = false;
-        config
+    let config = config.unwrap_or_else(|| Config {
+        uinput: false,
+        ..Config::default()
     });
     system.lock().await.set_config(config).await?;
     debug!("System created");

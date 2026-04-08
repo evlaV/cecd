@@ -740,9 +740,11 @@ mod test {
             dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
             Ok(())
         }
-        let mut config = Config::default();
-        config.uinput = false;
-        config.logical_address = LogicalAddressType::Playback;
+        let config = Config {
+            uinput: false,
+            logical_address: LogicalAddressType::Playback,
+            ..Config::default()
+        };
         setup_dbus_test(cb, Some(config)).await
     }
 
@@ -1246,10 +1248,12 @@ mod test {
             dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
             Ok(())
         }
-        let mut config = Config::default();
-        config.uinput = true;
-        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
-        config.logical_address = LogicalAddressType::Playback;
+        let config = Config {
+            uinput: true,
+            mappings: [(UiCommand::Enter, Key::Enter)].into(),
+            logical_address: LogicalAddressType::Playback,
+            ..Config::default()
+        };
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
 
         test.dev
@@ -1307,10 +1311,12 @@ mod test {
             dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
             Ok(())
         }
-        let mut config = Config::default();
-        config.uinput = true;
-        config.mappings = [(UiCommand::Enter, Key::Enter)].into();
-        config.logical_address = LogicalAddressType::Playback;
+        let config = Config {
+            uinput: true,
+            mappings: [(UiCommand::Enter, Key::Enter)].into(),
+            logical_address: LogicalAddressType::Playback,
+            ..Config::default()
+        };
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
 
         test.dev
@@ -1350,10 +1356,12 @@ mod test {
             dev.set_phys_addr(PhysicalAddress::from(0x1000)).await;
             Ok(())
         }
-        let mut config = Config::default();
-        config.uinput = true;
-        config.mappings = [(UiCommand::Enter, Key::Enter), (UiCommand::Back, Key::Exit)].into();
-        config.logical_address = LogicalAddressType::Playback;
+        let config = Config {
+            uinput: true,
+            mappings: [(UiCommand::Enter, Key::Enter), (UiCommand::Back, Key::Exit)].into(),
+            logical_address: LogicalAddressType::Playback,
+            ..Config::default()
+        };
         let test = setup_dbus_test(cb, Some(config)).await.unwrap();
 
         test.dev
@@ -1508,7 +1516,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1533,7 +1541,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1558,7 +1566,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(
             DrmConnector::parse_hdmi_edid_pa(&edid),
             Some(PhysicalAddress::from(0x1234))
@@ -1586,7 +1594,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(
             DrmConnector::parse_hdmi_edid_pa(&edid),
             Some(PhysicalAddress::from(0x1234))
@@ -1614,7 +1622,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(
             DrmConnector::parse_hdmi_edid_pa(&edid),
             Some(PhysicalAddress::from(0x1234))
@@ -1642,7 +1650,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1667,7 +1675,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1692,7 +1700,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1717,7 +1725,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1742,7 +1750,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1767,7 +1775,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1792,7 +1800,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1817,7 +1825,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(
             DrmConnector::parse_hdmi_edid_pa(&edid),
             Some(PhysicalAddress::from(0x1234))
@@ -1845,7 +1853,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(
             DrmConnector::parse_hdmi_edid_pa(&edid),
             Some(PhysicalAddress::from(0x1234))
@@ -1873,7 +1881,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x65, 0x03, 0x0c, 0x00, 0x12, 0x34, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 
@@ -1898,7 +1906,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // F0
             0x00, 0x00, 0x65, 0x03, 0x0c, 0x00, 0x12, 0x34, // F8
         ];
-        let edid: Vec<u8> = header.into_iter().chain(edid.into_iter()).collect();
+        let edid: Vec<u8> = header.into_iter().chain(edid).collect();
         assert_eq!(DrmConnector::parse_hdmi_edid_pa(&edid), None);
     }
 

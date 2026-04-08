@@ -66,7 +66,7 @@ impl MockDBus {
             Err(message) => bail!("Unable to get pid_t from command {message}"),
         };
         signal::kill(Pid::from_raw(pid), signal::Signal::SIGINT)?;
-        for _ in [0..10] {
+        for _ in 0..10 {
             // Wait for the process to exit synchronously, but not for too long
             if self.process.try_wait()?.is_some() {
                 break;
