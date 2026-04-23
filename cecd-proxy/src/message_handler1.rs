@@ -12,10 +12,7 @@
 //! [Writing a client proxy]: https://z-galaxy.github.io/zbus/client.html
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::proxy;
-#[proxy(
-    interface = "com.steampowered.CecDaemon1.MessageHandler1",
-    assume_defaults = true
-)]
+#[proxy(interface = "com.steampowered.CecDaemon1.MessageHandler1")]
 pub trait MessageHandler1 {
     /// HandleMessage method
     #[allow(clippy::too_many_arguments)]

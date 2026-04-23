@@ -14,8 +14,7 @@
 use zbus::proxy;
 #[proxy(
     interface = "com.steampowered.CecDaemon1.CecDevice1",
-    default_service = "com.steampowered.CecDaemon1",
-    assume_defaults = true
+    default_service = "com.steampowered.CecDaemon1"
 )]
 pub trait CecDevice1 {
     /// GetAudioStatus method
