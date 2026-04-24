@@ -126,7 +126,8 @@
 
     <!--
         VolumeUp:
-        @target: The logical address of the target device.
+        @target: The logical address of the target device. Use special value 255
+        to use the current `AudioLogicalAddress` instead.
 
         Convenience method to send <User Control Pressed> [Volume Up]/<User
         Control Released> to a given device.
@@ -137,7 +138,8 @@
 
     <!--
         VolumeDown:
-        @target: The logical address of the target device.
+        @target: The logical address of the target device. Use special value 255
+        to use the current `AudioLogicalAddress` instead.
 
         Convenience method to send <User Control Pressed> [Volume Down]/<User
         Control Released> to a given device.
@@ -148,7 +150,8 @@
 
     <!--
         Mute:
-        @target: The logical address of the target device.
+        @target: The logical address of the target device. Use special value 255
+        to use the current `AudioLogicalAddress` instead.
 
         Convenience method to send <User Control Pressed> [Mute]/<User Control
         Released> to a given device.
@@ -159,7 +162,8 @@
 
     <!--
         GetAudioStatus:
-        @target: The logical address of the target device.
+        @target: The logical address of the target device. Use special value 255
+        to use the current `AudioLogicalAddress` instead.
         @volume: A volume level between 0 and 100.
         @mute: Whether or not the audio is muted.
 
@@ -172,6 +176,15 @@
       <arg name="volume" type="y" direction="out"/>
       <arg name="mute" type="b" direction="out"/>
     </method>
+
+    <!--
+        AudioLogicalAddress:
+
+        The logical address of the current system handling the audio. This
+        should be used for the target of audio commands, such as
+        `VolumeUp`, `VolumeDown`, `Mute`, and `GetAudioStatus`.
+    -->
+    <property name="AudioLogicalAddress" type="y" access="read"/>
 
     <!--
         SendRawMessage:

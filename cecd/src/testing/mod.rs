@@ -531,6 +531,21 @@ where
     let arc_dev = dev.device.clone();
     setup_dev(arc_dev.clone()).await?;
     dev.register(connection.clone(), system.clone()).await?;
+
+    let log_addr = arc_dev
+        .lock()
+        .await
+        .get_logical_addresses()
+        .await
+        .unwrap_or_default()
+        .first()
+        .copied();
+    if !matches!(log_addr, None | Some(LogicalAddress::Unregistered)) {
+        while arc_dev.lock().await.dequeue_tx_message().await.is_none() {
+            sleep(Duration::from_millis(1)).await;
+        }
+        while arc_dev.lock().await.dequeue_tx_message().await.is_some() {}
+    }
     debug!("Device registered");
 
     Ok(DBusTest {

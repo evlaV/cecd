@@ -364,11 +364,14 @@ pub struct CecDevice {
     pub cached_log_addrs: Vec<u8>,
     pub cached_vendor_id: i32,
     pub cached_active: bool,
+    pub cached_audio_log_addr: u8,
     key_repeat: HashMap<u8, (UiCommand, CancellationToken, JoinHandle<anyhow::Result<()>>)>,
     pub uinput: Option<UInputDevice>,
 }
 
 impl CecDevice {
+    const CURRENT_AUDIO_LOG_ADDR: u8 = 255;
+
     pub async fn open(
         path: impl AsRef<Path>,
         token: CancellationToken,
@@ -400,6 +403,7 @@ impl CecDevice {
             cached_log_addrs: Vec::new(),
             cached_vendor_id: -1,
             cached_active: false,
+            cached_audio_log_addr: LogicalAddress::Tv as u8,
             key_repeat: HashMap::new(),
             uinput: None,
         })
@@ -583,7 +587,12 @@ impl CecDevice {
     }
 
     async fn volume_up(&self, target: u8) -> Result<()> {
-        let target = LogicalAddress::try_from_primitive(target)?;
+        let target =
+            LogicalAddress::try_from_primitive(if target == CecDevice::CURRENT_AUDIO_LOG_ADDR {
+                self.cached_audio_log_addr
+            } else {
+                target
+            })?;
         let device = self.device.lock().await;
         device
             .press_user_control(UiCommand::VolumeUp, target)
@@ -593,7 +602,12 @@ impl CecDevice {
     }
 
     async fn volume_down(&self, target: u8) -> Result<()> {
-        let target = LogicalAddress::try_from_primitive(target)?;
+        let target =
+            LogicalAddress::try_from_primitive(if target == CecDevice::CURRENT_AUDIO_LOG_ADDR {
+                self.cached_audio_log_addr
+            } else {
+                target
+            })?;
         let device = self.device.lock().await;
         device
             .press_user_control(UiCommand::VolumeDown, target)
@@ -603,7 +617,12 @@ impl CecDevice {
     }
 
     async fn mute(&self, target: u8) -> Result<()> {
-        let target = LogicalAddress::try_from_primitive(target)?;
+        let target =
+            LogicalAddress::try_from_primitive(if target == CecDevice::CURRENT_AUDIO_LOG_ADDR {
+                self.cached_audio_log_addr
+            } else {
+                target
+            })?;
         let device = self.device.lock().await;
         device.press_user_control(UiCommand::Mute, target).await?;
         device.release_user_control(target).await?;
@@ -611,7 +630,12 @@ impl CecDevice {
     }
 
     async fn get_audio_status(&self, target: u8) -> Result<(u8, bool)> {
-        let target = LogicalAddress::try_from_primitive(target)?;
+        let target =
+            LogicalAddress::try_from_primitive(if target == CecDevice::CURRENT_AUDIO_LOG_ADDR {
+                self.cached_audio_log_addr
+            } else {
+                target
+            })?;
         let reply = self
             .device
             .lock()
@@ -627,6 +651,11 @@ impl CecDevice {
             return Err(Error::Cec(CecError::InvalidData));
         };
         Ok((status.volume().try_into().unwrap(), status.mute()))
+    }
+
+    #[zbus(property)]
+    async fn audio_logical_address(&self) -> u8 {
+        self.cached_audio_log_addr
     }
 
     async fn send_raw_message(&self, raw_message: &[u8], target: u8) -> Result<u32> {

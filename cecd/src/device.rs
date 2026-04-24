@@ -7,7 +7,7 @@ use anyhow::{anyhow, bail, Result};
 use linux_cec::device::{ConnectorInfo, Envelope, MessageData, PollResult, PollStatus};
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
-use linux_cec::{Error, LogicalAddress, PhysicalAddress};
+use linux_cec::{Error, LogicalAddress, PhysicalAddress, TxError};
 use std::ffi::OsStr;
 #[cfg(not(test))]
 use std::future::Future;
@@ -19,6 +19,7 @@ use tokio::fs::{read, read_dir, read_to_string};
 use tokio::select;
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::task::spawn;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -50,6 +51,7 @@ pub struct DeviceTask {
     poller: AsyncDevicePoller,
     active: bool,
     connector: Option<DrmConnector>,
+    audio_log_addr: LogicalAddress,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -116,12 +118,31 @@ impl DeviceTask {
             poller,
             active: false,
             connector,
+            audio_log_addr: LogicalAddress::Tv,
         };
         device_task.configure_uinput().await?;
         Ok(device_task)
     }
 
     pub async fn run(mut self) -> Result<()> {
+        // On startup, we should try to figure out if there's an audio system attached
+        let device = self.device.clone();
+        spawn(async move {
+            if let Err(e) = device
+                .lock()
+                .await
+                .tx_message(
+                    &Message::GiveSystemAudioModeStatus,
+                    LogicalAddress::AudioSystem,
+                )
+                .await
+            {
+                if !matches!(e, Error::TxError(TxError::Nack)) {
+                    info!("Couldn't query audio system: {e}");
+                }
+            }
+        });
+
         loop {
             select! {
                 status = self.poller.poll(Duration::from_secs(2).try_into().unwrap()) => {
@@ -339,6 +360,25 @@ impl DeviceTask {
             {
                 let address = self.device.lock().await.get_physical_address().await?;
                 Some((Message::ActiveSource { address }, LogicalAddress::Broadcast))
+            }
+            MessageData::Valid(Message::SetSystemAudioMode { status })
+            | MessageData::Valid(Message::SystemAudioModeStatus { status }) => {
+                if status {
+                    self.audio_log_addr = envelope.initiator;
+                } else {
+                    self.audio_log_addr = LogicalAddress::Tv;
+                }
+                let emitter = self.interface.signal_emitter();
+                let mut iface = self.interface.get_mut().await;
+                if iface.cached_audio_log_addr != self.audio_log_addr.into() {
+                    info!(
+                        "Audio logical address address changed from {:?} to {:?}",
+                        iface.cached_phys_addr, self.audio_log_addr as u8,
+                    );
+                    iface.cached_audio_log_addr = self.audio_log_addr.into();
+                    iface.audio_logical_address_changed(emitter).await?;
+                }
+                None
             }
             _ if envelope.destination != LogicalAddress::Broadcast => {
                 let opcode = envelope.message.opcode();
@@ -1493,6 +1533,115 @@ mod test {
 
         assert!(receiver.next().await.unwrap().get().await.unwrap());
         assert!(proxy.active().await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_no_audio_system() {
+        let test = setup_basic_test().await.unwrap();
+
+        let proxy = CecDevice1Proxy::builder(&test.connection)
+            .path("/com/steampowered/CecDaemon1/Devices/Null")
+            .unwrap()
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(proxy.audio_logical_address().await.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_audio_system_later() {
+        let test = setup_basic_test().await.unwrap();
+
+        let proxy = CecDevice1Proxy::builder(&test.connection)
+            .path("/com/steampowered/CecDaemon1/Devices/Null")
+            .unwrap()
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            proxy.audio_logical_address().await.unwrap(),
+            LogicalAddress::Tv.into()
+        );
+        let mut receiver = proxy.receive_audio_logical_address_changed().await;
+        let _ = wait_timeout(receiver.next(), Duration::from_millis(10)).await;
+
+        tx_message(
+            &test.dev,
+            Message::SystemAudioModeStatus { status: true },
+            LogicalAddress::AudioSystem,
+        )
+        .await;
+
+        let signal = wait_timeout(receiver.next(), Duration::from_millis(100))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            signal.get().await.unwrap(),
+            LogicalAddress::AudioSystem.into()
+        );
+        assert_eq!(
+            proxy.audio_logical_address().await.unwrap(),
+            LogicalAddress::AudioSystem.into()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_audio_system_later_removed() {
+        let test = setup_basic_test().await.unwrap();
+
+        let proxy = CecDevice1Proxy::builder(&test.connection)
+            .path("/com/steampowered/CecDaemon1/Devices/Null")
+            .unwrap()
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            proxy.audio_logical_address().await.unwrap(),
+            LogicalAddress::Tv.into()
+        );
+        let mut receiver = proxy.receive_audio_logical_address_changed().await;
+        let _ = wait_timeout(receiver.next(), Duration::from_millis(10)).await;
+
+        tx_message(
+            &test.dev,
+            Message::SystemAudioModeStatus { status: true },
+            LogicalAddress::AudioSystem,
+        )
+        .await;
+
+        let signal = wait_timeout(receiver.next(), Duration::from_millis(100))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            signal.get().await.unwrap(),
+            LogicalAddress::AudioSystem.into()
+        );
+        assert_eq!(
+            proxy.audio_logical_address().await.unwrap(),
+            LogicalAddress::AudioSystem.into()
+        );
+
+        tx_message(
+            &test.dev,
+            Message::SystemAudioModeStatus { status: false },
+            LogicalAddress::AudioSystem,
+        )
+        .await;
+
+        let signal = wait_timeout(receiver.next(), Duration::from_millis(100))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(signal.get().await.unwrap(), LogicalAddress::Tv.into());
+        assert_eq!(
+            proxy.audio_logical_address().await.unwrap(),
+            LogicalAddress::Tv.into()
+        );
     }
 
     #[test]
