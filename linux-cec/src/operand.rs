@@ -3753,22 +3753,18 @@ impl OperandEncodable for TimerStatusData {
         match self.programmed_info {
             TimerProgrammedInfo::Programmed(programmed) => match programmed {
                 ProgrammedInfo::NotEnoughSpace { duration_available }
-                | ProgrammedInfo::MayNotBeEnoughSpace { duration_available } => {
-                    if duration_available.is_some() {
-                        3
-                    } else {
-                        1
-                    }
+                | ProgrammedInfo::MayNotBeEnoughSpace { duration_available }
+                    if duration_available.is_some() =>
+                {
+                    3
                 }
                 _ => 1,
             },
             TimerProgrammedInfo::NotProgrammed(not_programmed) => match not_programmed {
-                NotProgrammedErrorInfo::Duplicate { duration_available } => {
-                    if duration_available.is_some() {
-                        3
-                    } else {
-                        1
-                    }
+                NotProgrammedErrorInfo::Duplicate { duration_available }
+                    if duration_available.is_some() =>
+                {
+                    3
                 }
                 _ => 1,
             },
