@@ -373,7 +373,7 @@ impl DeviceTask {
                 if iface.cached_audio_log_addr != self.audio_log_addr.into() {
                     info!(
                         "Audio logical address address changed from {:?} to {:?}",
-                        iface.cached_phys_addr, self.audio_log_addr as u8,
+                        iface.cached_audio_log_addr, self.audio_log_addr as u8,
                     );
                     iface.cached_audio_log_addr = self.audio_log_addr.into();
                     iface.audio_logical_address_changed(emitter).await?;
