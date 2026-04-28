@@ -10,7 +10,7 @@ use linux_cec::device::{AsyncDevice, AsyncDevicePoller};
 use nix::time::{clock_gettime, ClockId};
 use std::env;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::UnixDatagram;
 use tokio::select;
@@ -43,11 +43,9 @@ pub use testing::{AsyncDevice, AsyncDevicePoller};
 #[repr(transparent)]
 pub(crate) struct ArcDevice(Arc<Mutex<AsyncDevice>>);
 
-impl ArcDevice {
-    pub async fn open(path: impl AsRef<Path>) -> Result<ArcDevice> {
-        Ok(ArcDevice(Arc::new(Mutex::new(
-            AsyncDevice::open(&path).await?,
-        ))))
+impl From<AsyncDevice> for ArcDevice {
+    fn from(device: AsyncDevice) -> ArcDevice {
+        ArcDevice(Arc::new(Mutex::new(device)))
     }
 }
 

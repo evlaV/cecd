@@ -4,6 +4,8 @@
  */
 
 use anyhow::{anyhow, bail};
+#[cfg(not(test))]
+use linux_cec::device::AsyncDevice;
 use linux_cec::device::MessageData;
 use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{OperandEncodable, UiCommand};
@@ -30,6 +32,9 @@ use crate::device::{DeviceTask, KeyRepeat};
 use crate::system::{SystemHandle, SystemMessage};
 use crate::uinput::UInputDevice;
 use crate::ArcDevice;
+
+#[cfg(test)]
+use crate::testing::AsyncDevice;
 
 #[allow(clippy::upper_case_acronyms)]
 pub enum Error {
@@ -377,7 +382,7 @@ impl CecDevice {
         token: CancellationToken,
     ) -> anyhow::Result<CecDevice> {
         let path = canonicalize(path).await?;
-        let device = ArcDevice::open(&path).await?;
+        let device = AsyncDevice::open(&path).await?;
 
         let dbus_path = path.to_str().ok_or(anyhow!("Invalid path supplied"))?;
         let dbus_path = dbus_path.strip_prefix("/dev").unwrap_or(dbus_path);
@@ -393,15 +398,33 @@ impl CecDevice {
             .collect::<String>();
         let dbus_path = OwnedObjectPath::try_from(format!("{PATH}/Devices/{dbus_path}"))?;
 
+        let cached_phys_addr = device
+            .get_physical_address()
+            .await
+            .unwrap_or_default()
+            .into();
+        let cached_log_addrs = device
+            .get_logical_addresses()
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        let cached_vendor_id = device
+            .get_vendor_id()
+            .await
+            .unwrap_or_default()
+            .map_or(-1, Into::<i32>::into);
+
         Ok(CecDevice {
-            device,
+            device: ArcDevice::from(device),
             token,
             path,
             dbus_path,
             channel: None,
-            cached_phys_addr: 0xFFFF,
-            cached_log_addrs: Vec::new(),
-            cached_vendor_id: -1,
+            cached_phys_addr,
+            cached_log_addrs,
+            cached_vendor_id,
             cached_active: false,
             cached_audio_log_addr: LogicalAddress::Tv as u8,
             key_repeat: HashMap::new(),
