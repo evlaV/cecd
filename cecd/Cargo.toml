@@ -11,7 +11,6 @@ keywords = ["cec"]
 categories = ["hardware-support"]
 
 [dev-dependencies]
-cecd-proxy = { path = "../cecd-proxy" }
 libc = "0.2"
 nix = { version = "0.31", default-features = false, features = ["signal"] }
 
