@@ -1,6 +1,6 @@
 [package]
 name = "cecd"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "LGPL-2.1-or-later"
@@ -17,7 +17,7 @@ nix = { version = "0.31", default-features = false, features = ["signal"] }
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-cecd-proxy = { version = "0.1.0", path = "../cecd-proxy" }
+cecd-proxy = { version = "0.2.0", path = "../cecd-proxy" }
 clap = { version = "4.5", default-features = false, features = ["derive", "help", "std", "usage"] }
 config = { version = "0.15", default-features = false, features = ["async", "toml"] }
 input-linux = "0.7"
