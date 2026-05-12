@@ -126,23 +126,7 @@ impl DeviceTask {
 
     pub async fn run(mut self) -> Result<()> {
         // On startup, we should try to figure out if there's an audio system attached
-        let device = self.device.clone();
-        spawn(async move {
-            if let Err(e) = device
-                .lock()
-                .await
-                .tx_message(
-                    &Message::GiveSystemAudioModeStatus,
-                    LogicalAddress::AudioSystem,
-                )
-                .await
-            {
-                if !matches!(e, Error::TxError(TxError::Nack)) {
-                    info!("Couldn't query audio system: {e}");
-                }
-            }
-        });
-
+        self.query_audio_system();
         loop {
             select! {
                 status = self.poller.poll(Duration::from_secs(2).try_into().unwrap()) => {
@@ -248,6 +232,7 @@ impl DeviceTask {
                     if iface.cached_log_addrs.is_empty() {
                         self.log_addr_try = LOG_ADDR_RETRIES;
                     }
+                    self.query_audio_system();
                     iface.logical_addresses_changed(emitter).await?;
                 } else if log_addrs.is_empty() && phys_addr != 0xFFFF && self.log_addr_try > 0 {
                     info!("Did not get logical address, retrying registration");
@@ -532,6 +517,25 @@ impl DeviceTask {
             iface.active_changed(emitter).await?;
         }
         Ok(())
+    }
+
+    fn query_audio_system(&self) {
+        let device = self.device.clone();
+        spawn(async move {
+            if let Err(e) = device
+                .lock()
+                .await
+                .tx_message(
+                    &Message::GiveSystemAudioModeStatus,
+                    LogicalAddress::AudioSystem,
+                )
+                .await
+            {
+                if !matches!(e, Error::TxError(TxError::Nack)) {
+                    info!("Couldn't query audio system: {e}");
+                }
+            }
+        });
     }
 }
 
