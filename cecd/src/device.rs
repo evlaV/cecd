@@ -304,6 +304,7 @@ impl DeviceTask {
             MessageData::Valid(Message::SetStreamPath { address }) => {
                 let this_address = self.device.lock().await.get_physical_address().await?;
                 if address == this_address {
+                    self.set_active(true).await?;
                     Some((
                         Message::ActiveSource {
                             address: this_address,
@@ -311,6 +312,7 @@ impl DeviceTask {
                         LogicalAddress::Broadcast,
                     ))
                 } else {
+                    self.set_active(false).await?;
                     None
                 }
             }
