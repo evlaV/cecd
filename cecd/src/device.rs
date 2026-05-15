@@ -9,7 +9,6 @@ use linux_cec::message::{Message, Opcode};
 use linux_cec::operand::{AbortReason, OperandEncodable, PowerStatus, UiCommand};
 use linux_cec::{Error, LogicalAddress, PhysicalAddress, TxError};
 use std::ffi::OsStr;
-#[cfg(not(test))]
 use std::future::Future;
 use std::io::{self, ErrorKind};
 use std::mem::drop;
@@ -36,6 +35,9 @@ const LOG_ADDR_RETRIES: i32 = 20;
 const WAKE_TRIES: i32 = 2;
 const WAKE_DELAY: Duration = Duration::from_millis(1000);
 
+type CallbackFut<'a> = Box<dyn Future<Output = Result<()>> + Send + 'a>;
+type Callback = dyn for<'a> FnOnce(&'a mut DeviceTask) -> CallbackFut<'a> + Send;
+
 pub struct DeviceTask {
     device: ArcDevice,
     system: SystemHandle,
@@ -52,6 +54,7 @@ pub struct DeviceTask {
     active: bool,
     connector: Option<DrmConnector>,
     audio_log_addr: LogicalAddress,
+    with_logical_address_queue: Vec<Box<Callback>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,6 +122,7 @@ impl DeviceTask {
             active: false,
             connector,
             audio_log_addr: LogicalAddress::Tv,
+            with_logical_address_queue: Vec::new(),
         };
         device_task.configure_uinput().await?;
         Ok(device_task)
@@ -204,6 +208,7 @@ impl DeviceTask {
                     .await
                     .unwrap_or_default()
                     .map_or(-1, Into::<i32>::into);
+                drop(device);
 
                 let emitter = self.interface.signal_emitter();
                 let mut iface = self.interface.get_mut().await;
@@ -232,12 +237,26 @@ impl DeviceTask {
                     if iface.cached_log_addrs.is_empty() {
                         self.log_addr_try = LOG_ADDR_RETRIES;
                     }
-                    self.query_audio_system();
                     iface.logical_addresses_changed(emitter).await?;
+                    if !iface.cached_log_addrs.is_empty() {
+                        drop(iface);
+                        for cb in self
+                            .with_logical_address_queue
+                            .drain(0..)
+                            .collect::<Vec<_>>()
+                        {
+                            let fut = cb(self);
+                            let fut = Box::into_pin(fut);
+                            let res = fut.await;
+                            if let Err(e) = res {
+                                warn!("{e}");
+                            }
+                        }
+                        self.query_audio_system();
+                    }
                 } else if log_addrs.is_empty() && phys_addr != 0xFFFF && self.log_addr_try > 0 {
                     info!("Did not get logical address, retrying registration");
                     self.log_addr_try -= 1;
-                    drop(device);
                     self.connector = self
                         .system
                         .lock()
@@ -249,6 +268,28 @@ impl DeviceTask {
             _ => (),
         }
         Ok(())
+    }
+
+    // Some calls need to happen as soon as we get a logical address, but that
+    // might be deferred from when we need to queue them up. Instead of having
+    // a complicated series of flags to specify what we need to do when we get
+    // a logical address, we instead have a complicated deferred callback
+    // system. It's not simpler, but it is more extensible.
+    async fn with_logical_address(&mut self, callback: Box<Callback>) {
+        if self
+            .device
+            .lock()
+            .await
+            .get_logical_addresses()
+            .await
+            .unwrap_or_default()
+            .is_empty()
+        {
+            self.with_logical_address_queue.push(callback);
+        } else {
+            let fut = Box::into_pin(callback(self));
+            let _res = fut.await;
+        }
     }
 
     async fn handle_message(&mut self, envelope: Envelope) -> Result<()> {
@@ -435,7 +476,40 @@ impl DeviceTask {
 
     async fn handle_system_message(&mut self, message: SystemMessage) -> Result<()> {
         match message {
-            SystemMessage::Wake => self.wake().await,
+            SystemMessage::Wake {
+                wake_tv,
+                from_standby,
+            } => {
+                if from_standby {
+                    let device = self.device.clone();
+                    self.with_logical_address(Box::new(|_| {
+                        Box::new(async move {
+                            device
+                                .lock()
+                                .await
+                                .tx_message(
+                                    &Message::ReportPowerStatus {
+                                        status: PowerStatus::On,
+                                    },
+                                    LogicalAddress::Broadcast,
+                                )
+                                .await?;
+                            Ok(())
+                        })
+                    }))
+                    .await;
+                }
+                if wake_tv {
+                    self.with_logical_address(Box::new(|task| {
+                        Box::new(async move {
+                            task.wake().await?;
+                            Ok(())
+                        })
+                    }))
+                    .await;
+                }
+                Ok(())
+            }
             SystemMessage::Standby { standby_tv, force } => {
                 let device = self.device.lock().await;
                 let address = device.get_physical_address().await?;
@@ -524,9 +598,16 @@ impl DeviceTask {
     fn query_audio_system(&self) {
         let device = self.device.clone();
         spawn(async move {
-            if let Err(e) = device
-                .lock()
+            let device = device.lock().await;
+            if device
+                .get_logical_addresses()
                 .await
+                .unwrap_or_default()
+                .is_empty()
+            {
+                return;
+            }
+            if let Err(e) = device
                 .tx_message(
                     &Message::GiveSystemAudioModeStatus,
                     LogicalAddress::AudioSystem,
@@ -1647,6 +1728,108 @@ mod test {
         assert_eq!(
             proxy.audio_logical_address().await.unwrap(),
             LogicalAddress::Tv.into()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_wake_from_standby_not_deferred() {
+        let test = setup_basic_test().await.unwrap();
+        assert_eq!(
+            test.proxy.logical_addresses().await.unwrap(),
+            &[u8::from(LogicalAddress::PlaybackDevice1)]
+        );
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
+            .await
+            .unwrap();
+        {
+            let dev = interface.get_mut().await;
+            dev.send_system_message(SystemMessage::Wake {
+                wake_tv: false,
+                from_standby: true,
+            })
+            .await
+            .unwrap();
+        }
+
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::ReportPowerStatus {
+                    status: PowerStatus::On
+                },
+                LogicalAddress::Broadcast
+            )
+        );
+    }
+
+    #[tokio::test]
+    async fn test_wake_from_standby_deferred() {
+        let test = setup_basic_test().await.unwrap();
+
+        let interface: InterfaceRef<CecDevice> = test
+            .connection
+            .object_server()
+            .interface("/com/steampowered/CecDaemon1/Devices/Null")
+            .await
+            .unwrap();
+        {
+            let dev = interface.get_mut().await;
+            dev.device
+                .lock()
+                .await
+                .clear_logical_addresses()
+                .await
+                .unwrap();
+            assert_eq!(
+                dev.device
+                    .lock()
+                    .await
+                    .get_logical_addresses()
+                    .await
+                    .unwrap(),
+                &[]
+            );
+            dev.send_system_message(SystemMessage::Wake {
+                wake_tv: false,
+                from_standby: true,
+            })
+            .await
+            .unwrap();
+        }
+
+        assert_eq!(rx_message(&test.dev).await, None);
+
+        {
+            let dev = interface.get_mut().await;
+            dev.device
+                .lock()
+                .await
+                .set_logical_addresses(&[LogicalAddressType::Playback])
+                .await
+                .unwrap();
+            assert_eq!(
+                dev.device
+                    .lock()
+                    .await
+                    .get_logical_addresses()
+                    .await
+                    .unwrap(),
+                &[LogicalAddress::PlaybackDevice1]
+            );
+        }
+
+        assert_eq!(
+            rx_message(&test.dev).await.unwrap(),
+            (
+                Message::ReportPowerStatus {
+                    status: PowerStatus::On
+                },
+                LogicalAddress::Broadcast
+            )
         );
     }
 

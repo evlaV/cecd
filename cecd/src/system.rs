@@ -65,7 +65,7 @@ trait LoginManager {
 
 #[derive(Debug, Clone)]
 pub(crate) enum SystemMessage {
-    Wake,
+    Wake { wake_tv: bool, from_standby: bool },
     Standby { standby_tv: bool, force: bool },
     ReloadConfig,
     ReconfigureConnector(ConnectorInfo),
@@ -509,10 +509,28 @@ impl SystemHandle {
                 }
             };
             let mut system = self.lock().await;
-            if !sleep && system.config.wake_tv {
-                system.send_message(SystemMessage::Wake).await;
+            if !sleep {
+                let wake_tv = system.config.wake_tv;
+                debug!(
+                    "Woke from standby. {} TV.",
+                    if wake_tv { "Waking" } else { "Not waking" }
+                );
+                system
+                    .send_message(SystemMessage::Wake {
+                        wake_tv,
+                        from_standby: true,
+                    })
+                    .await;
             } else if sleep {
                 let standby_tv = system.config.suspend_tv;
+                debug!(
+                    "Entering standby. {} TV in standby.",
+                    if standby_tv {
+                        "Putting "
+                    } else {
+                        "Not putting"
+                    }
+                );
                 system
                     .send_message(SystemMessage::Standby {
                         standby_tv,
@@ -593,7 +611,12 @@ impl SystemHandle {
 
     pub(crate) async fn wake_all(&self) {
         let mut system = self.lock().await;
-        system.send_message(SystemMessage::Wake).await;
+        system
+            .send_message(SystemMessage::Wake {
+                wake_tv: true,
+                from_standby: false,
+            })
+            .await;
     }
 
     pub(crate) async fn standby_all(&self, force: bool) {

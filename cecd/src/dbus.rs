@@ -545,7 +545,12 @@ impl CecDevice {
     }
 
     async fn wake(&self) -> Result<()> {
-        Ok(self.send_system_message(SystemMessage::Wake).await?)
+        Ok(self
+            .send_system_message(SystemMessage::Wake {
+                wake_tv: true,
+                from_standby: false,
+            })
+            .await?)
     }
 
     async fn standby(&self, target: u8) -> Result<()> {

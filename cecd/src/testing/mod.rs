@@ -270,7 +270,11 @@ impl AsyncDevice {
         if !self.caps.contains(Capabilities::LOG_ADDRS) {
             return Err(Error::InvalidData);
         }
-        self.state.write().await.log_addrs.clear();
+        let mut state = self.state.write().await;
+        state.log_addrs.clear();
+        for poller in state.pollers.iter() {
+            poller.send(PollStatus::GotEvent).await.unwrap();
+        }
         Ok(())
     }
 
