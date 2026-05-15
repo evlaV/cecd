@@ -1,6 +1,6 @@
 [package]
 name = "cecd"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Vicki Pfau <vi@endrift.com>"]
 license = "LGPL-2.1-or-later"
